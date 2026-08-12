@@ -149,7 +149,6 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 | --- | --- | --- | --- |
 | 登录 | POST | /auth/login | 否 |
 | 养殖场主注册 | POST | /auth/register/owner | 否 |
-| 员工注册 | POST | /auth/register/employee | 是 |
 | 登出 | POST | /auth/logout | 是 |
 | 获取当前用户信息 | GET | /auth/userinfo | 是 |
 | 刷新 Token | POST | /auth/refresh-token | 是 |
@@ -210,8 +209,9 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 
 | 接口名称 | Method | URL | 鉴权 |
 | --- | --- | --- | --- |
-| 母畜档案列表 | GET | /breeding/female/list | 是 |
-| 公畜档案列表 | GET | /breeding/male/list | 是 |
+| 母畜档案列表 | GET | /breeding/females | 是 |
+| 公畜档案列表 | GET | /breeding/males | 是 |
+| 设置母畜生理状态 | PUT | /breeding/females/{耳标}/physio-status | 是 |
 | 配种记录列表 | GET | /breeding/mating/list | 是 |
 | 新增配种记录 | POST | /breeding/mating/add | 是 |
 | 修改配种记录 | PUT | /breeding/mating/update/{id} | 是 |
@@ -277,7 +277,6 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 | 待审核列表 | GET | /review/pending/list | 是 |
 | 全部审核记录 | GET | /review/list | 是 |
 | 审批操作 | PUT | /review/audit/{id} | 是 |
-| 今日代办 | GET | /review/todo | 是 |
 
 ### 3.12 系统模块 system
 
@@ -410,62 +409,9 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 | 20006 | 养殖场名称已存在 | 200 |
 | 20007 | farmType 不能为空 | 200 |
 
-#### 4.1.3 员工注册
+- **备注**：系统无员工自助注册接口。员工由养殖场主在「养殖场模块 - 添加员工」（`POST /farm/employees`）创建，并按岗位（饲喂员/兽医/繁育员/库管员）分配角色。
 
-- **接口名称**：员工注册
-- **Method**：POST
-- **URL**：`/auth/register/employee`
-- **鉴权**：是
-- **请求体示例**：
-
-```json
-{
-  "phone": "13800138002",
-  "password": "123456",
-  "nickname": "王五",
-  "realName": "王五",
-  "post": "FEEDER",
-  "gender": 1,
-  "age": 30,
-  "entryDate": "2026-08-01"
-}
-```
-
-| 字段 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| phone | string | 是 | 手机号 |
-| password | string | 是 | 密码 |
-| nickname | string | 是 | 昵称 |
-| realName | string | 否 | 真实姓名 |
-| post | string | 是 | 岗位：FEEDER 饲喂员 / VET 兽医 / BREEDER 繁育员 / KEEPER 库管员 |
-| gender | int | 否 | 性别：0 女 / 1 男 |
-| age | int | 否 | 年龄 |
-| entryDate | string | 否 | 入职日期 yyyy-MM-dd |
-
-- **响应体示例**：
-
-```json
-{
-  "code": 200,
-  "msg": "员工注册成功",
-  "data": {
-    "userId": 1002,
-    "farmId": 1001,
-    "phone": "13800138002"
-  },
-  "timestamp": 1691616000000
-}
-```
-
-- **错误码**：
-
-| 错误码 | 含义 | HTTP 状态 |
-| --- | --- | --- |
-| 20005 | 手机号已被注册 | 200 |
-| 20008 | 当前用户无权限添加员工 | 200 |
-| 20009 | 岗位类型不合法 | 200 |
-
-#### 4.1.4 登出
+#### 4.1.3 登出
 
 - **接口名称**：登出
 - **Method**：POST
@@ -485,7 +431,7 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 
 - **备注**：登出后服务端使 Token 失效。
 
-#### 4.1.5 获取当前用户信息
+#### 4.1.4 获取当前用户信息
 
 - **接口名称**：获取当前用户信息
 - **Method**：GET
@@ -515,7 +461,7 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 }
 ```
 
-#### 4.1.6 刷新 Token
+#### 4.1.5 刷新 Token
 
 - **接口名称**：刷新 Token
 - **Method**：POST
@@ -1016,13 +962,13 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
         "penId": 1,
         "penName": "A1育雏舍",
         "gender": 1,
-        "breed": "西门塔尔",
+        "breed": "西门塔尔牛",
         "birthDate": "2026-06-01",
         "entryDate": "2026-06-15",
         "ageDays": 70,
-        "growthStage": "CALF",
-        "growthStageName": "犊牛",
-        "status": "IN_PEN"
+        "growthStage": "犊牛期",
+        "growthStageName": "犊牛期",
+        "status": "在栏"
       }
     ],
     "total": 85,
@@ -1044,7 +990,7 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 ```json
 {
   "animalType": "CATTLE",
-  "growthStage": "CALF",
+  "growthStage": "犊牛期",
   "count": 20
 }
 ```
@@ -1119,7 +1065,7 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 | penId | long | 否 | 圈舍 ID |
 | breed | string | 否 | 品种 |
 | gender | int | 否 | 性别：0 母 / 1 公 |
-| status | string | 否 | 状态：IN_PEN 在栏 / SOLD 出栏 / DEAD 死亡 |
+| status | string | 否 | 状态：在栏/种用/隔离/待出栏/已出栏/死亡 |
 | entryDateStart | string | 否 | 入栏开始日期 |
 | entryDateEnd | string | 否 | 入栏结束日期 |
 
@@ -1138,15 +1084,15 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
         "penName": "A1育雏舍",
         "animalType": "CATTLE",
         "gender": 1,
-        "breed": "西门塔尔",
+        "breed": "西门塔尔牛",
         "birthDate": "2026-06-01",
         "entryDate": "2026-06-15",
         "entryWeight": 50.0,
         "currentWeight": 95.0,
         "ageDays": 70,
-        "growthStage": "CALF",
-        "growthStageName": "犊牛",
-        "status": "IN_PEN",
+        "growthStage": "犊牛期",
+        "growthStageName": "犊牛期",
+        "status": "在栏",
         "statusName": "在栏",
         "remark": "健康",
         "createTime": "2026-06-15 10:00:00"
@@ -1180,15 +1126,15 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
     "penName": "A1育雏舍",
     "animalType": "CATTLE",
     "gender": 1,
-    "breed": "西门塔尔",
+    "breed": "西门塔尔牛",
     "birthDate": "2026-06-01",
     "entryDate": "2026-06-15",
     "entryWeight": 50.0,
     "currentWeight": 95.0,
     "ageDays": 70,
-    "growthStage": "CALF",
-    "growthStageName": "犊牛",
-    "status": "IN_PEN",
+    "growthStage": "犊牛期",
+    "growthStageName": "犊牛期",
+    "status": "在栏",
     "statusName": "在栏",
     "remark": "健康",
     "createTime": "2026-06-15 10:00:00",
@@ -1214,7 +1160,7 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
   "penId": 1,
   "earTag": "0102",
   "gender": 1,
-  "breed": "西门塔尔",
+  "breed": "西门塔尔牛",
   "birthDate": "2026-06-01",
   "entryDate": "2026-08-10",
   "entryWeight": 95.0,
@@ -1270,10 +1216,10 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 ```json
 {
   "animalType": "CATTLE",
-  "growthStage": "CALF",
+  "growthStage": "犊牛期",
   "entryDate": "2026-08-10",
   "commonInfo": {
-    "breed": "西门塔尔",
+    "breed": "西门塔尔牛",
     "source": "外购",
     "remark": "批量入栏"
   },
@@ -1345,7 +1291,7 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | ids | array | 是 | 档案 ID 数组 |
-| reason | string | 是 | 删除原因：DEATH 死亡 / SALE 出栏 / CULL 淘汰 / OTHER 其他 |
+| reason | string | 是 | 删除原因：死亡/出栏/其他 |
 | remark | string | 否 | 备注 |
 
 - **响应体示例**：
@@ -1377,7 +1323,7 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 {
   "penId": 2,
   "currentWeight": 110.0,
-  "breed": "西门塔尔",
+  "breed": "西门塔尔牛",
   "remark": "健康生长"
 }
 ```
@@ -1421,11 +1367,11 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
         "earTag": "0100",
         "animalType": "CATTLE",
         "gender": 1,
-        "breed": "西门塔尔",
+        "breed": "西门塔尔牛",
         "birthDate": "2026-03-01",
         "entryDate": "2026-03-15",
         "deleteTime": "2026-08-05 15:00:00",
-        "deleteReason": "SALE",
+        "deleteReason": "出栏",
         "deleteRemark": "出栏销售",
         "canRestore": true
       }
@@ -1535,7 +1481,7 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
         "id": 1,
         "planName": "犊牛标准饲喂方案",
         "animalType": "CATTLE",
-        "growthStage": "CALF",
+        "growthStage": "犊牛期",
         "feedType": "代乳粉+精料",
         "feedAmount": 2.5,
         "unit": "kg/头/日",
@@ -1564,7 +1510,7 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 {
   "planName": "生长牛饲喂方案",
   "animalType": "CATTLE",
-  "growthStage": "GROWING",
+  "growthStage": "生长期",
   "feedType": "青贮+精料",
   "feedAmount": 5.0,
   "unit": "kg/头/日",
@@ -1809,7 +1755,7 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 
 - **接口名称**：母畜档案列表
 - **Method**：GET
-- **URL**：`/breeding/female/list`
+- **URL**：`/breeding/females`
 - **鉴权**：是
 - **查询参数**：
 
@@ -1819,7 +1765,7 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 | pageSize | int | 否 | 每页条数 |
 | animalType | string | 否 | 养殖种类 |
 | breed | string | 否 | 品种 |
-| breedingStatus | string | 否 | 繁育状态：READY 可繁育 / PREGNANT 妊娠 / NURSING 哺乳 |
+| physio_status | string | 否 | 母畜生理状态：发情/妊娠/泌乳/休情/淘汰 |
 
 - **响应体示例**：
 
@@ -1833,13 +1779,12 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
         "id": 5002,
         "earTag": "0102",
         "animalType": "CATTLE",
-        "breed": "西门塔尔",
+        "breed": "西门塔尔牛",
         "birthDate": "2025-01-01",
         "ageDays": 586,
-        "growthStage": "BREEDABLE",
-        "growthStageName": "可繁育",
-        "breedingStatus": "READY",
-        "breedingStatusName": "可繁育",
+        "growthStage": "繁育期",
+        "growthStageName": "繁育期",
+        "physio_status": "发情",
         "lastMatingDate": null,
         "expectedBirthDate": null,
         "penId": 3,
@@ -1858,7 +1803,7 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 
 - **接口名称**：公畜档案列表
 - **Method**：GET
-- **URL**：`/breeding/male/list`
+- **URL**：`/breeding/males`
 - **鉴权**：是
 - **查询参数**：同母畜档案列表
 - **响应体示例**：
@@ -1873,11 +1818,11 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
         "id": 5100,
         "earTag": "0301",
         "animalType": "CATTLE",
-        "breed": "西门塔尔",
+        "breed": "西门塔尔牛",
         "birthDate": "2024-06-01",
         "ageDays": 800,
-        "growthStage": "BREEDABLE",
-        "growthStageName": "可繁育",
+        "growthStage": "繁育期",
+        "growthStageName": "繁育期",
         "matingCount": 15,
         "penId": 4,
         "penName": "D1种畜圈舍"
@@ -1891,7 +1836,43 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 }
 ```
 
-#### 4.6.3 配种记录列表
+#### 4.6.3 设置母畜生理状态
+
+- **接口名称**：设置母畜生理状态
+- **Method**：PUT
+- **URL**：`/breeding/females/{耳标}/physio-status`
+- **鉴权**：是
+- **路径参数**：耳标（母畜耳标）
+- **请求体示例**：
+
+```json
+{
+  "physio_status": "妊娠"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| physio_status | string | 是 | 母畜生理状态：发情/妊娠/泌乳/休情/淘汰 |
+
+- **响应体示例**：
+
+```json
+{
+  "code": 200,
+  "msg": "生理状态已更新",
+  "data": {
+    "id": 5002,
+    "earTag": "0102",
+    "physio_status": "妊娠"
+  },
+  "timestamp": 1691616000000
+}
+```
+
+- **备注**：配种后母畜自动置为「妊娠」；孕检阴性后自动恢复「发情」；产犊后自动置为「泌乳」。也可通过本接口手动调整。
+
+#### 4.6.4 配种记录列表
 
 - **接口名称**：配种记录列表
 - **Method**：GET
@@ -1942,7 +1923,7 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 }
 ```
 
-#### 4.6.4 新增配种记录
+#### 4.6.5 新增配种记录
 
 - **接口名称**：新增配种记录
 - **Method**：POST
@@ -1996,7 +1977,7 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 | 60002 | 母畜正在妊娠中，不可重复配种 | 200 |
 | 60003 | 母畜或公畜不存在 | 200 |
 
-#### 4.6.5 修改配种记录
+#### 4.6.6 修改配种记录
 
 - **接口名称**：修改配种记录
 - **Method**：PUT
@@ -2026,7 +2007,7 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 }
 ```
 
-#### 4.6.6 产犊记录列表
+#### 4.6.7 产犊记录列表
 
 - **接口名称**：产犊记录列表
 - **Method**：GET
@@ -2073,7 +2054,7 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 }
 ```
 
-#### 4.6.7 新增产犊记录
+#### 4.6.8 新增产犊记录
 
 - **接口名称**：新增产犊记录
 - **Method**：POST
@@ -2127,7 +2108,7 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 | 60004 | 配种记录不存在 | 200 |
 | 60005 | 母畜未到生产日期 | 200 |
 
-#### 4.6.8 繁育预警列表
+#### 4.6.9 繁育预警列表
 
 - **接口名称**：繁育预警列表
 - **Method**：GET
@@ -2200,7 +2181,7 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
   - `PRE_BIRTH`：临产前 15 天预警
   - `POST_BIRTH_ESTRUS`：产后 60 天未发情预警
 
-#### 4.6.9 处理预警
+#### 4.6.10 处理预警
 
 - **接口名称**：处理预警
 - **Method**：PUT
@@ -2939,7 +2920,7 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
         "id": 4999,
         "earTag": "0100",
         "animalType": "CATTLE",
-        "breed": "西门塔尔",
+        "breed": "西门塔尔牛",
         "penId": 2,
         "penName": "B2育成舍",
         "birthDate": "2026-03-01",
@@ -3022,7 +3003,7 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 }
 ```
 
-- **备注**：销售成功后畜禽状态变更为 SOLD，自动生成销售订单。
+- **备注**：销售成功后畜禽状态变更为「已出栏」，自动生成销售订单。
 
 - **错误码**：
 
@@ -3114,7 +3095,7 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
       {
         "earTag": "0100",
         "animalType": "CATTLE",
-        "breed": "西门塔尔",
+        "breed": "西门塔尔牛",
         "weight": 500.0,
         "unitPrice": 20.0,
         "amount": 10000.0,
@@ -3124,7 +3105,7 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
       {
         "earTag": "0101",
         "animalType": "CATTLE",
-        "breed": "西门塔尔",
+        "breed": "西门塔尔牛",
         "weight": 480.0,
         "unitPrice": 22.0,
         "amount": 10560.0,
@@ -3265,7 +3246,7 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
   "data": {
     "earTag": "0100",
     "animalType": "CATTLE",
-    "breed": "西门塔尔",
+    "breed": "西门塔尔牛",
     "entryDate": "2026-03-15",
     "saleDate": "2026-08-10",
     "feedDays": 148,
@@ -3391,11 +3372,41 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
       "monthIncome": 50000.0,
       "monthCost": 20000.0,
       "monthProfit": 30000.0
+    },
+    "todos": {
+      "pen_count": 20,
+      "shortage_count": 2,
+      "expiring_count": 1,
+      "expired_count": 1,
+      "alert_by_type": {
+        "临产": 1,
+        "孕检": 3,
+        "未发情": 1
+      },
+      "recent_alerts": [
+        {
+          "id": 1,
+          "alert_type": "临产",
+          "animal_tag": "0102",
+          "alert_content": "距预产期 15 天，请做好接产准备",
+          "alert_date": "2027-04-13"
+        }
+      ],
+      "shortage_items": [
+        {
+          "id": 1,
+          "material_name": "代乳粉",
+          "material_type": "饲料",
+          "quantity": 10.0
+        }
+      ]
     }
   },
   "timestamp": 1691616000000
 }
 ```
+
+- **备注**：首页今日待办（临产提醒、库存不足提醒、圈舍总数等）由 `data.todos` 字段提供，无独立 `/review/todo` 端点。
 
 #### 4.10.2 存栏繁育统计
 
@@ -3424,11 +3435,11 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
         "maleCount": 50,
         "femaleCount": 250,
         "byStage": [
-          {"growthStage": "CALF", "count": 80},
-          {"growthStage": "NURSING", "count": 60},
-          {"growthStage": "GROWING", "count": 100},
-          {"growthStage": "FATTENING", "count": 50},
-          {"growthStage": "BREEDABLE", "count": 10}
+          {"growthStage": "犊牛期", "count": 80},
+          {"growthStage": "保育期", "count": 60},
+          {"growthStage": "生长期", "count": 100},
+          {"growthStage": "育肥期", "count": 50},
+          {"growthStage": "繁育期", "count": 10}
         ]
       }
     ],
@@ -3714,45 +3725,9 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 | 10002 | 审核记录已被处理 | 200 |
 | 10003 | 无权限审批 | 200 |
 
-#### 4.11.4 今日代办
+#### 4.11.4 今日待办
 
-- **接口名称**：今日代办
-- **Method**：GET
-- **URL**：`/review/todo`
-- **鉴权**：是
-- **响应体示例**：
-
-```json
-{
-  "code": 200,
-  "msg": "操作成功",
-  "data": {
-    "todayDate": "2026-08-10",
-    "pendingCount": 5,
-    "pendingByType": [
-      {
-        "bizType": "FEEDING",
-        "bizTypeName": "饲喂记录",
-        "count": 3
-      },
-      {
-        "bizType": "OTHER",
-        "bizTypeName": "其他",
-        "count": 2
-      }
-    ],
-    "urgentItems": [
-      {
-        "id": 1001,
-        "title": "饲喂记录审核 - A1育雏舍 2026-08-10",
-        "submitTime": "2026-08-10 08:00:00",
-        "bizType": "FEEDING"
-      }
-    ]
-  },
-  "timestamp": 1691616000000
-}
-```
+- **说明**：系统无独立 `/review/todo` 端点。今日待办（今日待办、临产提醒、库存不足提醒、存栏总数、圈舍总数）由 `GET /statistics/dashboard` 响应中的 `todos` 字段提供，详见 4.10.1。
 
 ---
 
@@ -3820,7 +3795,7 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
       {
         "id": 1,
         "roleName": "超级管理员",
-        "roleCode": "super_admin",
+        "roleCode": "admin",
         "description": "系统超级管理员",
         "userCount": 1,
         "createTime": "2026-08-01 10:00:00"
@@ -3835,14 +3810,38 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
       },
       {
         "id": 3,
-        "roleName": "员工",
-        "roleCode": "employee",
-        "description": "普通员工",
-        "userCount": 15,
+        "roleName": "饲喂员",
+        "roleCode": "feeder",
+        "description": "负责日常饲喂",
+        "userCount": 4,
+        "createTime": "2026-08-01 10:00:00"
+      },
+      {
+        "id": 4,
+        "roleName": "兽医",
+        "roleCode": "vet",
+        "description": "负责防疫诊疗",
+        "userCount": 3,
+        "createTime": "2026-08-01 10:00:00"
+      },
+      {
+        "id": 5,
+        "roleName": "繁育员",
+        "roleCode": "breeder",
+        "description": "负责配种繁育",
+        "userCount": 4,
+        "createTime": "2026-08-01 10:00:00"
+      },
+      {
+        "id": 6,
+        "roleName": "库管员",
+        "roleCode": "keeper",
+        "description": "负责物资管理",
+        "userCount": 4,
         "createTime": "2026-08-01 10:00:00"
       }
     ],
-    "total": 3,
+    "total": 6,
     "pageNum": 1,
     "pageSize": 10
   },
@@ -3963,33 +3962,60 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
     "list": [
       {
         "id": 1,
-        "dictType": "user_type",
+        "dictType": "role",
         "dictLabel": "超级管理员",
-        "dictValue": "SUPER_ADMIN",
+        "dictValue": "admin",
         "sort": 1,
         "status": 1,
         "remark": "系统超级管理员"
       },
       {
         "id": 2,
-        "dictType": "user_type",
+        "dictType": "role",
         "dictLabel": "养殖场主",
-        "dictValue": "OWNER",
+        "dictValue": "owner",
         "sort": 2,
         "status": 1,
         "remark": "养殖场主管理员"
       },
       {
         "id": 3,
-        "dictType": "user_type",
-        "dictLabel": "员工",
-        "dictValue": "EMPLOYEE",
+        "dictType": "role",
+        "dictLabel": "饲喂员",
+        "dictValue": "feeder",
         "sort": 3,
         "status": 1,
-        "remark": "普通员工"
+        "remark": "负责日常饲喂"
+      },
+      {
+        "id": 4,
+        "dictType": "role",
+        "dictLabel": "兽医",
+        "dictValue": "vet",
+        "sort": 4,
+        "status": 1,
+        "remark": "负责防疫诊疗"
+      },
+      {
+        "id": 5,
+        "dictType": "role",
+        "dictLabel": "繁育员",
+        "dictValue": "breeder",
+        "sort": 5,
+        "status": 1,
+        "remark": "负责配种繁育"
+      },
+      {
+        "id": 6,
+        "dictType": "role",
+        "dictLabel": "库管员",
+        "dictValue": "keeper",
+        "sort": 6,
+        "status": 1,
+        "remark": "负责物资管理"
       }
     ],
-    "total": 3,
+    "total": 6,
     "pageNum": 1,
     "pageSize": 10
   },
@@ -4480,13 +4506,16 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 
 ### 7.1 通用枚举对照表
 
-#### 7.1.1 user_type 用户类型
+#### 7.1.1 role 角色编码（RBAC）
 
 | 枚举值 | 中文名 | 说明 |
 | --- | --- | --- |
-| SUPER_ADMIN | 超级管理员 | 系统超级管理员 |
-| OWNER | 养殖场主 | 养殖场主管理员 |
-| EMPLOYEE | 员工 | 普通员工 |
+| admin | 超级管理员 | 系统超级管理员 |
+| owner | 养殖场主 | 养殖场主管理员 |
+| feeder | 饲喂员 | 负责日常饲喂 |
+| vet | 兽医 | 负责防疫诊疗 |
+| breeder | 繁育员 | 负责配种繁育 |
+| keeper | 库管员 | 负责物资管理 |
 
 #### 7.1.2 post 岗位类型
 
@@ -4518,43 +4547,44 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 
 | 枚举值 | 中文名 | 日龄范围 |
 | --- | --- | --- |
-| CALF | 犊牛 | 1-60 |
-| NURSING | 保育 | 61-180 |
-| GROWING | 生长 | 181-365 |
-| FATTENING | 育肥 | 366-540 |
-| BREEDABLE | 可繁育 | 365 以上 |
-| PREGNANT | 妊娠 | 配种后 0-280 |
+| 犊牛期 | 犊牛期 | 1-60 |
+| 保育期 | 保育期 | 61-180 |
+| 生长期 | 生长期 | 181-365 |
+| 育肥期 | 育肥期 | 366-540 |
+| 繁育期 | 繁育期 | 540 以上 |
 
 #### 7.1.6 growth_stage 生长阶段（羊）
 
 | 枚举值 | 中文名 | 日龄范围 |
 | --- | --- | --- |
-| LAMB | 羔羊 | 1-45 |
-| NURSING | 保育 | 46-90 |
-| GROWING | 生长 | 91-180 |
-| FATTENING | 育肥 | 181-270 |
-| BREEDABLE | 可繁育 | 300 以上 |
-| PREGNANT | 妊娠 | 配种后 0-150 |
+| 羔羊期 | 羔羊期 | 1-45 |
+| 保育期 | 保育期 | 46-90 |
+| 生长期 | 生长期 | 91-180 |
+| 育肥期 | 育肥期 | 181-270 |
+| 繁育期 | 繁育期 | 270 以上 |
 
 #### 7.1.7 growth_stage 生长阶段（猪）
 
 | 枚举值 | 中文名 | 日龄范围 |
 | --- | --- | --- |
-| PIGLET | 仔猪 | 1-28 |
-| NURSING | 保育 | 29-70 |
-| GROWING | 生长 | 71-120 |
-| FATTENING | 育肥 | 121-180 |
-| BREEDABLE | 可繁育 | 220 以上 |
-| PREGNANT | 妊娠 | 配种后 0-114 |
+| 仔猪期 | 仔猪期 | 1-28 |
+| 保育期 | 保育期 | 29-70 |
+| 生长期 | 生长期 | 71-120 |
+| 育肥期 | 育肥期 | 121-180 |
+| 繁育期 | 繁育期 | 180 以上 |
+
+- **备注**：妊娠不属于生长阶段，由母畜生理状态 `physio_status`（发情/妊娠/泌乳/休情/淘汰）表达，见 7.1.16。
 
 #### 7.1.8 animal_status 畜禽状态
 
 | 枚举值 | 中文名 | 说明 |
 | --- | --- | --- |
-| IN_PEN | 在栏 | 当前在栏饲养 |
-| SOLD | 出栏 | 已销售出栏 |
-| DEAD | 死亡 | 已死亡 |
-| CULLED | 淘汰 | 已淘汰处理 |
+| 在栏 | 在栏 | 当前在栏饲养 |
+| 种用 | 种用 | 用于配种繁育 |
+| 隔离 | 隔离 | 隔离观察 |
+| 待出栏 | 待出栏 | 即将出栏销售 |
+| 已出栏 | 已出栏 | 已销售出栏 |
+| 死亡 | 死亡 | 已死亡 |
 
 #### 7.1.9 material_type 物资类型
 
@@ -4612,13 +4642,15 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 | DIFFICULT | 难产 | 难产 |
 | CESAREAN | 剖腹产 | 剖腹产 |
 
-#### 7.1.16 breeding_status 繁育状态
+#### 7.1.16 physio_status 母畜生理状态（仅母畜）
 
 | 枚举值 | 中文名 | 说明 |
 | --- | --- | --- |
-| READY | 可繁育 | 可进行配种 |
-| PREGNANT | 妊娠 | 已妊娠 |
-| NURSING | 哺乳 | 哺乳期 |
+| 发情 | 发情 | 处于发情期，可配种 |
+| 妊娠 | 妊娠 | 已妊娠 |
+| 泌乳 | 泌乳 | 哺乳泌乳期 |
+| 休情 | 休情 | 休情期 |
+| 淘汰 | 淘汰 | 已淘汰 |
 
 #### 7.1.17 alert_type 预警类型
 
@@ -4642,10 +4674,9 @@ Token 默认有效期 2 小时，可通过 `/auth/refresh-token` 接口刷新。
 
 | 枚举值 | 中文名 | 说明 |
 | --- | --- | --- |
-| DEATH | 死亡 | 畜禽死亡 |
-| SALE | 出栏 | 出栏销售 |
-| CULL | 淘汰 | 淘汰处理 |
-| OTHER | 其他 | 其他原因 |
+| 死亡 | 死亡 | 畜禽死亡 |
+| 出栏 | 出栏 | 出栏销售 |
+| 其他 | 其他 | 其他原因 |
 
 #### 7.1.20 salary_status 薪资状态
 
@@ -4680,7 +4711,7 @@ curl -X POST http://localhost:8080/api/v1/animal/individual \
     "penId": 1,
     "earTag": "0102",
     "gender": 1,
-    "breed": "西门塔尔",
+    "breed": "西门塔尔牛",
     "birthDate": "2026-06-01",
     "entryDate": "2026-08-10",
     "entryWeight": 95.0,
@@ -4697,10 +4728,10 @@ curl -X POST http://localhost:8080/api/v1/animal/batch \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIiw..." \
   -d '{
     "animalType": "CATTLE",
-    "growthStage": "CALF",
+    "growthStage": "犊牛期",
     "entryDate": "2026-08-10",
     "commonInfo": {
-      "breed": "西门塔尔",
+      "breed": "西门塔尔牛",
       "source": "外购",
       "remark": "批量入栏"
     },
@@ -4792,7 +4823,7 @@ curl -X POST http://localhost:8080/api/v1/pen/auto-allocate \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIiw..." \
   -d '{
     "animalType": "CATTLE",
-    "growthStage": "CALF",
+    "growthStage": "犊牛期",
     "count": 20
   }'
 ```
@@ -4850,7 +4881,6 @@ curl -X PUT http://localhost:8080/api/v1/review/audit/1001 \
 ├── 01-认证模块
 │   ├── 登录
 │   ├── 养殖场主注册
-│   ├── 员工注册
 │   ├── 登出
 │   ├── 获取当前用户信息
 │   └── 刷新 Token

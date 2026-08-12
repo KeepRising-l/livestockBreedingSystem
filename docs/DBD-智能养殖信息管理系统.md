@@ -84,7 +84,7 @@
 - 所有业务表均携带 `farm_id` 字段，数据访问层在 SQL 层强制追加 `WHERE farm_id = ?` 条件。
 - 超级管理员（user_type=1）可跨租户查询所有养殖场数据。
 - 养殖场主管理员（user_type=2）只能访问本养殖场数据。
-- 员工（user_type=3）通过 `farm_employee` 关联到具体养殖场，仅可访问所属养殖场数据。
+- 员工（user_type=3）通过 `sys_user.farm_id` + `sys_user.post`（岗位）关联到具体养殖场，仅可访问所属养殖场数据。
 - 联合索引均以 `farm_id` 作为最左前缀，确保查询性能。
 
 ---
@@ -95,8 +95,6 @@
 
 ```mermaid
 erDiagram
-    SYS_USER ||--o{ FARM_EMPLOYEE : "员工归属"
-    FARM_INFO ||--o{ FARM_EMPLOYEE : "雇佣"
     FARM_INFO ||--o{ PEN_INFO : "拥有圈舍"
     FARM_INFO ||--o{ ANIMAL_ARCHIVE : "拥有档案"
     PEN_INFO ||--o{ ANIMAL_ARCHIVE : "栏舍归属"
@@ -115,8 +113,6 @@ erDiagram
     ANIMAL_ARCHIVE ||--o{ SALE_ORDER_DETAIL : "出栏销售"
     FARM_INFO ||--o{ SALARY_CONFIG : "薪资配置"
     SYS_USER ||--o{ SALARY_RECORD : "薪资记录"
-    FARM_INFO ||--o{ REVIEW_RECORD : "审核记录"
-    SYS_USER ||--o{ REVIEW_RECORD : "提交审核"
     PEN_INFO ||--o{ FEEDING_RECORD : "圈舍饲喂"
     FARM_INFO ||--o{ COST_EXPENSE : "成本支出"
     FARM_INFO ||--o{ BREEDING_ALERT : "繁育预警"
@@ -156,6 +152,7 @@ erDiagram
         varchar gender
         date birth_date
         varchar growth_stage
+        varchar physio_status
         varchar status
         varchar sire_tag
         varchar dam_tag
@@ -260,13 +257,6 @@ erDiagram
         varchar post
         decimal base_salary
     }
-    REVIEW_RECORD {
-        bigint id PK
-        bigint farm_id FK
-        varchar business_type
-        bigint business_id
-        varchar audit_status
-    }
 ```
 
 ---
@@ -342,16 +332,7 @@ erDiagram
 | update_time | DATETIME | 是 | CURRENT_TIMESTAMP | 更新时间 | - |
 | deleted | TINYINT(1) | 是 | 0 | 逻辑删除 | - |
 
-#### 4.1.5 sys_role_menu（角色菜单关联表）
-
-| 字段名 | 类型 | 非空 | 默认值 | 注释 | 索引 |
-| ------ | ---- | ---- | ------ | ---- | ---- |
-| id | BIGINT UNSIGNED | 是 | AUTO | 主键 ID | PK |
-| role_id | BIGINT UNSIGNED | 是 | - | 角色 ID | INDEX |
-| menu_id | BIGINT UNSIGNED | 是 | - | 菜单 ID | INDEX |
-| create_time | DATETIME | 是 | CURRENT_TIMESTAMP | 创建时间 | - |
-
-#### 4.1.6 sys_dict_type（字典类型表）
+#### 4.1.5 sys_dict_type（字典类型表）
 
 | 字段名 | 类型 | 非空 | 默认值 | 注释 | 索引 |
 | ------ | ---- | ---- | ------ | ---- | ---- |
@@ -364,7 +345,7 @@ erDiagram
 | update_time | DATETIME | 是 | CURRENT_TIMESTAMP | 更新时间 | - |
 | deleted | TINYINT(1) | 是 | 0 | 逻辑删除 | - |
 
-#### 4.1.7 sys_dict_data（字典数据表）
+#### 4.1.6 sys_dict_data（字典数据表）
 
 | 字段名 | 类型 | 非空 | 默认值 | 注释 | 索引 |
 | ------ | ---- | ---- | ------ | ---- | ---- |
@@ -405,26 +386,7 @@ erDiagram
 | update_by | BIGINT UNSIGNED | 否 | NULL | 更新人 | - |
 | deleted | TINYINT(1) | 是 | 0 | 逻辑删除 | - |
 
-#### 4.2.2 farm_employee（员工关联表）
-
-| 字段名 | 类型 | 非空 | 默认值 | 注释 | 索引 |
-| ------ | ---- | ---- | ------ | ---- | ---- |
-| id | BIGINT UNSIGNED | 是 | AUTO | 主键 ID | PK |
-| farm_id | BIGINT UNSIGNED | 是 | - | 养殖场 ID | INDEX |
-| user_id | BIGINT UNSIGNED | 是 | - | 用户 ID | INDEX |
-| post | VARCHAR(20) | 是 | - | 岗位（饲喂员/兽医/繁育员/库管员） | INDEX |
-| entry_date | DATE | 否 | NULL | 入职日期 | - |
-| quit_date | DATE | 否 | NULL | 离职日期 | - |
-| salary_base | DECIMAL(10,2) | 否 | NULL | 基础薪资（可由养殖场主自定义） | - |
-| status | TINYINT | 是 | 1 | 状态（0 离职 1 在职） | - |
-| remark | VARCHAR(255) | 否 | NULL | 备注 | - |
-| create_time | DATETIME | 是 | CURRENT_TIMESTAMP | 创建时间 | - |
-| update_time | DATETIME | 是 | CURRENT_TIMESTAMP | 更新时间 | - |
-| create_by | BIGINT UNSIGNED | 否 | NULL | 创建人 | - |
-| update_by | BIGINT UNSIGNED | 否 | NULL | 更新人 | - |
-| deleted | TINYINT(1) | 是 | 0 | 逻辑删除 | - |
-
-> 联合唯一索引 uk_farm_user：farm_id + user_id
+> 说明：系统不设独立的员工关联表（farm_employee）。员工通过 `sys_user.farm_id` + `sys_user.post`（岗位）归属养殖场；岗位薪资在 `salary_config` 中按养殖场配置。
 
 ---
 
@@ -464,21 +426,18 @@ erDiagram
 | farm_id | BIGINT UNSIGNED | 是 | - | 养殖场 ID | INDEX |
 | ear_tag | VARCHAR(10) | 是 | - | 耳标（4 位 = 圈舍 2 位 + 顺序 2 位） | UNIQUE |
 | species | VARCHAR(10) | 是 | - | 养殖种类（cattle/sheep/pig） | INDEX |
-| breed | VARCHAR(50) | 否 | NULL | 品种（如荷斯坦、杜泊、长白） | - |
+| breed | VARCHAR(50) | 否 | NULL | 品种（牛：黄牛/西门塔尔牛/安格斯牛/秦川牛；羊：波尔山羊/黄淮山羊/小尾寒羊/山羊/绵羊；猪：大白猪/长白猪/杜长大三元猪/黑土猪） | - |
 | pen_id | BIGINT UNSIGNED | 否 | NULL | 当前圈舍 ID | INDEX |
-| gender | VARCHAR(2) | 是 | - | 性别（M 公 F 母） | - |
+| gender | VARCHAR(2) | 是 | - | 性别（公/母） | - |
 | birth_date | DATE | 否 | NULL | 出生日期 | - |
 | in_date | DATE | 否 | NULL | 入栏日期 | INDEX |
 | out_date | DATE | 否 | NULL | 出栏日期 | - |
 | growth_stage | VARCHAR(20) | 否 | NULL | 生长阶段（犊牛/保育期/生长期等） | INDEX |
-| day_age | INT | 否 | 0 | 日龄（运行时计算或每日更新） | - |
-| status | VARCHAR(10) | 是 | '在栏' | 状态（在栏/已出栏/已死亡/已淘汰） | INDEX |
+| physio_status | VARCHAR(20) | 否 | NULL | 母畜生理状态（发情/妊娠/泌乳/休情/淘汰，仅母畜） | - |
+| status | VARCHAR(10) | 是 | '在栏' | 状态（在栏/种用/隔离/待出栏/已出栏/死亡） | INDEX |
 | source | VARCHAR(20) | 否 | NULL | 来源（自繁/外购/调拨） | - |
 | sire_tag | VARCHAR(10) | 否 | NULL | 父本耳标 | - |
 | dam_tag | VARCHAR(10) | 否 | NULL | 母本耳标 | - |
-| weight_current | DECIMAL(8,2) | 否 | NULL | 当前体重（kg） | - |
-| weight_out | DECIMAL(8,2) | 否 | NULL | 出栏体重 | - |
-| is_breeding | TINYINT(1) | 是 | 0 | 是否可繁育（0 否 1 是） | - |
 | remark | VARCHAR(255) | 否 | NULL | 备注 | - |
 | create_time | DATETIME | 是 | CURRENT_TIMESTAMP | 创建时间 | - |
 | update_time | DATETIME | 是 | CURRENT_TIMESTAMP | 更新时间 | - |
@@ -490,7 +449,7 @@ erDiagram
 
 #### 4.4.2 animal_archive_history（档案历史表）
 
-字段结构与 `animal_archive` 完全一致，附加以下字段：
+字段结构与 `animal_archive` 完全一致（含 `physio_status` 母畜生理状态等全部字段），附加以下字段：
 
 | 字段名 | 类型 | 非空 | 默认值 | 注释 | 索引 |
 | ------ | ---- | ---- | ------ | ---- | ---- |
@@ -568,57 +527,13 @@ erDiagram
 
 ### 4.6 繁育模块
 
-#### 4.6.1 breeding_female（母畜档案表）
+#### 4.6.1 母畜档案（由 animal_archive 筛选）
 
-| 字段名 | 类型 | 非空 | 默认值 | 注释 | 索引 |
-| ------ | ---- | ---- | ------ | ---- | ---- |
-| id | BIGINT UNSIGNED | 是 | AUTO | 主键 ID | PK |
-| farm_id | BIGINT UNSIGNED | 是 | - | 养殖场 ID | INDEX |
-| archive_id | BIGINT UNSIGNED | 是 | - | 关联畜禽档案 ID | INDEX |
-| ear_tag | VARCHAR(10) | 是 | - | 耳标 | UNIQUE |
-| species | VARCHAR(10) | 是 | - | 养殖种类 | - |
-| breed | VARCHAR(50) | 否 | NULL | 品种 | - |
-| pen_id | BIGINT UNSIGNED | 否 | NULL | 圈舍 ID | - |
-| birth_date | DATE | 否 | NULL | 出生日期 | - |
-| first_mating_date | DATE | 否 | NULL | 初配日期 | - |
-| mating_count | INT | 是 | 0 | 累计配种次数 | - |
-| birth_count | INT | 是 | 0 | 累计产仔次数 | - |
-| last_mating_date | DATE | 否 | NULL | 最近配种日期 | - |
-| last_birth_date | DATE | 否 | NULL | 最近产仔日期 | - |
-| pregnancy_status | VARCHAR(10) | 是 | '未配种' | 妊娠状态（未配种/配种待孕检/已孕/空怀） | INDEX |
-| expected_birth_date | DATE | 否 | NULL | 预产日期 | INDEX |
-| health_status | VARCHAR(10) | 是 | '正常' | 健康状态 | - |
-| status | VARCHAR(10) | 是 | '在栏' | 状态 | - |
-| remark | VARCHAR(255) | 否 | NULL | 备注 | - |
-| create_time | DATETIME | 是 | CURRENT_TIMESTAMP | 创建时间 | - |
-| update_time | DATETIME | 是 | CURRENT_TIMESTAMP | 更新时间 | - |
-| create_by | BIGINT UNSIGNED | 否 | NULL | 创建人 | - |
-| update_by | BIGINT UNSIGNED | 否 | NULL | 更新人 | - |
-| deleted | TINYINT(1) | 是 | 0 | 逻辑删除 | - |
+> 系统不设独立的母畜档案表（breeding_female）。母畜档案即 `animal_archive` 中 `gender='母'` 的档案记录：通过 `physio_status`（发情/妊娠/泌乳/休情/淘汰）记录母畜生理状态，`growth_stage` 记录生长阶段（含可繁育/妊娠期）。配种、产仔等业务通过 `mating_record`、`birth_record` 按耳标关联。
 
-#### 4.6.2 breeding_male（公畜档案表）
+#### 4.6.2 公畜档案（由 animal_archive 筛选）
 
-| 字段名 | 类型 | 非空 | 默认值 | 注释 | 索引 |
-| ------ | ---- | ---- | ------ | ---- | ---- |
-| id | BIGINT UNSIGNED | 是 | AUTO | 主键 ID | PK |
-| farm_id | BIGINT UNSIGNED | 是 | - | 养殖场 ID | INDEX |
-| archive_id | BIGINT UNSIGNED | 是 | - | 关联畜禽档案 ID | INDEX |
-| ear_tag | VARCHAR(10) | 是 | - | 耳标 | UNIQUE |
-| species | VARCHAR(10) | 是 | - | 养殖种类 | - |
-| breed | VARCHAR(50) | 否 | NULL | 品种 | - |
-| pen_id | BIGINT UNSIGNED | 否 | NULL | 圈舍 ID | - |
-| birth_date | DATE | 否 | NULL | 出生日期 | - |
-| service_years | DECIMAL(3,1) | 否 | NULL | 使用年限 | - |
-| mating_count | INT | 是 | 0 | 累计配种次数 | - |
-| last_mating_date | DATE | 否 | NULL | 最近配种日期 | - |
-| health_status | VARCHAR(10) | 是 | '正常' | 健康状态 | - |
-| status | VARCHAR(10) | 是 | '在栏' | 状态 | - |
-| remark | VARCHAR(255) | 否 | NULL | 备注 | - |
-| create_time | DATETIME | 是 | CURRENT_TIMESTAMP | 创建时间 | - |
-| update_time | DATETIME | 是 | CURRENT_TIMESTAMP | 更新时间 | - |
-| create_by | BIGINT UNSIGNED | 否 | NULL | 创建人 | - |
-| update_by | BIGINT UNSIGNED | 否 | NULL | 更新人 | - |
-| deleted | TINYINT(1) | 是 | 0 | 逻辑删除 | - |
+> 系统不设独立的公畜档案表（breeding_male）。公畜档案即 `animal_archive` 中 `gender='公'` 的档案记录，通过 `status='种用'` 标识种用公畜；配种业务通过 `mating_record.male_tag` 按耳标关联。
 
 #### 4.6.3 mating_record（配种记录表）
 
@@ -946,32 +861,13 @@ erDiagram
 
 ### 4.10 审核模块
 
-#### 4.10.1 review_record（审核记录表）
-
-| 字段名 | 类型 | 非空 | 默认值 | 注释 | 索引 |
-| ------ | ---- | ---- | ------ | ---- | ---- |
-| id | BIGINT UNSIGNED | 是 | AUTO | 主键 ID | PK |
-| farm_id | BIGINT UNSIGNED | 是 | - | 养殖场 ID | INDEX |
-| business_type | VARCHAR(20) | 是 | - | 业务类型（饲喂/繁育/库存/兽医/采购/销售） | INDEX |
-| business_id | BIGINT UNSIGNED | 是 | - | 业务记录 ID | - |
-| business_desc | VARCHAR(255) | 否 | NULL | 业务描述摘要 | - |
-| submit_user_id | BIGINT UNSIGNED | 是 | - | 提交人 ID | INDEX |
-| submit_time | DATETIME | 是 | CURRENT_TIMESTAMP | 提交时间 | - |
-| audit_user_id | BIGINT UNSIGNED | 否 | NULL | 审核人 ID | - |
-| audit_status | VARCHAR(10) | 是 | '待审核' | 审核状态（待审核/通过/驳回） | INDEX |
-| audit_time | DATETIME | 否 | NULL | 审核时间 | - |
-| audit_remark | VARCHAR(255) | 否 | NULL | 审核意见 | - |
-| create_time | DATETIME | 是 | CURRENT_TIMESTAMP | 创建时间 | - |
-| update_time | DATETIME | 是 | CURRENT_TIMESTAMP | 更新时间 | - |
-| deleted | TINYINT(1) | 是 | 0 | 逻辑删除 | - |
-
-> 联合索引 idx_farm_status_type：farm_id + audit_status + business_type
+> 说明：系统不设独立的审核记录表（review_record）。各业务表（饲喂记录、防疫记录、诊疗记录、进货记录等）均自带 `audit_status` 字段（待审核/通过/驳回）记录审核状态，审核由养殖场主/管理员在应用层完成。
 
 ---
 
 ### 4.11 系统模块
 
-#### 4.11.1 sys_oper_log（操作日志表）
+#### 4.11.1 oper_log（操作日志表）
 
 | 字段名 | 类型 | 非空 | 默认值 | 注释 | 索引 |
 | ------ | ---- | ---- | ------ | ---- | ---- |
@@ -991,7 +887,7 @@ erDiagram
 | oper_time | DATETIME | 是 | CURRENT_TIMESTAMP | 操作时间 | INDEX |
 | cost_time | BIGINT | 否 | 0 | 消耗时间（ms） | - |
 
-#### 4.11.2 sys_login_log（登录日志表）
+#### 4.11.2 login_log（登录日志表）
 
 | 字段名 | 类型 | 非空 | 默认值 | 注释 | 索引 |
 | ------ | ---- | ---- | ------ | ---- | ---- |
@@ -1046,7 +942,6 @@ erDiagram
 | sys_user | idx_farm_id | INDEX | farm_id | 按养殖场查询用户 |
 | sys_user | idx_user_type | INDEX | user_type | 按用户类型查询 |
 | farm_info | idx_owner_user_id | INDEX | owner_user_id | 查询用户拥有的养殖场 |
-| farm_employee | uk_farm_user | UNIQUE | farm_id, user_id | 防止重复雇佣 |
 | pen_info | uk_farm_pencode | UNIQUE | farm_id, pen_code | 圈舍编号唯一 |
 | animal_archive | uk_ear_tag | UNIQUE | ear_tag | 耳标全局唯一 |
 | animal_archive | idx_farm_species_status | INDEX | farm_id, species, status | 按种类状态查询 |
@@ -1066,9 +961,8 @@ erDiagram
 | sale_order | uk_order_no | UNIQUE | order_no | 订单号唯一 |
 | sale_order | idx_order_date | INDEX | farm_id, order_date | 按日期查询销售 |
 | salary_record | uk_farm_user_month | UNIQUE | farm_id, user_id, pay_month | 防止重复发薪 |
-| review_record | idx_farm_status_type | INDEX | farm_id, audit_status, business_type | 待审核业务查询 |
-| sys_oper_log | idx_oper_time | INDEX | oper_time | 按时间查询日志 |
-| sys_login_log | idx_login_time | INDEX | login_time | 按时间查询日志 |
+| oper_log | idx_oper_time | INDEX | oper_time | 按时间查询日志 |
+| login_log | idx_login_time | INDEX | login_time | 按时间查询日志 |
 
 ---
 
@@ -1148,9 +1042,11 @@ erDiagram
 | 值 | 含义 |
 | ---- | ---- |
 | 在栏 | 正常饲养中 |
+| 种用 | 种用（公/母种畜） |
+| 隔离 | 隔离观察 |
+| 待出栏 | 待销售出栏 |
 | 已出栏 | 已销售出栏 |
-| 已死亡 | 死亡 |
-| 已淘汰 | 淘汰处理 |
+| 死亡 | 死亡 |
 
 ### 6.7 material_type（物资类型）
 
@@ -1228,6 +1124,18 @@ erDiagram
 | 羊 | 3300 | 500 | 800 |
 | 猪 | 全价颗粒料 3500 | - | - |
 
+### 6.16 physio_status（母畜生理状态）
+
+仅母畜档案（`animal_archive.gender='母'`）使用。
+
+| 值 | 含义 |
+| ---- | ---- |
+| 发情 | 发情期，可配种 |
+| 妊娠 | 已配种妊娠中 |
+| 泌乳 | 哺乳期 |
+| 休情 | 空怀/休情期 |
+| 淘汰 | 淘汰 |
+
 ---
 
 ## 7. 视图设计
@@ -1241,23 +1149,43 @@ CREATE OR REPLACE VIEW v_female_archive AS
 SELECT
     f.id AS farm_id,
     f.farm_name,
-    bf.ear_tag,
-    bf.species,
-    bf.breed,
-    bf.pen_id,
+    aa.id AS archive_id,
+    aa.ear_tag,
+    aa.species,
+    aa.breed,
+    aa.pen_id,
     p.pen_code,
-    bf.pregnancy_status,
-    bf.last_mating_date,
-    bf.expected_birth_date,
-    bf.last_birth_date,
-    bf.mating_count,
-    bf.birth_count,
-    bf.health_status,
-    bf.remark
-FROM breeding_female bf
-LEFT JOIN farm_info f ON bf.farm_id = f.id
-LEFT JOIN pen_info p ON bf.pen_id = p.id
-WHERE bf.deleted = 0;
+    aa.physio_status,
+    aa.growth_stage,
+    aa.status,
+    aa.in_date,
+    aa.out_date,
+    mr.last_mating_date,
+    mr.expected_birth_date,
+    mr.mating_count,
+    br.last_birth_date,
+    br.birth_count
+FROM animal_archive aa
+LEFT JOIN farm_info f ON aa.farm_id = f.id
+LEFT JOIN pen_info p ON aa.pen_id = p.id
+LEFT JOIN (
+    SELECT farm_id, female_tag,
+           MAX(mating_date) AS last_mating_date,
+           MAX(expected_birth_date) AS expected_birth_date,
+           COUNT(*) AS mating_count
+    FROM mating_record
+    WHERE deleted = 0
+    GROUP BY farm_id, female_tag
+) mr ON aa.farm_id = mr.farm_id AND aa.ear_tag = mr.female_tag
+LEFT JOIN (
+    SELECT farm_id, female_tag,
+           MAX(birth_date) AS last_birth_date,
+           COUNT(*) AS birth_count
+    FROM birth_record
+    WHERE deleted = 0
+    GROUP BY farm_id, female_tag
+) br ON aa.farm_id = br.farm_id AND aa.ear_tag = br.female_tag
+WHERE aa.gender = '母' AND aa.deleted = 0;
 ```
 
 ### 7.2 v_stock_summary（库存汇总视图）
@@ -1332,12 +1260,12 @@ SELECT
     ba.alert_date,
     ba.alert_content,
     ba.status,
-    bf.species,
-    bf.breed,
+    aa.species,
+    aa.breed,
     p.pen_code
 FROM breeding_alert ba
-LEFT JOIN breeding_female bf ON ba.animal_tag = bf.ear_tag AND ba.farm_id = bf.farm_id
-LEFT JOIN pen_info p ON bf.pen_id = p.id
+LEFT JOIN animal_archive aa ON ba.animal_tag = aa.ear_tag AND ba.farm_id = aa.farm_id
+LEFT JOIN pen_info p ON aa.pen_id = p.id
 WHERE ba.status = '待处理' AND ba.deleted = 0;
 ```
 
@@ -1455,9 +1383,9 @@ END$$
 DELIMITER ;
 ```
 
-### 8.3 sp_refresh_growth_stage（刷新生长阶段与日龄）
+### 8.3 sp_refresh_growth_stage（刷新生长阶段）
 
-每日凌晨调度执行，根据日龄重新计算每只畜禽的生长阶段。
+每日凌晨调度执行，根据出生日期重新计算每只畜禽的生长阶段。
 
 ```sql
 DROP PROCEDURE IF EXISTS sp_refresh_growth_stage;
@@ -1466,8 +1394,7 @@ CREATE PROCEDURE sp_refresh_growth_stage()
 BEGIN
     -- 牛
     UPDATE animal_archive
-    SET day_age = DATEDIFF(CURDATE(), birth_date),
-        growth_stage = CASE
+    SET growth_stage = CASE
             WHEN DATEDIFF(CURDATE(), birth_date) BETWEEN 1 AND 60 THEN '犊牛'
             WHEN DATEDIFF(CURDATE(), birth_date) BETWEEN 61 AND 180 THEN '保育期'
             WHEN DATEDIFF(CURDATE(), birth_date) BETWEEN 181 AND 365 THEN '生长期'
@@ -1477,8 +1404,7 @@ BEGIN
 
     -- 羊
     UPDATE animal_archive
-    SET day_age = DATEDIFF(CURDATE(), birth_date),
-        growth_stage = CASE
+    SET growth_stage = CASE
             WHEN DATEDIFF(CURDATE(), birth_date) BETWEEN 1 AND 45 THEN '羔羊'
             WHEN DATEDIFF(CURDATE(), birth_date) BETWEEN 46 AND 90 THEN '保育'
             WHEN DATEDIFF(CURDATE(), birth_date) BETWEEN 91 AND 180 THEN '生长'
@@ -1489,8 +1415,7 @@ BEGIN
 
     -- 猪
     UPDATE animal_archive
-    SET day_age = DATEDIFF(CURDATE(), birth_date),
-        growth_stage = CASE
+    SET growth_stage = CASE
             WHEN DATEDIFF(CURDATE(), birth_date) BETWEEN 1 AND 28 THEN '仔猪'
             WHEN DATEDIFF(CURDATE(), birth_date) BETWEEN 29 AND 70 THEN '保育'
             WHEN DATEDIFF(CURDATE(), birth_date) BETWEEN 71 AND 120 THEN '生长'
@@ -1591,7 +1516,6 @@ BEGIN
     UPDATE animal_archive
     SET status = '已出栏',
         out_date = CURDATE(),
-        weight_out = NEW.weight,
         update_time = NOW()
     WHERE id = NEW.archive_id AND farm_id = NEW.farm_id AND deleted = 0;
 
@@ -1706,14 +1630,11 @@ AFTER UPDATE ON mating_record
 FOR EACH ROW
 BEGIN
     IF OLD.status <> NEW.status THEN
-        UPDATE breeding_female
-        SET pregnancy_status = CASE
-                WHEN NEW.status = '成功怀孕' THEN '已孕'
-                WHEN NEW.status = '配种失败' THEN '空怀'
-                ELSE pregnancy_status END,
-            last_mating_date = NEW.mating_date,
-            expected_birth_date = NEW.expected_birth_date,
-            mating_count = mating_count + 1,
+        UPDATE animal_archive
+        SET physio_status = CASE
+                WHEN NEW.status = '成功怀孕' THEN '妊娠'
+                WHEN NEW.status = '配种失败' THEN '休情'
+                ELSE physio_status END,
             update_time = NOW()
         WHERE ear_tag = NEW.female_tag AND farm_id = NEW.farm_id AND deleted = 0;
     END IF;
@@ -1739,7 +1660,8 @@ INSERT INTO sys_dict_type(dict_name, dict_type, status, remark, create_time) VAL
 ('配种方式', 'sys_mating_type', 1, '配种方式', NOW()),
 ('预警类型', 'sys_alert_type', 1, '繁育预警类型', NOW()),
 ('诊疗状态', 'sys_treatment_status', 1, '诊疗状态', NOW()),
-('物资类型', 'sys_material_type', 1, '物资类型', NOW());
+('物资类型', 'sys_material_type', 1, '物资类型', NOW()),
+('品种', 'sys_breed', 1, '畜禽品种枚举', NOW());
 ```
 
 ### 10.2 字典数据初始化
@@ -1766,9 +1688,11 @@ INSERT INTO sys_dict_data(dict_type, dict_label, dict_value, dict_sort, status, 
 ('sys_pen_type', '种畜圈舍', 'D', 4, 1, NOW()),
 -- 档案状态
 ('sys_animal_status', '在栏', '在栏', 1, 1, NOW()),
-('sys_animal_status', '已出栏', '已出栏', 2, 1, NOW()),
-('sys_animal_status', '已死亡', '已死亡', 3, 1, NOW()),
-('sys_animal_status', '已淘汰', '已淘汰', 4, 1, NOW()),
+('sys_animal_status', '种用', '种用', 2, 1, NOW()),
+('sys_animal_status', '隔离', '隔离', 3, 1, NOW()),
+('sys_animal_status', '待出栏', '待出栏', 4, 1, NOW()),
+('sys_animal_status', '已出栏', '已出栏', 5, 1, NOW()),
+('sys_animal_status', '死亡', '死亡', 6, 1, NOW()),
 -- 审核状态
 ('sys_audit_status', '待审核', '待审核', 1, 1, NOW()),
 ('sys_audit_status', '通过', '通过', 2, 1, NOW()),
@@ -1798,15 +1722,22 @@ INSERT INTO sys_dict_data(dict_type, dict_label, dict_value, dict_sort, status, 
 
 ```sql
 INSERT INTO sys_dict_data(dict_type, dict_label, dict_value, dict_sort, dict_extra, status, create_time) VALUES
-('sys_species', '荷斯坦', 'cattle_holstein', 1, '{"species":"cattle"}', 1, NOW()),
-('sys_species', '安格斯', 'cattle_angus', 2, '{"species":"cattle"}', 1, NOW()),
-('sys_species', '西门塔尔', 'cattle_simmental', 3, '{"species":"cattle"}', 1, NOW()),
-('sys_species', '杜泊', 'sheep_dorper', 4, '{"species":"sheep"}', 1, NOW()),
-('sys_species', '小尾寒羊', 'sheep_han', 5, '{"species":"sheep"}', 1, NOW()),
-('sys_species', '湖羊', 'sheep_hu', 6, '{"species":"sheep"}', 1, NOW()),
-('sys_species', '长白', 'pig_landrace', 7, '{"species":"pig"}', 1, NOW()),
-('sys_species', '大约克', 'pig_yorkshire', 8, '{"species":"pig"}', 1, NOW()),
-('sys_species', '杜洛克', 'pig_duroc', 9, '{"species":"pig"}', 1, NOW());
+-- 牛
+('sys_breed', '黄牛', 'cattle_huangniu', 1, '{"species":"cattle"}', 1, NOW()),
+('sys_breed', '西门塔尔牛', 'cattle_simmental', 2, '{"species":"cattle"}', 1, NOW()),
+('sys_breed', '安格斯牛', 'cattle_angus', 3, '{"species":"cattle"}', 1, NOW()),
+('sys_breed', '秦川牛', 'cattle_qinchuan', 4, '{"species":"cattle"}', 1, NOW()),
+-- 羊
+('sys_breed', '波尔山羊', 'sheep_boer', 5, '{"species":"sheep"}', 1, NOW()),
+('sys_breed', '黄淮山羊', 'sheep_huanghuai', 6, '{"species":"sheep"}', 1, NOW()),
+('sys_breed', '小尾寒羊', 'sheep_han', 7, '{"species":"sheep"}', 1, NOW()),
+('sys_breed', '山羊', 'sheep_shanyang', 8, '{"species":"sheep"}', 1, NOW()),
+('sys_breed', '绵羊', 'sheep_mianyang', 9, '{"species":"sheep"}', 1, NOW()),
+-- 猪
+('sys_breed', '大白猪', 'pig_dabai', 10, '{"species":"pig"}', 1, NOW()),
+('sys_breed', '长白猪', 'pig_landrace', 11, '{"species":"pig"}', 1, NOW()),
+('sys_breed', '杜长大三元猪', 'pig_duchangda', 12, '{"species":"pig"}', 1, NOW()),
+('sys_breed', '黑土猪', 'pig_heitu', 13, '{"species":"pig"}', 1, NOW());
 ```
 
 ### 10.4 疫苗类型初始化
@@ -2047,19 +1978,16 @@ CREATE TABLE animal_archive (
     species        VARCHAR(10)  NOT NULL COMMENT '养殖种类',
     breed          VARCHAR(50)  DEFAULT NULL COMMENT '品种',
     pen_id         BIGINT UNSIGNED DEFAULT NULL COMMENT '当前圈舍 ID',
-    gender         VARCHAR(2)   NOT NULL COMMENT '性别 M F',
+    gender         VARCHAR(2)   NOT NULL COMMENT '性别 公/母',
     birth_date     DATE         DEFAULT NULL COMMENT '出生日期',
     in_date        DATE         DEFAULT NULL COMMENT '入栏日期',
     out_date       DATE         DEFAULT NULL COMMENT '出栏日期',
     growth_stage   VARCHAR(20)  DEFAULT NULL COMMENT '生长阶段',
-    day_age        INT          DEFAULT 0 COMMENT '日龄',
-    status         VARCHAR(10)  NOT NULL DEFAULT '在栏' COMMENT '状态',
+    physio_status  VARCHAR(20)  DEFAULT NULL COMMENT '母畜生理状态 发情/妊娠/泌乳/休情/淘汰 仅母畜',
+    status         VARCHAR(10)  NOT NULL DEFAULT '在栏' COMMENT '状态 在栏/种用/隔离/待出栏/已出栏/死亡',
     source         VARCHAR(20)  DEFAULT NULL COMMENT '来源',
     sire_tag       VARCHAR(10)  DEFAULT NULL COMMENT '父本耳标',
     dam_tag        VARCHAR(10)  DEFAULT NULL COMMENT '母本耳标',
-    weight_current DECIMAL(8,2) DEFAULT NULL COMMENT '当前体重 kg',
-    weight_out     DECIMAL(8,2) DEFAULT NULL COMMENT '出栏体重',
-    is_breeding    TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '是否可繁育',
     remark         VARCHAR(255) DEFAULT NULL COMMENT '备注',
     create_time    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',

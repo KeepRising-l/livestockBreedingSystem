@@ -206,7 +206,8 @@ animal/
 ├── enums/                                     # 模块内枚举
 │   ├── AnimalStatusEnum.java
 │   ├── AnimalSourceEnum.java
-│   └── GrowthStageEnum.java
+│   ├── GrowthStageEnum.java
+│   └── PhysioStatusEnum.java
 └── convert/                                   # MapStruct 转换
     └── AnimalConvert.java
 ```
@@ -542,7 +543,7 @@ function login(dto):
 | phone | VARCHAR(20) | 手机号 |
 | avatar | VARCHAR(255) | 头像 |
 | farm_id | BIGINT | 所属养殖场（超管为 null） |
-| role_code | VARCHAR(20) | 角色编码（SUPER_ADMIN/FARM_ADMIN/FEEDER/VET/BREEDER/KEEPER） |
+| role_code | VARCHAR(20) | 角色编码（admin/owner/feeder/vet/breeder/keeper） |
 | status | TINYINT | 状态 0 启用 1 停用 |
 | last_login_time | DATETIME | 最后登录时间 |
 | create_time / update_time / create_by / update_by / deleted | - | 公共字段 |
@@ -617,7 +618,7 @@ function addEmployee(dto):
     if userMapper.selectByUsername(dto.username) is not null:
         throw BusinessException(USERNAME_EXISTS)
     # 校验角色是否属于员工角色
-    if dto.roleCode not in [FEEDER, VET, BREEDER, KEEPER]:
+    if dto.roleCode not in [feeder, vet, breeder, keeper]:
         throw BusinessException(ROLE_INVALID)
     user = convert(dto)
     user.farmId = FarmContextHolder.getFarmId()
@@ -646,7 +647,7 @@ function addEmployee(dto):
 | establish_date | DATE | 成立日期 |
 | remark | VARCHAR(500) | 备注 |
 
-`FarmSpecies`（表 `t_farm_species`）：id、farm_id、species（牛/羊/猪）。
+`FarmSpecies`（养殖场畜种）：不设独立表，由 `farm_info.livestock_types`（逗号分隔字符串，如"牛,羊"）承载。
 
 #### 4.3.3 pen 模块
 
@@ -690,9 +691,9 @@ function autoAllocate(dto):
 
     # 1. 根据种类与生长阶段确定需要的圈舍类型
     penType = resolvePenType(species, stage)
-    # 牛：犊牛/保育期->A, 生长期/育肥期->B, 可繁育/妊娠期->C, 种畜->D
-    # 羊：羔羊/保育->A, 生长/育肥->B, 可繁育/妊娠->C, 种畜->D
-    # 猪：仔猪/保育->A, 生长/育肥->B, 可繁育/妊娠->C, 种畜->D
+    # 牛：犊牛/保育期->A, 生长期/育肥期->B, 可繁育->C, 种畜->D
+    # 羊：羔羊/保育->A, 生长/育肥->B, 可繁育->C, 种畜->D
+    # 猪：仔猪/保育->A, 生长/育肥->B, 可繁育->C, 种畜->D
 
     # 2. 查询该养殖场该类型且种类匹配的可用圈舍
     pens = penMapper.selectAvailableByTypeAndSpecies(
@@ -711,7 +712,7 @@ function resolvePenType(species, stage):
         return "A"  # 育雏舍
     if stage in [GROWING, FATTENING]:
         return "B"  # 育成舍
-    if stage in [BREEDABLE, GESTATION]:
+    if stage == BREEDABLE:
         return "C"  # 繁育舍
     if stage == BREEDER:
         return "D"  # 种畜圈舍
@@ -810,6 +811,8 @@ function entrySingle(dto):
     animal.ageDays = ageDays
     animal.growthStage = stage
     animal.status = IN_PEN  # 在栏
+    # 母畜入栏默认生理状态为发情（physioStatus 仅母畜）
+    animal.physioStatus = (dto.gender == FEMALE) ? HEAT : null
     animal.entryDate = LocalDate.now()
     animalMapper.insert(animal)
 
@@ -866,21 +869,18 @@ function exitAnimal(dto):
 | breed | VARCHAR(50) | 品种 |
 | gender | TINYINT | 性别 0 公 1 母 |
 | birth_date | DATE | 出生日期 |
-| entry_date | DATE | 入栏日期 |
-| exit_date | DATE | 出栏日期 |
-| age_days | INT | 日龄（每日定时更新） |
+| in_date | DATE | 入栏日期 |
+| out_date | DATE | 出栏日期 |
 | growth_stage | VARCHAR(20) | 生长阶段 |
-| status | TINYINT | 0 在栏 1 已出栏 2 死亡 3 已售 |
+| status | TINYINT | 0 在栏 1 种用 2 隔离 3 待出栏 4 已出栏 5 死亡 |
+| physio_status | VARCHAR(10) | 生理状态（发情/妊娠/泌乳/休情/淘汰，仅母畜） |
 | source | VARCHAR(20) | 来源（自繁/外购） |
-| weight_entry | DECIMAL(8,2) | 入栏体重 |
-| weight_current | DECIMAL(8,2) | 当前体重 |
-| mother_ear_tag | VARCHAR(10) | 母畜耳标（自繁） |
-| father_ear_tag | VARCHAR(10) | 父畜耳标（自繁） |
-| photo | VARCHAR(255) | 照片 |
+| dam_tag | VARCHAR(10) | 母本耳标 |
+| sire_tag | VARCHAR(10) | 父本耳标 |
 | remark | VARCHAR(500) | 备注 |
-| create_time / update_time / create_by / update_by / deleted | - | 公共字段 |
+| create_time / update_time / deleted | - | 公共字段 |
 
-历史档案复用：`status in (1,2,3)` 视为历史档案，耳标可重用。`recoverAnimal` 将历史档案状态重置为在栏并重新分配耳标与圈舍。
+历史档案复用：`status in (4,5)`（已出栏/死亡）视为历史档案，耳标可重用。`recoverAnimal` 将历史档案状态重置为在栏并重新分配耳标与圈舍。
 
 #### 4.3.5 feeding 模块
 
@@ -1007,7 +1007,9 @@ function submitForReview(ids):
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | POST | /breeding/male | 登记种公畜 |
-| GET  | /breeding/male/list | 种公畜列表 |
+| GET  | /breeding/males | 种公畜列表 |
+| GET  | /breeding/females | 可繁育母畜列表 |
+| PUT  | /breeding/females/{earTag}/physio-status | 更新母畜生理状态 |
 | POST | /breeding/record | 新增配种记录 |
 | PUT  | /breeding/record | 更新配种记录 |
 | GET  | /breeding/record/page | 配种记录分页 |
@@ -1042,7 +1044,7 @@ function addBreeding(dto):
     female = animalMapper.selectByEarTag(dto.femaleEarTag)
     if female is null or female.gender != FEMALE:
         throw BusinessException(FEMALE_INVALID)
-    if female.growthStage not in [BREEDABLE, GESTATION]:
+    if female.physioStatus != HEAT:
         throw BusinessException(FEMALE_NOT_BREEDABLE)
 
     # 校验公畜（本交必填，人工受精可选）
@@ -1062,8 +1064,8 @@ function addBreeding(dto):
     record.remainingDays = daysBetween(today, expectedDate)
     breedingRecordMapper.insert(record)
 
-    # 母畜生长阶段变更为妊娠期
-    female.growthStage = GESTATION
+    # 母畜生理状态变更为妊娠
+    female.physioStatus = PREGNANT
     animalMapper.updateById(female)
     return record.id
 
@@ -1076,9 +1078,9 @@ function pregnancyCheck(id, dto):
     record.pregnancyCheckDate = dto.checkDate
     record.pregnancyStatus = dto.result  # 怀孕/空怀
     if dto.result == EMPTY:
-        # 空怀：母畜恢复可繁育
+        # 空怀：母畜生理状态恢复发情
         animal = animalMapper.selectByEarTag(record.femaleEarTag)
-        animal.growthStage = BREEDABLE
+        animal.physioStatus = HEAT
         animalMapper.updateById(animal)
         record.status = FAILED
     breedingRecordMapper.updateById(record)
@@ -1089,9 +1091,9 @@ function delivery(id, dto):
     record.deliveryCount = dto.count
     record.status = DELIVERED
     breedingRecordMapper.updateById(record)
-    # 母畜恢复可繁育
+    # 母畜生理状态变更为泌乳
     animal = animalMapper.selectByEarTag(record.femaleEarTag)
-    animal.growthStage = BREEDABLE
+    animal.physioStatus = LACTATING
     animalMapper.updateById(animal)
     # 子代登记（如有存活仔畜）
     for child in dto.children:
@@ -1100,7 +1102,7 @@ function delivery(id, dto):
 
 ##### Entity 字段
 
-`BreedingRecord`（表 `t_breeding_record`）：
+`BreedingRecord`（配种/产犊记录，对应实际表 `mating_record` + `birth_record`）：
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -1123,7 +1125,7 @@ function delivery(id, dto):
 | reviewer_id | BIGINT | 操作员 |
 | remark | VARCHAR(500) | 备注 |
 
-`BreedingMale`（表 `t_breeding_male`）：种公畜档案，关联 animal_id。
+`BreedingMale`（公畜档案）：不设独立表，由 `animal_archive` 按 `gender='公'` + `status='种用'` 筛选。
 
 #### 4.3.7 health 模块
 
@@ -1438,9 +1440,9 @@ function confirmSales(id):
         throw BusinessException(SALES_STATUS_INVALID)
     order.status = CONFIRMED
     salesOrderMapper.updateById(order)
-    # 同步档案状态为已售
+    # 同步档案状态为已出栏
     animal = animalMapper.selectById(order.animalId)
-    animal.status = SOLD
+    animal.status = EXITTED
     animal.exitDate = order.saleDate
     animalMapper.updateById(animal)
     # 圈舍存栏 -1
@@ -1448,7 +1450,7 @@ function confirmSales(id):
 
 function calcAnimalProfit(animalId):
     animal = animalMapper.selectById(animalId)
-    if animal is null or animal.status not in [SOLD, EXITTED]:
+    if animal is null or animal.status != EXITTED:
         throw BusinessException(ANIMAL_NOT_SOLD)
     sales = salesOrderMapper.selectByAnimalId(animalId)
     if sales is null:
@@ -1498,6 +1500,7 @@ function calcAnimalProfit(animalId):
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
+| GET  | /statistics/dashboard | 首页看板（今日待办/临产提醒/库存不足提醒/存栏总数/圈舍总数，响应含 todos） |
 | GET  | /statistics/overview | 首页概览（存栏/今日饲喂/预警/利润） |
 | GET  | /statistics/animal/byStage | 按生长阶段统计存栏 |
 | GET  | /statistics/animal/byPen | 按圈舍统计存栏 |
@@ -1608,7 +1611,7 @@ function approve(id, dto):
         throw BusinessException(REVIEW_NOT_FOUND)
     if review.status != PENDING:
         throw BusinessException(REVIEW_STATUS_INVALID)
-    if currentRole != FARM_ADMIN:
+    if currentRole != owner:
         throw BusinessException(NO_PERMISSION)
 
     review.status = APPROVED
@@ -1656,7 +1659,7 @@ function reject(id, dto):
 
 ##### Entity 字段
 
-`ReviewRecord`（表 `t_review_record`）：
+`ReviewRecord`（审核记录）：不设独立表，审核状态由各业务表 `audit_status`（待审核/通过/驳回）字段承载。
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -1692,7 +1695,7 @@ function generateEarTag(penId):
         throw BusinessException(PEN_NO_FORMAT_ERROR)
 
     # 查询该圈舍所有"占用中"的耳标（包括在栏与历史未释放）
-    # 已释放条件：档案状态为已出栏/已售/死亡，且距出栏超过释放期（默认 0 天，即立即可复用）
+    # 已释放条件：档案状态为已出栏/死亡，且距出栏超过释放期（默认 0 天，即立即可复用）
     usedTags = animalMapper.selectOccupiedEarTagsByPenId(penId)
     # usedTags 是 Set<String>，例如 {"0101","0102","0104"}
 
@@ -1743,7 +1746,7 @@ function resolvePenType(species, stage):
     # 生长/育肥阶段 -> B
     midStages = [GROWING, FATTENING]
     # 繁育阶段 -> C
-    breedStages = [BREEDABLE, GESTATION]
+    breedStages = [BREEDABLE]
     # 种畜 -> D
     if stage == BREEDER:
         return "D"
@@ -1759,20 +1762,16 @@ function resolvePenType(species, stage):
 #### 4.4.3 生长阶段判定算法
 
 ```text
-输入: species, birthDate, breedingDate(可选)
+输入: species, birthDate
 输出: GrowthStageEnum
 
-function resolveGrowthStage(species, birthDate, breedingDate):
+function resolveGrowthStage(species, birthDate):
     ageDays = daysBetween(birthDate, today)
 
-    # 1. 优先判定妊娠期（有配种记录且在妊娠期内）
-    if breedingDate != null:
-        gestationDays = speciesGestationDays(species)  # 牛280/羊150/猪114
-        pregnancyDays = daysBetween(breedingDate, today)
-        if pregnancyDays >= 0 and pregnancyDays <= gestationDays:
-            return GESTATION
+    # 妊娠不再作为生长阶段，由母畜生理状态 physioStatus 单独维护
+    # （配种=妊娠、孕检阴性/删除配种=发情、产犊=泌乳），不参与日龄判定
 
-    # 2. 按种类日龄区间判定
+    # 按种类日龄区间判定
     switch species:
         case 牛:
             if ageDays in 1..60: return CALF            # 犊牛
@@ -2006,14 +2005,14 @@ public class DailyScheduleTask {
 | 饲喂计划生成 | `0 0 6 * * ?` | 每日 06:00 | 无 |
 | 繁育预警扫描 | `0 0 8 * * ?` | 每日 08:00 | 无 |
 | 物资过期更新 | `0 0 9 * * ?` | 每日 09:00 | 无 |
-| 历史记录清理 | `0 0 2 1 * ?` | 每月 1 日 02:00 | 半年前已出栏/已售档案、对应饲喂/繁育/医疗记录 |
+| 历史记录清理 | `0 0 2 1 * ?` | 每月 1 日 02:00 | 半年前已出栏/死亡档案、对应饲喂/繁育/医疗记录 |
 
 历史记录清理伪代码：
 
 ```text
 function cleanHalfYearAgo():
     threshold = today.minusMonths(6)
-    # 删除已出栏/已售/死亡超过半年的档案及其关联记录
+    # 删除已出栏/死亡超过半年的档案及其关联记录
     oldAnimals = animalMapper.selectOldHistory(threshold)
     for animal in oldAnimals:
         feedingRecordMapper.deleteByAnimal(animal.id)
@@ -2099,6 +2098,7 @@ livestock-web/
         ├── inventory/
         ├── finance/
         ├── statistics/
+        ├── workbench/
         └── review/
 ```
 
@@ -2124,59 +2124,52 @@ const routes: RouteRecordRaw[] = [
 ]
 ```
 
-#### 5.2.2 管理员路由（FARM_ADMIN）
+#### 5.2.2 管理员路由（admin/owner）
 
 ```ts
 // router/modules/admin.ts
 export default [
-  { path: '/farm', component: () => import('@/views/farm/Index.vue'),
-    meta: { title: '养殖场管理', roles: ['SUPER_ADMIN', 'FARM_ADMIN'] } },
-  { path: '/farm/employee', component: () => import('@/views/farm/Employee.vue'),
-    meta: { title: '员工管理', roles: ['FARM_ADMIN'] } },
-  { path: '/pen', component: () => import('@/views/pen/Index.vue'),
-    meta: { title: '圈舍管理', roles: ['FARM_ADMIN'] } },
-  { path: '/animal', component: () => import('@/views/animal/Index.vue'),
-    meta: { title: '档案管理', roles: ['FARM_ADMIN'] } },
-  { path: '/animal/history', component: () => import('@/views/animal/History.vue'),
-    meta: { title: '历史档案', roles: ['FARM_ADMIN'] } },
-  { path: '/feeding', component: () => import('@/views/feeding/Index.vue'),
-    meta: { title: '饲喂管理', roles: ['FARM_ADMIN'] } },
-  { path: '/feeding/plan', component: () => import('@/views/feeding/Plan.vue'),
-    meta: { title: '饲喂方案', roles: ['FARM_ADMIN'] } },
-  { path: '/breeding', component: () => import('@/views/breeding/Index.vue'),
-    meta: { title: '繁育管理', roles: ['FARM_ADMIN'] } },
-  { path: '/health', component: () => import('@/views/health/Index.vue'),
-    meta: { title: '防疫诊疗', roles: ['FARM_ADMIN'] } },
-  { path: '/inventory', component: () => import('@/views/inventory/Index.vue'),
-    meta: { title: '物资管理', roles: ['FARM_ADMIN', 'KEEPER'] } },
-  { path: '/finance/salary', component: () => import('@/views/finance/Salary.vue'),
-    meta: { title: '薪资管理', roles: ['FARM_ADMIN'] } },
-  { path: '/finance/sales', component: () => import('@/views/finance/Sales.vue'),
-    meta: { title: '销售管理', roles: ['FARM_ADMIN'] } },
-  { path: '/finance/profit', component: () => import('@/views/finance/Profit.vue'),
-    meta: { title: '利润核算', roles: ['FARM_ADMIN'] } },
-  { path: '/statistics', component: () => import('@/views/statistics/Index.vue'),
-    meta: { title: '统计报表', roles: ['FARM_ADMIN'] } },
-  { path: '/review', component: () => import('@/views/review/Index.vue'),
-    meta: { title: '审核中心', roles: ['FARM_ADMIN'] } }
+  { path: '/:species/farm', component: () => import('@/views/farm/Index.vue'),
+    meta: { title: '养殖场管理', roles: ['admin', 'owner'] } },
+  { path: '/:species/farm/employee', component: () => import('@/views/farm/Employee.vue'),
+    meta: { title: '员工管理', roles: ['owner'] } },
+  { path: '/:species/pen', component: () => import('@/views/pen/Index.vue'),
+    meta: { title: '圈舍管理', roles: ['owner'] } },
+  { path: '/:species/animal', component: () => import('@/views/animal/Index.vue'),
+    meta: { title: '档案管理', roles: ['owner'] } },
+  { path: '/:species/animal/history', component: () => import('@/views/animal/History.vue'),
+    meta: { title: '历史档案', roles: ['owner'] } },
+  { path: '/:species/feeding', component: () => import('@/views/feeding/Index.vue'),
+    meta: { title: '饲喂管理', roles: ['owner'] } },
+  { path: '/:species/feeding/plan', component: () => import('@/views/feeding/Plan.vue'),
+    meta: { title: '饲喂方案', roles: ['owner'] } },
+  { path: '/:species/breeding', component: () => import('@/views/breeding/Index.vue'),
+    meta: { title: '繁育管理', roles: ['owner'] } },
+  { path: '/:species/health', component: () => import('@/views/health/Index.vue'),
+    meta: { title: '防疫诊疗', roles: ['owner'] } },
+  { path: '/:species/inventory', component: () => import('@/views/inventory/Index.vue'),
+    meta: { title: '物资管理', roles: ['owner', 'keeper'] } },
+  { path: '/:species/finance/salary', component: () => import('@/views/finance/Salary.vue'),
+    meta: { title: '薪资管理', roles: ['owner'] } },
+  { path: '/:species/finance/sales', component: () => import('@/views/finance/Sales.vue'),
+    meta: { title: '销售管理', roles: ['owner'] } },
+  { path: '/:species/finance/profit', component: () => import('@/views/finance/Profit.vue'),
+    meta: { title: '利润核算', roles: ['owner'] } },
+  { path: '/:species/statistics', component: () => import('@/views/statistics/Index.vue'),
+    meta: { title: '统计报表', roles: ['owner'] } },
+  { path: '/:species/review', component: () => import('@/views/review/Index.vue'),
+    meta: { title: '审核中心', roles: ['owner'] } }
 ]
 ```
 
-#### 5.2.3 员工路由（FEEDER / VET / BREEDER / KEEPER）
+#### 5.2.3 员工路由（feeder/vet/breeder/keeper）
 
 ```ts
 // router/modules/employee.ts
+// 员工使用单工作台页面，按岗位（feeder/vet/breeder/keeper）在工作台内分流
 export default [
-  { path: '/my-feeding', component: () => import('@/views/feeding/MyTask.vue'),
-    meta: { title: '我的饲喂任务', roles: ['FEEDER'] } },
-  { path: '/my-breeding', component: () => import('@/views/breeding/MyTask.vue'),
-    meta: { title: '我的繁育任务', roles: ['BREEDER'] } },
-  { path: '/my-health', component: () => import('@/views/health/MyTask.vue'),
-    meta: { title: '我的防疫任务', roles: ['VET'] } },
-  { path: '/my-inventory', component: () => import('@/views/inventory/MyTask.vue'),
-    meta: { title: '物资操作', roles: ['KEEPER'] } },
-  { path: '/animal/view', component: () => import('@/views/animal/View.vue'),
-    meta: { title: '档案查看', roles: ['FEEDER', 'VET', 'BREEDER', 'KEEPER'] } }
+  { path: '/:species/workbench', component: () => import('@/views/workbench/Index.vue'),
+    meta: { title: '员工工作台', roles: ['feeder', 'vet', 'breeder', 'keeper'] } }
 ]
 ```
 
@@ -2273,7 +2266,7 @@ export const usePermissionStore = defineStore('permission', {
       const userStore = useUserStore()
       const role = userStore.roleCode
       let accessedRoutes: RouteRecordRaw[] = []
-      if (role === 'SUPER_ADMIN' || role === 'FARM_ADMIN') {
+      if (role === 'admin' || role === 'owner') {
         accessedRoutes = adminRoutes
       } else {
         accessedRoutes = employeeRoutes.filter(r =>
@@ -2362,17 +2355,18 @@ export default service
 | 模块 | 页面 | 路径 | 核心功能 |
 |------|------|------|----------|
 | 登录 | Login | /login | 用户名密码 + 验证码 |
-| 首页 | Dashboard | /dashboard | 存栏统计卡片、饲喂趋势图、预警列表、利润趋势 |
-| 养殖场 | Farm.Index / Employee | /farm、/farm/employee | 养殖场列表、员工 CRUD、角色分配 |
-| 圈舍 | Pen.Index | /pen | 圈舍列表、容量可视化、自动分配预览 |
-| 档案 | Animal.Index / History | /animal、/animal/history | 档案列表、单只/批量入栏、出栏、死亡、恢复 |
-| 饲喂 | Feeding.Index / Plan | /feeding、/feeding/plan | 饲喂记录、方案管理、提交审核 |
-| 繁育 | Breeding.Index | /breeding | 配种记录、孕检、产犊、预警列表 |
-| 防疫诊疗 | Health.Index | /health | 防疫记录、诊疗记录 |
-| 物资 | Inventory.Index | /inventory | 库存查询、进货、领用、临期预警 |
-| 销售 | Finance.Sales / Profit | /finance/sales、/finance/profit | 销售订单、利润核算、自动填充成本 |
-| 统计 | Statistics.Index | /statistics | 多维度图表 |
-| 审核 | Review.Index | /review | 待审核列表、审批弹窗 |
+| 首页 | Dashboard | /dashboard | 今日待办、临产提醒、库存不足提醒、存栏总数、圈舍总数 |
+| 养殖场 | Farm.Index / Employee | /:species/farm、/:species/farm/employee | 养殖场列表、员工 CRUD、角色分配 |
+| 圈舍 | Pen.Index | /:species/pen | 圈舍列表、容量可视化、自动分配预览 |
+| 档案 | Animal.Index / History | /:species/animal、/:species/animal/history | 档案列表、单只/批量入栏、出栏、死亡、恢复 |
+| 饲喂 | Feeding.Index / Plan | /:species/feeding、/:species/feeding/plan | 饲喂记录、方案管理、提交审核 |
+| 繁育 | Breeding.Index | /:species/breeding | 配种记录、孕检、产犊、预警列表 |
+| 防疫诊疗 | Health.Index | /:species/health | 防疫记录、诊疗记录 |
+| 物资 | Inventory.Index | /:species/inventory | 库存查询、进货、领用、临期预警 |
+| 销售 | Finance.Sales / Profit | /:species/finance/sales、/:species/finance/profit | 销售订单、利润核算、自动填充成本 |
+| 统计 | Statistics.Index | /:species/statistics | 多维度图表 |
+| 审核 | Review.Index | /:species/review | 待审核列表、审批弹窗 |
+| 员工 | Workbench | /:species/workbench | 单工作台，按岗位（feeder/vet/breeder/keeper）分流 |
 
 ### 5.6 关键交互组件
 
@@ -2722,8 +2716,8 @@ public enum ResultCodeEnum {
 
 | 类别 | 用途 | 存储 |
 |------|------|------|
-| 操作日志 | 用户关键业务操作 | 数据库 `t_sys_oper_log` |
-| 登录日志 | 登录成功/失败 | 数据库 `t_sys_login_log` |
+| 操作日志 | 用户关键业务操作 | 数据库 `oper_log` |
+| 登录日志 | 登录成功/失败 | 数据库 `login_log` |
 | 异常日志 | 系统异常堆栈 | 文件 |
 | 业务日志 | 关键业务流转 | 文件 |
 
@@ -2749,11 +2743,11 @@ public Result<Long> entry(@Valid @RequestBody AnimalEntryDTO dto) { ... }
 
 `OperLogAspect` 切面在方法执行前后记录日志，捕获异常时记录错误信息。
 
-`t_sys_oper_log` 表：id、title、action、method、request_url、request_param、response_result、oper_user_id、oper_time、cost_time、ip、status（0 成功 1 失败）、error_msg。
+`oper_log` 表：id、title、action、method、request_url、request_param、response_result、oper_user_id、oper_time、cost_time、ip、status（0 成功 1 失败）、error_msg。
 
 ### 8.3 登录日志
 
-`t_sys_login_log` 表：id、username、oper_user_id、login_time、ip、location、browser、os、status（0 成功 1 失败）、msg。
+`login_log` 表：id、username、oper_user_id、login_time、ip、location、browser、os、status（0 成功 1 失败）、msg。
 
 ### 8.4 文件日志配置
 
@@ -2922,7 +2916,7 @@ sequenceDiagram
     RC-->>A: 待审核列表
     A->>RC: POST /review/{id}/approve (comment)
     RC->>RS: approve(id, dto)
-    RS->>RS: 校验角色为 FARM_ADMIN
+    RS->>RS: 校验角色为 owner
     RS->>RS: 更新 review.status = APPROVED
     RS->>FS: 回写饲喂记录 review_status = APPROVED
     RS-->>RC: 完成
@@ -2965,7 +2959,7 @@ sequenceDiagram
     SC->>SS: confirmSales(id)
     SS->>SM: 更新 status = CONFIRMED
     SS->>AS: exitAnimal(animalId) 触发出栏
-    AS->>AM: 更新档案 status = SOLD, exit_date = today
+    AS->>AM: 更新档案 status = EXITTED, exit_date = today
     AS->>PM: decrementCount(penId)
     SS-->>SC: 完成
     SC-->>U: Result.success
@@ -3004,21 +2998,30 @@ sequenceDiagram
 | 牛 | GROWING | 生长期 | 181-365 |
 | 牛 | FATTENING | 育肥期 | 366-540 |
 | 牛 | BREEDABLE | 可繁育 | >365 |
-| 牛 | GESTATION | 妊娠期 | 配种后 0-280 |
 | 羊 | LAMB | 羔羊 | 1-45 |
 | 羊 | NURSING | 保育 | 46-90 |
 | 羊 | GROWING | 生长 | 91-180 |
 | 羊 | FATTENING | 育肥 | 181-270 |
 | 羊 | BREEDABLE | 可繁育 | >300 |
-| 羊 | GESTATION | 妊娠期 | 配种后 0-150 |
 | 猪 | PIGLET | 仔猪 | 1-28 |
 | 猪 | NURSING | 保育 | 29-70 |
 | 猪 | GROWING | 生长 | 71-120 |
 | 猪 | FATTENING | 育肥 | 121-180 |
 | 猪 | BREEDABLE | 可繁育 | >220 |
-| 猪 | GESTATION | 妊娠期 | 配种后 0-114 |
 
-### B.3 圈舍类型 PenTypeEnum
+### B.3 母畜生理状态 PhysioStatusEnum（仅母畜）
+
+| 编码 | 名称 |
+|------|------|
+| HEAT | 发情 |
+| PREGNANT | 妊娠 |
+| LACTATING | 泌乳 |
+| NON_HEAT | 休情 |
+| ELIMINATED | 淘汰 |
+
+自动流转：入栏=发情，配种=妊娠，孕检阴性/删除配种=发情，产犊=泌乳。妊娠不再作为生长阶段（growthStage）。
+
+### B.4 圈舍类型 PenTypeEnum
 
 | 编码 | 名称 | 默认容量 |
 |------|------|----------|
@@ -3027,16 +3030,18 @@ sequenceDiagram
 | C | 繁育舍 | 6 |
 | D | 种畜圈舍 | 1 |
 
-### B.4 动物状态 AnimalStatusEnum
+### B.5 动物状态 AnimalStatusEnum
 
 | 编码 | 名称 |
 |------|------|
 | IN_PEN | 在栏 |
+| BREEDING | 种用 |
+| QUARANTINE | 隔离 |
+| PENDING_EXIT | 待出栏 |
 | EXITTED | 已出栏 |
 | DEATH | 死亡 |
-| SOLD | 已售 |
 
-### B.5 审核状态 ReviewStatusEnum
+### B.6 审核状态 ReviewStatusEnum
 
 | 编码 | 名称 |
 |------|------|
@@ -3045,7 +3050,7 @@ sequenceDiagram
 | APPROVED | 通过 |
 | REJECTED | 驳回 |
 
-### B.6 物资状态 InventoryStatusEnum
+### B.7 物资状态 InventoryStatusEnum
 
 | 编码 | 名称 |
 |------|------|
@@ -3060,30 +3065,33 @@ sequenceDiagram
 | 序号 | 表名 | 模块 | 说明 |
 |------|------|------|------|
 | 1 | t_sys_user | system | 用户 |
-| 2 | t_sys_role | system | 角色 |
-| 3 | t_sys_menu | system | 菜单 |
-| 4 | t_sys_role_menu | system | 角色菜单 |
-| 5 | t_sys_user_role | system | 用户角色 |
-| 6 | t_sys_oper_log | system | 操作日志 |
-| 7 | t_sys_login_log | system | 登录日志 |
-| 8 | t_sys_dict | system | 字典 |
-| 9 | t_farm_info | farm | 养殖场 |
-| 10 | t_farm_species | farm | 养殖场种类 |
-| 11 | t_pen_info | pen | 圈舍 |
-| 12 | t_animal_archive | animal | 动物档案 |
-| 13 | t_feeding_plan | feeding | 饲喂方案 |
-| 14 | t_feeding_record | feeding | 饲喂记录 |
-| 15 | t_breeding_record | breeding | 配种记录 |
-| 16 | t_breeding_male | breeding | 种公畜 |
-| 17 | t_health_vaccination | health | 防疫记录 |
-| 18 | t_health_medical | health | 诊疗记录 |
-| 19 | t_inventory | inventory | 库存 |
-| 20 | t_inventory_purchase | inventory | 进货记录 |
-| 21 | t_inventory_outbound | inventory | 领用记录 |
-| 22 | t_finance_salary | finance | 薪资记录 |
-| 23 | t_finance_expense | finance | 支出记录 |
-| 24 | t_finance_sales | finance | 销售订单 |
-| 25 | t_review_record | review | 审核记录 |
+| 2 | t_farm_info | farm | 养殖场 |
+| 3 | t_pen_info | pen | 圈舍 |
+| 4 | t_animal_archive | animal | 畜禽档案 |
+| 5 | t_animal_archive_history | animal | 档案历史（删除转历史） |
+| 6 | t_sys_dict_type | system | 字典类型 |
+| 7 | t_sys_dict_data | system | 字典数据 |
+| 8 | t_feeding_plan | feeding | 饲喂方案 |
+| 9 | t_feeding_record | feeding | 饲喂记录 |
+| 10 | t_material_stock | inventory | 物资库存 |
+| 11 | t_material_purchase | inventory | 进货记录 |
+| 12 | t_material_consume | inventory | 领用记录 |
+| 13 | t_vaccine_record | health | 防疫记录 |
+| 14 | t_medical_record | health | 诊疗记录 |
+| 15 | t_mating_record | breeding | 配种记录 |
+| 16 | t_birth_record | breeding | 产犊记录 |
+| 17 | t_breeding_alert | breeding | 繁育预警 |
+| 18 | t_sale_order | finance | 销售订单 |
+| 19 | t_sale_order_detail | finance | 销售明细 |
+| 20 | t_cost_expense | finance | 成本支出 |
+| 21 | t_salary_config | finance | 薪资配置 |
+| 22 | t_salary_record | finance | 薪资记录 |
+| 23 | t_sys_role | system | 角色 |
+| 24 | t_sys_menu | system | 菜单 |
+| 25 | t_sys_user_role | system | 用户角色 |
+| 26 | t_oper_log | system | 操作日志 |
+| 27 | t_login_log | system | 登录日志 |
+| 28 | t_sys_notice | system | 通知公告 |
 
 ---
 
@@ -3202,7 +3210,7 @@ export default defineConfig({
   addOutbound  -> 仅写 t_inventory_outbound（status=DRAFT），并做库存预校验（不真正扣减）
 
 提交审核:
-  submitForReview -> 创建 t_review_record，单据 review_status=PENDING_REVIEW
+  submitForReview -> 业务单据置 audit_status=待审核
 
 审核通过:
   approve -> applyPurchase / applyOutbound
@@ -3215,11 +3223,11 @@ export default defineConfig({
 
 ### E.2 生长阶段定时刷新
 
-由于日龄随时间变化，每日 00:05 由 `DailyScheduleTask.refreshGrowthStage` 遍历所有在栏动物，重算 `age_days` 与 `growth_stage`，并写入数据库。若动物存在配种记录且在妊娠期内，则阶段置为 `GESTATION`，覆盖日龄判定结果。
+由于日龄随时间变化，每日 00:05 由 `DailyScheduleTask.refreshGrowthStage` 遍历所有在栏动物，重算 `age_days` 与 `growth_stage`，并写入数据库。妊娠不再作为生长阶段，母畜生理状态 `physio_status` 由繁育操作维护（配种=妊娠、孕检阴性/删除配种=发情、产犊=泌乳），不参与日龄判定。
 
 ### E.3 历史档案耳标复用
 
-动物出栏/死亡/销售后，`status` 不再为 0（在栏），耳标自动从占用集合中释放。下次该圈舍新增入栏时，`generateEarTag` 会优先复用已释放的最小耳标号。`recoverAnimal` 接口可将历史档案恢复为在栏状态，并重新分配耳标与圈舍。
+动物出栏/死亡后，`status` 不再为 0（在栏），耳标自动从占用集合中释放。下次该圈舍新增入栏时，`generateEarTag` 会优先复用已释放的最小耳标号。`recoverAnimal` 接口可将历史档案恢复为在栏状态，并重新分配耳标与圈舍。
 
 ---
 

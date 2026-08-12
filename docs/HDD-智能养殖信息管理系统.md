@@ -47,7 +47,7 @@
 | ------ | ------ | ------ |
 | G1 | 全流程覆盖 | 覆盖从入栏到出栏的全生命周期管理，包括档案、饲喂、繁育、防疫、物资、销售、统计、审核八大业务域 |
 | G2 | 多角色协同 | 支持超级管理员、养殖场主管理员、养殖场员工（饲喂员/繁育员/兽医/库管员）三类角色协同作业 |
-| G3 | 多场种支持 | 统一架构支撑牛、羊、猪三种畜禽养殖场景，差异通过参数化配置实现 |
+| G3 | 多场种支持 | 牛、羊、猪独立子模块，路由 /:species/（cattle/sheep/pig）隔离，差异通过独立子模块与参数化配置实现 |
 | G4 | 数据可追溯 | 全量业务数据留存，支持单只畜禽从出生到出栏的全链路追溯 |
 | G5 | 智能预警 | 自动触发配种孕检、临产、发情等关键节点预警，辅助决策 |
 | G6 | 多终端访问 | 支持 PC 端与手机浏览器通过 IP 访问，适配多场景办公需求 |
@@ -263,9 +263,9 @@ graph TB
 | 模块 | 子模块 | 职责说明 |
 | ------ | ------ | ------ |
 | 公共模块 | layout、components、utils、api、store、router | 全局布局、通用组件、工具函数、API 封装、状态管理、路由配置 |
-| 登录注册模块 | login、register | 账号登录、注册（养殖场主/员工两种类型）、找回密码 |
-| 养殖场主模块 | cow、sheep、pig | 牛场、羊场、猪场子模块，包含圈舍、档案、饲喂、繁育、防疫、物资、销售、统计、审核九大功能 |
-| 养殖场员工模块 | employee | 员工工作台、待办任务、饲喂记录、繁育记录、防疫记录、物资领用 |
+| 登录注册模块 | login、register | 账号登录、注册（仅养殖场主）、找回密码；员工由养殖场主在员工管理开通 |
+| 养殖场主模块 | cow、sheep、pig | 牛场、羊场、猪场独立子模块（路由 /:species/），包含圈舍、档案、饲喂、繁育、防疫、物资、销售、统计、审核九大功能 |
+| 养殖场员工模块 | employee | 员工工作台（/:species/workbench，按饲喂员/兽医/繁育员/库管员四岗位分流）、待办任务、饲喂记录、繁育记录、防疫记录、物资领用 |
 | 超级管理员模块 | admin | 养殖场管理、用户管理、角色管理、系统配置、数据看板 |
 
 ### 5.2 后端模块划分
@@ -279,14 +279,14 @@ graph TB
 | 认证授权模块 | auth | 登录认证、注册、Token 管理、权限校验、会话管理 |
 | 养殖场管理模块 | farm | 养殖场档案、养殖种类配置、养殖场员工关系维护 |
 | 圈舍管理模块 | pen | 圈舍档案（A 育雏舍/B 育成舍/C 繁育舍/D 种畜圈舍）、容量配置、自动分配策略 |
-| 畜禽档案模块 | animal | 畜禽档案（耳标、品种、圈舍、性别、日龄、生长阶段、状态）、入栏、出栏、批量操作、历史记录清理 |
+| 畜禽档案模块 | animal | 畜禽档案（耳标、品种、圈舍、性别、日龄、生长阶段、生理状态、状态）、入栏、出栏、批量操作、历史记录清理 |
 | 饲喂管理模块 | feeding | 饲喂方案、饲喂记录（早/晚时段、计划/实际投喂、状态、负责人） |
-| 繁育管理模块 | breeding | 母畜档案、公畜档案、配种记录、产仔记录、繁育预警（孕检、临产、发情） |
+| 繁育管理模块 | breeding | 母畜档案、公畜档案、母畜生理状态管理（入栏=发情、配种=妊娠、孕检阴性/删除配种=发情、产犊=泌乳、休情/淘汰手动）、配种记录、产仔记录、繁育预警（孕检、临产、发情） |
 | 防疫诊疗模块 | health | 防疫记录、诊疗记录、疫苗追溯 |
 | 物资库存模块 | inventory | 库存管理（饲料/疫苗/兽药）、进货记录、领用记录（自动减扣库存） |
 | 销售财务模块 | finance | 薪资管理、出栏销售、销售订单、成本支出、利润核算 |
-| 数据统计模块 | statistics | 综合大屏、存栏繁育统计、防疫诊疗统计、物资消耗统计、财务统计 |
-| 审核通知模块 | review | 待审核列表、今日代办、审核流程、消息通知 |
+| 数据统计模块 | statistics | 首页今日待办（dashboard todos：今日待办/临产提醒/库存不足提醒/存栏总数/圈舍总数）、综合大屏、存栏繁育统计、防疫诊疗统计、物资消耗统计、财务统计 |
+| 审核通知模块 | review | 待审核列表、审核流程、消息通知 |
 
 ### 5.3 模块依赖关系图
 
@@ -368,9 +368,9 @@ graph TB
 | ------ | ------ | ------ | ------ |
 | 登录 | 登录注册模块 | auth | sys_user、sys_role、sys_user_role |
 | 注册（养殖场主） | 登录注册模块 | auth、farm | sys_user、farm_info |
-| 注册（员工） | 登录注册模块 | auth、farm | sys_user、farm_employee |
+| 员工管理（开通员工账号） | 养殖场主模块 | system、farm | sys_user |
 | 用户管理 | 超级管理员模块 | system | sys_user、sys_role |
-| 角色权限管理 | 超级管理员模块 | system | sys_role、sys_menu、sys_role_menu |
+| 角色权限管理 | 超级管理员模块 | system | sys_role、sys_menu、sys_user_role |
 | 养殖场管理 | 超级管理员模块 | farm | farm_info |
 | 圈舍管理 | 养殖场主模块 | pen | pen_info |
 | 畜禽档案管理 | 养殖场主模块 | animal | animal_archive、animal_history |
@@ -395,8 +395,8 @@ graph TB
 | 防疫诊疗统计 | 养殖场主模块 | statistics | 视图聚合 |
 | 物资消耗统计 | 养殖场主模块 | statistics | 视图聚合 |
 | 财务统计 | 养殖场主模块 | statistics | 视图聚合 |
-| 待审核列表 | 养殖场主模块 | review | review_task |
-| 今日代办 | 养殖场主/员工模块 | review | review_task |
+| 待审核列表 | 养殖场主模块 | review | （无独立表，审核状态在各业务表 audit_status） |
+| 首页今日待办（dashboard todos） | 养殖场主/员工模块 | statistics | 视图聚合（今日待办/临产提醒/库存不足提醒/存栏总数/圈舍总数） |
 
 ### 6.2 牛场功能架构图
 
@@ -422,12 +422,11 @@ graph LR
     end
 
     subgraph 生长阶段
-        S1[1-60天 犊牛]
+        S1[1-60天 犊牛期]
         S2[61-180天 保育期]
         S3[181-365天 生长期]
         S4[366-540天 育肥期]
-        S5[365天以上 可繁育]
-        S6[配种后0-280天 妊娠期]
+        S5[365天以上 繁育期]
     end
 
     PEN --> A
@@ -439,7 +438,6 @@ graph LR
     ARC --> S3
     ARC --> S4
     ARC --> S5
-    ARC --> S6
 ```
 
 ---
@@ -533,16 +531,16 @@ graph LR
 
 | 业务域 | 数据表 | 说明 |
 | ------ | ------ | ------ |
-| 系统管理 | sys_user、sys_role、sys_menu、sys_user_role、sys_role_menu、sys_dict、sys_config、sys_log | 用户、角色、菜单、字典、配置、日志 |
-| 养殖场 | farm_info、farm_employee、farm_species_config | 养殖场档案、员工关系、种类配置 |
-| 圈舍 | pen_info、pen_type_config | 圈舍档案、圈舍类型配置 |
-| 畜禽档案 | animal_archive、animal_history、growth_stage_config | 畜禽档案、历史记录、生长阶段配置 |
+| 系统管理 | sys_user、sys_role、sys_menu、sys_user_role、sys_dict_type、sys_dict_data、oper_log、login_log、sys_notice | 用户、角色、菜单、字典、日志、通知 |
+| 养殖场 | farm_info | 养殖场档案（畜种由 livestock_types 字段承载，员工归属靠 sys_user.farm_id+post） |
+| 圈舍 | pen_info | 圈舍档案（圈舍类型由字典 sys_pen_type 承载） |
+| 畜禽档案 | animal_archive、animal_archive_history | 畜禽档案、历史记录（生长阶段按日龄代码判定，无独立表） |
 | 饲喂 | feeding_plan、feeding_record | 饲喂方案、饲喂记录 |
-| 繁育 | breeding_record、farrowing_record、breeding_warning | 配种、产仔、预警 |
-| 防疫诊疗 | health_record、treatment_record | 防疫、诊疗 |
-| 物资 | inventory_stock、purchase_record、use_record、material_category | 库存、进货、领用、物资分类 |
-| 财务 | salary_record、sale_order、cost_record、profit_record | 薪资、销售、成本、利润 |
-| 审核 | review_task、review_flow、notification | 审核、流程、通知 |
+| 繁育 | mating_record、birth_record、breeding_alert | 配种、产犊、繁育预警 |
+| 防疫诊疗 | vaccine_record、medical_record | 防疫、诊疗 |
+| 物资 | material_stock、material_purchase、material_consume | 库存、进货、领用 |
+| 财务 | salary_config、salary_record、sale_order、sale_order_detail、cost_expense | 薪资配置、薪资、销售订单、销售明细、成本支出 |
+| 审核 | （无独立表） | 审核状态由各业务表 audit_status 承载；通知公告见 sys_notice |
 
 ### 8.3 缓存设计
 
@@ -662,9 +660,8 @@ graph LR
 | animal_archive | farm_id, pen_id, status | 联合索引 | 圈舍存栏查询 |
 | animal_archive | farm_id, growth_stage | 联合索引 | 生长阶段统计 |
 | feeding_record | farm_id, feeding_date, session | 联合索引 | 饲喂记录查询 |
-| breeding_record | farm_id, mother_id, breeding_date | 联合索引 | 繁育记录查询 |
+| mating_record | farm_id, female_tag, mating_date | 联合索引 | 配种记录查询 |
 | sale_order | farm_id, sale_date | 联合索引 | 销售统计 |
-| review_task | farm_id, status, assignee_id | 联合索引 | 待办查询 |
 | sys_user | phone | 唯一索引 | 手机号唯一 |
 
 ### 10.3 分页查询
@@ -831,7 +828,7 @@ sequenceDiagram
     B->>B: 解析畜禽状态与生长阶段
     B->>R: 查询各圈舍实时容量
     R-->>B: 返回圈舍容量
-    B->>B: 根据状态匹配圈舍类型<br/>（犊牛→育雏舍/育成舍→育成舍/可繁育→繁育舍/种畜→种畜圈舍）
+    B->>B: 根据状态匹配圈舍类型<br/>（犊牛期→育雏舍/保育期、生长期、育肥期→育成舍/繁育期→繁育舍/种畜→种畜圈舍）
     B->>B: 选择有空余容量的圈舍<br/>按编号排序取最优
     B->>D: 写入畜禽档案（含圈舍ID、耳标）
     B->>R: 更新圈舍容量计数
@@ -961,12 +958,11 @@ sequenceDiagram
 
 | 阶段编号 | 阶段名称 | 日龄范围 | 对应圈舍 |
 | ------ | ------ | ------ | ------ |
-| S1 | 犊牛 | 1-60 天 | A 育雏舍 |
+| S1 | 犊牛期 | 1-60 天 | A 育雏舍 |
 | S2 | 保育期 | 61-180 天 | B 育成舍 |
 | S3 | 生长期 | 181-365 天 | B 育成舍 |
 | S4 | 育肥期 | 366-540 天 | B 育成舍 |
-| S5 | 可繁育 | 365 天以上 | C 繁育舍 |
-| S6 | 妊娠期 | 配种后 0-280 天 | C 繁育舍 |
+| S5 | 繁育期 | 365 天以上 | C 繁育舍 |
 | 种畜 | 种畜 | - | D 种畜圈舍 |
 
 ### 附录 C：繁育预警规则
@@ -982,9 +978,9 @@ sequenceDiagram
 
 | 圈舍类型 | 编号前缀 | 容量 | 适用阶段 |
 | ------ | ------ | ------ | ------ |
-| A 育雏舍 | A | 12 | 犊牛 |
+| A 育雏舍 | A | 12 | 犊牛期 |
 | B 育成舍 | B | 12 | 保育期、生长期、育肥期 |
-| C 繁育舍 | C | 6 | 可繁育、妊娠期 |
+| C 繁育舍 | C | 6 | 繁育期 |
 | D 种畜圈舍 | D | 1 | 种畜 |
 
 ---
