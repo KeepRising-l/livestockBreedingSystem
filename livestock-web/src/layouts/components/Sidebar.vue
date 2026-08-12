@@ -147,6 +147,11 @@ const allMenus: MenuItem[] = [
     path: '/system',
     meta: { title: '系统管理', icon: 'Setting', roles: [1] },
     children: [
+      { path: 'user', meta: { title: '用户管理' } },
+      { path: 'role', meta: { title: '角色管理' } },
+      { path: 'menu', meta: { title: '菜单管理' } },
+      { path: 'log', meta: { title: '日志管理' } },
+      { path: 'notice', meta: { title: '通知公告' } },
       { path: 'dict', meta: { title: '字典管理' } },
     ],
   },
