@@ -50,6 +50,8 @@ const routes: RouteRecordRaw[] = [
       { path: ':species/breeding/mating', name: 'BreedingMating', component: () => import('@/views/breeding/BreedingMatingView.vue'), meta: { title: '配种记录' } },
       { path: ':species/breeding/birth', name: 'BreedingBirth', component: () => import('@/views/breeding/BreedingBirthView.vue'), meta: { title: '产犊记录' } },
       { path: ':species/breeding/alert', name: 'BreedingAlert', component: () => import('@/views/breeding/BreedingAlertView.vue'), meta: { title: '繁育预警' } },
+      // 员工工作台（C，仅员工登录默认落地）
+      { path: ':species/workbench', name: 'Workbench', component: () => import('@/views/workbench/WorkbenchView.vue'), meta: { title: '员工工作台' } },
       // 审核
       { path: ':species/review/list', name: 'ReviewList', component: () => import('@/views/review/ReviewListView.vue'), meta: { title: '审核中心' } },
       // 销售财务

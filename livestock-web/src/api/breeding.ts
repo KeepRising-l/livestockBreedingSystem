@@ -141,6 +141,7 @@ export function deleteBirthApi(id: number) {
 export function getAlertListApi(params: {
   alert_type?: string
   animal_tag?: string
+  species?: string
   status?: string
   alert_date_start?: string
   alert_date_end?: string

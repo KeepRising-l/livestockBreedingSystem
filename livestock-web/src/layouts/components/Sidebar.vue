@@ -18,6 +18,11 @@
         <el-icon><DataAnalysis /></el-icon>
         <template #title>数据大屏</template>
       </el-menu-item>
+      <!-- 顶层：我的工作台（员工登录默认落地，C） -->
+      <el-menu-item v-if="userType === 3" :index="`/${authStore.currentSpecies}/workbench`">
+        <el-icon><Suitcase /></el-icon>
+        <template #title>我的工作台</template>
+      </el-menu-item>
       <!-- 顶层：养殖场管理（跨畜种，场主/超管） -->
       <el-sub-menu v-if="showFarm" index="/farm">
         <template #title>

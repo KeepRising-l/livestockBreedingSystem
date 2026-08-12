@@ -55,7 +55,9 @@ async function handleLogin() {
   try {
     await authStore.login({ username: form.username, password: form.password })
     ElMessage.success('登录成功')
-    const redirect = (route.query.redirect as string) || '/dashboard'
+    // 员工登录默认进入当前畜种工作台，超管/场主仍进数据大屏
+    const redirect = (route.query.redirect as string) ||
+      (authStore.userType === 3 ? `/${authStore.currentSpecies || 'cattle'}/workbench` : '/dashboard')
     router.push(redirect)
   } catch {
     // 错误已由拦截器处理

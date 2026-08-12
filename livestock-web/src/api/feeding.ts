@@ -80,6 +80,7 @@ export function getFeedingRecordListApi(params: {
   feed_date_start?: string
   feed_date_end?: string
   pen_id?: number
+  species?: string
   time_period?: string
   audit_status?: string
   status?: string
