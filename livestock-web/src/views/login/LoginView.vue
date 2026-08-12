@@ -1,8 +1,13 @@
 <template>
-  <div class="login-container">
+  <div class="login-page">
+    <!-- 右侧登录卡片（背景图右侧留白区） -->
     <div class="login-card">
-      <h1 class="title">智能养殖信息管理系统</h1>
-      <p class="subtitle">Livestock Management System</p>
+      <div class="card-logo">
+        <span class="logo-badge">智</span>
+        <h1>智能养殖信息管理系统</h1>
+        <p>Smart Livestock Information Management System</p>
+      </div>
+
       <el-form ref="formRef" :model="form" :rules="rules" size="large" @keyup.enter="handleLogin">
         <el-form-item prop="username">
           <el-input v-model="form.username" placeholder="请输入账号或手机号" prefix-icon="User" />
@@ -11,13 +16,14 @@
           <el-input v-model="form.password" type="password" show-password placeholder="请输入密码" prefix-icon="Lock" />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" :loading="loading" class="w-full" @click="handleLogin">
+          <el-button type="primary" :loading="loading" class="w-full login-btn" @click="handleLogin">
             登 录
           </el-button>
         </el-form-item>
       </el-form>
+
       <div class="links">
-        <router-link to="/register/owner">注册养殖场</router-link>
+        <router-link to="/register/owner">还没有账号？注册养殖场</router-link>
       </div>
       <div class="tips">支持账号或手机号登录 · 初始账号 admin / admin123</div>
     </div>
@@ -68,43 +74,117 @@ async function handleLogin() {
 </script>
 
 <style scoped lang="scss">
-.login-container {
-  height: 100vh;
+.login-page {
+  min-height: 100vh;
   display: flex;
   align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+  justify-content: flex-end;
+  padding-right: 7%;
+  background: url('/login-bg.jpg') no-repeat center center / cover;
+  position: relative;
+  overflow: hidden;
+
+  // 半透明青色叠层：左侧压暗提科技感、右侧提亮留白区，保证卡片可读
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg,
+      rgba(8, 44, 66, 0.22) 0%,
+      rgba(8, 44, 66, 0.10) 42%,
+      rgba(255, 255, 255, 0.28) 100%);
+  }
+
+  @media (max-width: 768px) {
+    justify-content: center;
+    padding: 16px;
+  }
 }
+
 .login-card {
+  position: relative;
+  z-index: 1;
   width: 420px;
-  padding: 40px;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  padding: 40px 36px 30px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.70);
+  backdrop-filter: blur(16px) saturate(1.5);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 0 24px 64px rgba(14, 72, 98, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+
+  // 本页青蓝色主题覆盖（仅作用于卡片内部表单/按钮）
+  --el-color-primary: #0ea5c9;
+  --el-color-primary-light-3: #46bfdb;
+  --el-color-primary-light-5: #7cd3e8;
+  --el-color-primary-light-7: #b1e5f3;
+  --el-color-primary-light-8: #ceeef7;
+  --el-color-primary-light-9: #e9f8fc;
+  --el-color-primary-dark-2: #0b85a5;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    max-width: 420px;
+  }
 }
-.title {
+
+.card-logo {
   text-align: center;
-  font-size: 22px;
-  color: #2E7D32;
-  margin-bottom: 4px;
+  margin-bottom: 26px;
+
+  .logo-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    font-size: 24px;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, #0ea5c9, #0b5c99);
+    box-shadow: 0 8px 20px rgba(14, 133, 165, 0.35);
+    margin-bottom: 12px;
+  }
+
+  h1 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #0a4a66;
+    margin: 0 0 6px;
+    letter-spacing: 1px;
+  }
+
+  p {
+    font-size: 12px;
+    color: #7a9cb0;
+    letter-spacing: 0.5px;
+  }
 }
-.subtitle {
-  text-align: center;
-  color: #999;
-  font-size: 13px;
-  margin-bottom: 32px;
+
+.w-full { width: 100%; }
+
+.login-btn {
+  height: 44px;
+  font-size: 16px;
+  letter-spacing: 6px;
+  border-radius: 8px;
 }
-.w-full {
-  width: 100%;
-}
+
 .links {
   text-align: center;
-  margin-bottom: 12px;
-  a { color: #2E7D32; font-size: 13px; }
+  margin: 14px 0 12px;
+
+  a {
+    color: #0ea5c9;
+    font-size: 13px;
+    &:hover { color: #0b85a5; }
+  }
 }
+
 .tips {
   text-align: center;
-  color: #bbb;
+  color: #9db8c6;
   font-size: 12px;
 }
 </style>
