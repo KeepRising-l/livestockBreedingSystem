@@ -102,7 +102,7 @@
       <el-form :model="form" :rules="formRules" ref="formRef" label-width="100px">
         <el-form-item label="母畜耳标" prop="female_tag">
           <el-select v-model="form.female_tag" filterable placeholder="选择可繁育母畜" style="width: 100%" :disabled="isEdit">
-            <el-option v-for="a in femaleOptions" :key="a.ear_tag" :label="`${a.ear_tag} (${a.species}·${a.breed}·${a.growth_stage})`" :value="a.ear_tag" />
+            <el-option v-for="a in femaleOptions" :key="a.ear_tag" :label="`${a.ear_tag} (${a.species}·${a.breed}·${a.growth_stage}${a.physio_status ? '·' + a.physio_status : ''})`" :value="a.ear_tag" />
           </el-select>
         </el-form-item>
         <el-form-item label="公畜耳标">

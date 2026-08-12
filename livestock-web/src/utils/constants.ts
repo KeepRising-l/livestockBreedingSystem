@@ -52,6 +52,17 @@ export const ANIMAL_STATUS_MAP: Record<string, string> = {
   '死亡': '死亡',
 }
 
+/** 母畜生理状态 */
+export const PHYSIO_STATUS_MAP: Record<string, string> = {
+  '发情': '发情',
+  '妊娠': '妊娠',
+  '泌乳': '泌乳',
+  '休情': '休情',
+  '淘汰': '淘汰',
+}
+
+export const PHYSIO_STATUS_OPTIONS = Object.keys(PHYSIO_STATUS_MAP).map(v => ({ label: v, value: v }))
+
 /** 来源 */
 export const SOURCE_OPTIONS = [
   { label: '自繁', value: '自繁' },

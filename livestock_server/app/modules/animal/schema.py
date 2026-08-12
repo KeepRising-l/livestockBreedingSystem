@@ -20,6 +20,7 @@ class AnimalOut(BaseModel):
     in_date: Optional[date] = None
     out_date: Optional[date] = None
     growth_stage: Optional[str] = None
+    physio_status: Optional[str] = None
     status: str
     source: Optional[str] = None
     sire_tag: Optional[str] = None
@@ -67,6 +68,7 @@ class AnimalQuery(BaseModel):
     breed: Optional[str] = None
     gender: Optional[str] = None
     status: Optional[str] = None
+    physio_status: Optional[str] = None
     pageNum: int = 1
     pageSize: int = 10
 
@@ -85,6 +87,7 @@ class AnimalUpdateIn(BaseModel):
     birth_date: Optional[date] = Field(None, description="出生日期，变更时重算生长阶段")
     in_date: Optional[date] = Field(None, description="入栏日期")
     status: Optional[str] = Field(None, description="状态")
+    physio_status: Optional[str] = Field(None, description="母畜生理状态：发情/妊娠/泌乳/休情/淘汰")
     source: Optional[str] = Field(None, description="来源")
     sire_tag: Optional[str] = Field(None, description="父本耳标")
     dam_tag: Optional[str] = Field(None, description="母本耳标")
@@ -104,6 +107,7 @@ class AnimalHistoryOut(BaseModel):
     in_date: Optional[date] = None
     out_date: Optional[date] = None
     growth_stage: Optional[str] = None
+    physio_status: Optional[str] = None
     status: Optional[str] = None
     source: Optional[str] = None
     sire_tag: Optional[str] = None

@@ -38,6 +38,11 @@
             <el-option v-for="(label, key) in ANIMAL_STATUS_MAP" :key="key" :label="label" :value="key" />
           </el-select>
         </el-form-item>
+        <el-form-item label="生理状态">
+          <el-select v-model="query.physio_status" placeholder="全部" clearable style="width: 110px">
+            <el-option v-for="s in PHYSIO_STATUS_OPTIONS" :key="s.value" :label="s.label" :value="s.value" />
+          </el-select>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="search">查询</el-button>
           <el-button @click="resetSearch">重置</el-button>
@@ -63,6 +68,12 @@
         <el-table-column prop="growth_stage" label="生长阶段" width="120">
           <template #default="{ row }">
             <el-tag v-if="row.growth_stage" size="small" type="success">{{ row.growth_stage }}</el-tag>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="生理状态" width="100">
+          <template #default="{ row }">
+            <el-tag v-if="row.physio_status" size="small" :type="physioTagType(row.physio_status)">{{ row.physio_status }}</el-tag>
             <span v-else>-</span>
           </template>
         </el-table-column>
@@ -101,7 +112,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getAnimalListApi, batchDeleteAnimalApi, type AnimalInfo } from '@/api/animal'
-import { GENDER_OPTIONS, ANIMAL_STATUS_MAP } from '@/utils/constants'
+import { GENDER_OPTIONS, ANIMAL_STATUS_MAP, PHYSIO_STATUS_OPTIONS } from '@/utils/constants'
 import { useSpecies } from '@/composables/useSpecies'
 import { ElMessage } from 'element-plus'
 
@@ -120,6 +131,7 @@ const query = reactive({
   breed: '',
   gender: '',
   status: '',
+  physio_status: '',
 })
 
 function search() {
@@ -132,7 +144,12 @@ function resetSearch() {
   query.breed = ''
   query.gender = ''
   query.status = ''
+  query.physio_status = ''
   search()
+}
+
+function physioTagType(status: string): string {
+  return { 发情: 'warning', 妊娠: 'success', 泌乳: 'info', 休情: 'primary', 淘汰: 'danger' }[status] || 'info'
 }
 
 async function loadData() {

@@ -46,6 +46,8 @@ GROWTH_STAGE_CONFIG = {
 BREEDABLE_AGE = {"牛": 365, "羊": 300, "猪": 220}
 # 妊娠期天数
 GESTATION_DAYS = {"牛": 280, "羊": 150, "猪": 114}
+# 母畜生理状态（发情/妊娠/泌乳/休情/淘汰）
+PHYSIO_STATUSES = ("发情", "妊娠", "泌乳", "休情", "淘汰")
 
 
 def calc_age_days(birth_date: date, ref_date: date = None) -> int:
@@ -143,6 +145,8 @@ def list_animals(db: Session, farm_id: int, query: AnimalQuery) -> dict:
         q = q.filter(Animal.gender == query.gender)
     if query.status:
         q = q.filter(Animal.status == query.status)
+    if query.physio_status:
+        q = q.filter(Animal.physio_status == query.physio_status)
 
     total = q.count()
     items = q.order_by(Animal.ear_tag).offset(
@@ -218,6 +222,13 @@ def update_animal(db: Session, farm_id: int, animal_id: int, body: AnimalUpdateI
         a.in_date = body.in_date
     if body.status is not None:
         a.status = body.status
+    if body.physio_status is not None:
+        if body.physio_status not in PHYSIO_STATUSES:
+            raise BizException(
+                f"生理状态只能是：{'/'.join(PHYSIO_STATUSES)}",
+                code=40032,
+            )
+        a.physio_status = body.physio_status
     if body.source is not None:
         a.source = body.source
     if body.sire_tag is not None:
@@ -275,6 +286,7 @@ def individual_create(db: Session, farm_id: int, body: AnimalIndividualIn) -> An
         birth_date=body.birth_date,
         in_date=body.in_date or date.today(),
         growth_stage=stage,
+        physio_status="发情" if body.gender == "母" else None,
         status=body.status,
         source=body.source,
         sire_tag=body.sire_tag,
@@ -339,6 +351,7 @@ def batch_create(db: Session, farm_id: int, body: AnimalBatchIn) -> dict:
                 birth_date=body.birth_date,
                 in_date=body.in_date or date.today(),
                 growth_stage=stage,
+                physio_status="发情" if body.gender == "母" else None,
                 status=body.status,
                 source=body.source,
                 remark=body.remark,
@@ -384,6 +397,7 @@ def batch_delete(db: Session, farm_id: int, ids: list[int]):
             in_date=a.in_date,
             out_date=a.out_date,
             growth_stage=a.growth_stage,
+            physio_status=a.physio_status,
             status=a.status,
             source=a.source,
             sire_tag=a.sire_tag,

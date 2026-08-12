@@ -11,11 +11,12 @@
 from datetime import date, datetime, timedelta
 from typing import Optional
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import BizException
 from app.modules.animal.model import Animal
-from app.modules.animal.service import GESTATION_DAYS
+from app.modules.animal.service import GESTATION_DAYS, PHYSIO_STATUSES
 from app.modules.breeding.model import MatingRecord, BirthRecord, BreedingAlert
 from app.modules.breeding.schema import (
     MatingIn, MatingUpdateIn, PregnancyCheckIn, MatingQuery,
@@ -39,20 +40,25 @@ ALERT_HANDLE_STATUSES = {"已处理", "已忽略"}
 def list_breed_animals(
     db: Session, farm_id: int, gender: str,
     species: Optional[str] = None, keyword: Optional[str] = None,
+    physio_status: Optional[str] = None,
     page_num: int = 1, page_size: int = 10,
 ) -> dict:
-    """可繁育畜禽列表：按性别 + 繁育期及以上阶段筛选，排除已出栏/死亡"""
+    """可繁育畜禽列表：按性别 + 繁育期及以上阶段筛选，排除已出栏/死亡/已淘汰"""
     q = db.query(Animal).filter(
         Animal.farm_id == farm_id,
         Animal.gender == gender,
         Animal.growth_stage.in_(BREEDING_STAGES),
         Animal.status.in_(("在栏", "种用")),
         Animal.deleted == False,
+        # 已淘汰的母畜不参与繁育选畜（or_ 兼容历史 NULL 数据）
+        or_(Animal.physio_status.is_(None), Animal.physio_status != "淘汰"),
     )
     if species:
         q = q.filter(Animal.species == species)
     if keyword:
         q = q.filter(Animal.ear_tag.like(f"%{keyword}%"))
+    if physio_status:
+        q = q.filter(Animal.physio_status == physio_status)
     total = q.count()
     items = q.order_by(Animal.ear_tag.asc()).offset((page_num - 1) * page_size).limit(page_size).all()
     return {"list": items, "total": total, "pageNum": page_num, "pageSize": page_size}
@@ -67,6 +73,23 @@ def _get_animal(db: Session, farm_id: int, ear_tag: str) -> Animal:
     if not animal:
         raise BizException(f"档案中不存在耳标 {ear_tag}", code=40101)
     return animal
+
+
+def set_female_physio_status(db: Session, farm_id: int, female_tag: str, physio_status: str) -> Animal:
+    """手动设置母畜生理状态（休情/淘汰等无自然触发的状态由场主/繁育员维护）"""
+    if physio_status not in PHYSIO_STATUSES:
+        raise BizException(f"生理状态只能是：{'/'.join(PHYSIO_STATUSES)}", code=40134)
+    female = _get_animal(db, farm_id, female_tag)
+    if female.gender != "母":
+        raise BizException(f"耳标 {female_tag} 不是母畜，不能设置生理状态", code=40113)
+    female.physio_status = physio_status
+    # 与 growth_stage 妊娠标记保持一致，避免状态双轨漂移
+    if physio_status == "妊娠" and female.growth_stage != "妊娠":
+        female.growth_stage = "妊娠"
+    elif physio_status != "妊娠" and female.growth_stage == "妊娠":
+        female.growth_stage = "繁育期"
+    db.commit()
+    return female
 
 
 # ============================================================
@@ -118,8 +141,10 @@ def add_mating(db: Session, farm_id: int, body: MatingIn, user_id: int) -> Matin
     female = _get_animal(db, farm_id, body.female_tag)
     if female.gender != "母":
         raise BizException(f"耳标 {body.female_tag} 不是母畜，不能配种", code=40113)
-    if female.growth_stage == "妊娠":
+    if female.growth_stage == "妊娠" or female.physio_status == "妊娠":
         raise BizException(f"母畜 {body.female_tag} 正处于妊娠状态，不能重复配种", code=40114)
+    if female.physio_status == "淘汰":
+        raise BizException(f"母畜 {body.female_tag} 已淘汰，不能配种", code=40135)
 
     if body.male_tag:
         male = _get_animal(db, farm_id, body.male_tag)
@@ -145,6 +170,7 @@ def add_mating(db: Session, farm_id: int, body: MatingIn, user_id: int) -> Matin
     )
     db.add(rec)
     female.growth_stage = "妊娠"
+    female.physio_status = "妊娠"
     db.commit()
     return rec
 
@@ -201,6 +227,9 @@ def pregnancy_check(db: Session, farm_id: int, record_id: int, body: PregnancyCh
 
     if body.pregnancy_check_result == "阳性":
         rec.status = "成功怀孕"
+        # 确保母畜生理状态保持妊娠（配种时已置位，防止被手动改动）
+        female = _get_animal(db, farm_id, rec.female_tag)
+        female.physio_status = "妊娠"
     else:
         rec.status = "配种失败"
         _restore_female_stage(db, farm_id, rec.female_tag)
@@ -208,15 +237,19 @@ def pregnancy_check(db: Session, farm_id: int, record_id: int, body: PregnancyCh
     return rec
 
 
-def _restore_female_stage(db: Session, farm_id: int, female_tag: str):
-    """配种失败/产犊/删除配种后，若母畜档案仍标记妊娠则恢复繁育期"""
+def _restore_female_stage(db: Session, farm_id: int, female_tag: str) -> Optional[Animal]:
+    """配种失败/删除配种后，母畜妊娠标记清除、生理状态回到发情；返回母畜"""
     female = db.query(Animal).filter(
         Animal.farm_id == farm_id,
         Animal.ear_tag == female_tag,
         Animal.deleted == False,
     ).first()
-    if female and female.growth_stage == "妊娠":
-        female.growth_stage = "繁育期"
+    if female:
+        if female.growth_stage == "妊娠":
+            female.growth_stage = "繁育期"
+        if female.physio_status == "妊娠":
+            female.physio_status = "发情"
+    return female
 
 
 # ============================================================
@@ -296,7 +329,10 @@ def add_birth(db: Session, farm_id: int, body: BirthIn, user_id: int) -> BirthRe
         remark=body.remark,
     )
     db.add(rec)
-    _restore_female_stage(db, farm_id, body.female_tag)
+    # 产犊后母畜妊娠标记清除，生理状态进入泌乳
+    female = _restore_female_stage(db, farm_id, body.female_tag)
+    if female:
+        female.physio_status = "泌乳"
     db.commit()
     return rec
 

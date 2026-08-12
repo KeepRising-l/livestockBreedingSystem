@@ -12,6 +12,7 @@ export interface AnimalInfo {
   in_date: string | null
   out_date: string | null
   growth_stage: string | null
+  physio_status: string | null
   status: string
   source: string | null
   sire_tag: string | null
@@ -27,6 +28,7 @@ export interface AnimalQuery {
   breed?: string
   gender?: string
   status?: string
+  physio_status?: string
   pageNum?: number
   pageSize?: number
 }
@@ -43,6 +45,7 @@ export interface AnimalHistoryInfo {
   in_date: string | null
   out_date: string | null
   growth_stage: string | null
+  physio_status: string | null
   status: string | null
   source: string | null
   sire_tag: string | null

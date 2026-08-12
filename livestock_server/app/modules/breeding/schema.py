@@ -11,6 +11,13 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 
+# ============ 母畜生理状态 ============
+
+class PhysioStatusIn(BaseModel):
+    """设置母畜生理状态"""
+    physio_status: str = Field(..., max_length=20, description="生理状态：发情/妊娠/泌乳/休情/淘汰")
+
+
 # ============ 配种记录 ============
 
 class MatingIn(BaseModel):

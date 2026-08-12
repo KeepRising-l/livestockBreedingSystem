@@ -15,6 +15,10 @@
             <el-tag v-if="animal.growth_stage" type="success">{{ animal.growth_stage }}</el-tag>
             <span v-else>-</span>
           </el-descriptions-item>
+          <el-descriptions-item label="生理状态">
+            <el-tag v-if="animal.physio_status" :type="physioTagType(animal.physio_status)">{{ animal.physio_status }}</el-tag>
+            <span v-else>-</span>
+          </el-descriptions-item>
           <el-descriptions-item label="状态">
             <el-tag>{{ animal.status }}</el-tag>
           </el-descriptions-item>
@@ -42,6 +46,10 @@ const router = useRouter()
 
 const animal = ref<AnimalInfo | null>(null)
 const loading = ref(false)
+
+function physioTagType(status: string): string {
+  return { 发情: 'warning', 妊娠: 'success', 泌乳: 'info', 休情: 'primary', 淘汰: 'danger' }[status] || 'info'
+}
 
 onMounted(async () => {
   loading.value = true

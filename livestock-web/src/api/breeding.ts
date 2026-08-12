@@ -9,6 +9,7 @@ export interface BreedAnimal {
   breed: string
   gender: string
   growth_stage: string | null
+  physio_status: string | null
   status: string
 }
 
@@ -64,12 +65,17 @@ export interface BreedingAlert {
 
 // ============ 母畜 / 公畜列表 ============
 
-export function getBreedFemalesApi(params: { species?: string; keyword?: string; pageNum?: number; pageSize?: number }) {
+export function getBreedFemalesApi(params: { species?: string; keyword?: string; physio_status?: string; pageNum?: number; pageSize?: number }) {
   return http.get('/breeding/females', { params })
 }
 
 export function getBreedMalesApi(params: { species?: string; keyword?: string; pageNum?: number; pageSize?: number }) {
   return http.get('/breeding/males', { params })
+}
+
+/** 设置母畜生理状态（发情/妊娠/泌乳/休情/淘汰） */
+export function setFemalePhysioStatusApi(earTag: string, physio_status: string) {
+  return http.put(`/breeding/females/${earTag}/physio-status`, { physio_status })
 }
 
 // ============ 配种记录 ============
