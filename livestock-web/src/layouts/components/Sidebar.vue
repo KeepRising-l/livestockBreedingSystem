@@ -5,7 +5,10 @@
       <span v-else>🐄</span>
     </div>
     <el-menu
+      ref="menuRef"
+      unique-opened
       :default-active="activeMenu"
+      :default-openeds="defaultOpeneds"
       :collapse="isCollapse"
       background-color="#001529"
       text-color="#ffffffa6"
@@ -78,8 +81,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import type { MenuInstance } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { SPECIES_CODE_MAP } from '@/utils/constants'
 
@@ -87,8 +91,32 @@ defineProps<{ isCollapse: boolean }>()
 
 const route = useRoute()
 const authStore = useAuthStore()
+const menuRef = ref<MenuInstance>()
 
 const activeMenu = computed(() => route.path)
+
+/** 首次渲染默认展开：「我的养殖场」+ 当前畜种 + 当前模块（配合 unique-opened 手风琴） */
+const defaultOpeneds = computed(() => buildOpeneds())
+
+/** 从当前路由推导要展开的目录链：我的养殖场 → 畜种 → 模块 */
+function buildOpeneds(): string[] {
+  const segs = route.path.replace(/^\//, '').split('/')
+  const sp = ['cattle', 'sheep', 'pig'].includes(segs[0]) ? segs[0] : (authStore.currentSpecies || 'cattle')
+  const mod = segs[1]
+  const opened = ['livestock', `/${sp}`]
+  if (mod && mod !== 'workbench') opened.push(`/${sp}/${mod}`)
+  return opened
+}
+
+// 路由切换（含跨畜种）时，侧边栏动态展开对应目录，其它自动收起
+watch(
+  () => route.path,
+  () => {
+    const opened = buildOpeneds()
+    opened.forEach((idx) => menuRef.value?.open(idx))
+  },
+  { flush: 'post' },
+)
 
 const userType = computed(() => authStore.userType)
 
