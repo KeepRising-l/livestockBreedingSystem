@@ -12,6 +12,7 @@ from app.core.security import hash_password, verify_password, create_access_toke
 from app.models.user import User
 from app.models.farm import Farm
 from app.schemas.auth import LoginIn, OwnerRegisterIn, EmployeeRegisterIn
+from app.modules.system.service import assign_role_by_post
 
 
 def login(db: Session, body: LoginIn) -> dict:
@@ -109,6 +110,9 @@ def register_employee(db: Session, body_or_farm_id: EmployeeRegisterIn | int, bo
         status=1,
     )
     db.add(user)
+    db.flush()
+    # 员工按岗位自动关联默认角色（RBAC，P3-4）
+    assign_role_by_post(db, user.id, user.post)
     db.commit()
 
     return {"user_id": user.id, "farm_id": fid}

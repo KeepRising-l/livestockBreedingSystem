@@ -7,13 +7,14 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.core.response import Result
 from app.core.deps import get_current_user, resolve_farm_id
+from app.core.perms import require_perms
 from app.core.utils import get_effective_farm_id
 from app.models.user import User
 from app.modules.pen.model import Pen
 from app.modules.pen.schema import PenAddIn, PenUpdateIn, PenOut
 from app.modules.pen import service as pen_service
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_perms("pen"))])
 
 
 @router.get("/list", summary="圈舍列表")

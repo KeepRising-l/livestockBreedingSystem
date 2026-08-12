@@ -4,9 +4,11 @@
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
+from app.core.deps import get_current_user
 from app.core.exceptions import BizException
 from app.database import get_db
 from app.core.response import Result
+from app.models.user import User
 from app.schemas.auth import LoginIn, OwnerRegisterIn, EmployeeRegisterIn
 from app.schemas.common import TokenOut
 from app.services import auth_service
@@ -60,6 +62,26 @@ def login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
         status=1, msg="登录成功",
     )
     return Result.ok(data=token)
+
+
+@router.get("/permissions", summary="当前用户权限（角色/权限模块/可见菜单，RBAC P3-4）")
+def get_permissions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    roles = system_service.get_user_role_keys(db, current_user.id)
+    perms = system_service.get_user_perms(db, current_user.id)
+    menus = system_service.get_user_menus(db, current_user.id)
+    return Result.ok(data={
+        "user_id": current_user.id,
+        "username": current_user.username,
+        "user_type": current_user.user_type,
+        "farm_id": current_user.farm_id,
+        "post": current_user.post,
+        "roles": roles,
+        "perms": sorted(perms),
+        "menus": menus,
+    })
 
 
 @router.post("/register/owner", summary="养殖场主注册")

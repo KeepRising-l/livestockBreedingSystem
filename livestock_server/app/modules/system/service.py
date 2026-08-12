@@ -1,6 +1,7 @@
 """
-系统管理 service：字典 + 用户/角色/菜单 + 日志 + 通知
+系统管理 service：字典 + 用户/角色/菜单 + 日志 + 通知 + RBAC
 """
+import json
 from datetime import datetime
 
 from sqlalchemy.orm import Session
@@ -318,6 +319,9 @@ def add_user(db: Session, body: UserIn) -> User:
     if body.role_ids:
         for rid in set(body.role_ids):
             db.add(SysUserRole(user_id=user.id, role_id=rid))
+    elif body.user_type == 3:
+        # 员工未手动指定角色时，按岗位自动关联默认角色（RBAC）
+        assign_role_by_post(db, user.id, body.post)
     db.commit()
     return user
 
@@ -624,3 +628,166 @@ def delete_notice(db: Session, notice_id: int) -> None:
     notice = get_notice(db, notice_id)
     notice.deleted = True
     db.commit()
+
+
+# ============================================================
+# RBAC（P3-4）
+# ============================================================
+
+# 全部业务模块（权限标识 = 模块 key，前端菜单/后端接口共用）
+RBAC_MODULES = [
+    "dashboard", "farm", "pen", "animal", "feeding",
+    "inventory", "health", "breeding", "review", "finance",
+    "system", "statistics",
+]
+
+# 角色 → 允许访问的模块
+ROLE_PERMS = {
+    "admin": RBAC_MODULES,
+    "owner": [m for m in RBAC_MODULES if m != "system"],
+    "feeder": ["dashboard", "pen", "animal", "feeding"],
+    "vet": ["dashboard", "pen", "animal", "health", "inventory"],
+    "breeder": ["dashboard", "pen", "animal", "breeding"],
+    "keeper": ["dashboard", "pen", "inventory"],
+}
+
+# 预置角色：(role_name, role_key, sort)
+RBAC_ROLES = [
+    ("超级管理员", "admin", 1),
+    ("养殖场主", "owner", 2),
+    ("饲喂员", "feeder", 3),
+    ("兽医", "vet", 4),
+    ("繁育员", "breeder", 5),
+    ("库管员", "keeper", 6),
+]
+
+# 岗位 → 默认角色 key（新增员工时自动关联）
+POST_ROLE_MAP = {
+    "饲喂员": "feeder",
+    "兽医": "vet",
+    "繁育员": "breeder",
+    "库管员": "keeper",
+}
+
+# 预置目录菜单：(perms, parent_id, menu_name, menu_type, path, icon, sort)
+RBAC_MENUS = [
+    ("dashboard", 0, "数据大屏", "M", "/dashboard", "DataAnalysis", 1),
+    ("farm", 0, "养殖场管理", "M", "/farm", "OfficeBuilding", 2),
+    ("pen", 0, "圈舍管理", "M", "/pen", "Grid", 3),
+    ("animal", 0, "档案管理", "M", "/animal", "Notebook", 4),
+    ("feeding", 0, "饲喂管理", "M", "/feeding", "Food", 5),
+    ("inventory", 0, "物资库存", "M", "/inventory", "Box", 6),
+    ("health", 0, "防疫诊疗", "M", "/health", "FirstAidKit", 7),
+    ("breeding", 0, "繁育管理", "M", "/breeding", "Connection", 8),
+    ("review", 0, "审核中心", "M", "/review", "Stamp", 9),
+    ("finance", 0, "销售财务", "M", "/finance", "Money", 10),
+    ("system", 0, "系统管理", "M", "/system", "Setting", 11),
+    ("statistics", 0, "统计分析", "M", "/statistics", "TrendCharts", 12),
+]
+
+
+def init_rbac_data(db: Session) -> None:
+    """初始化 RBAC 数据（角色 + 目录菜单），仅首次执行"""
+    if db.query(SysRole).count() > 0:
+        return
+    for name, key, sort in RBAC_ROLES:
+        db.add(SysRole(role_name=name, role_key=key, sort=sort, status=1,
+                       perms=json.dumps(ROLE_PERMS[key], ensure_ascii=False),
+                       remark=f"{name}角色（RBAC 预置）"))
+    for perms, parent, name, mtype, path, icon, sort in RBAC_MENUS:
+        db.add(SysMenu(parent_id=parent, menu_name=name, menu_type=mtype,
+                       path=path, perms=perms, icon=icon, sort=sort, visible=1, status=1))
+    db.commit()
+    print(f"[init] 已初始化 RBAC 数据：{len(RBAC_ROLES)} 个角色，{len(RBAC_MENUS)} 个菜单")
+
+
+def assign_role_by_post(db: Session, user_id: int, post: str | None) -> None:
+    """给员工按岗位关联默认角色（岗位映射不到角色则跳过）"""
+    if not post:
+        return
+    role_key = POST_ROLE_MAP.get(post)
+    if not role_key:
+        return
+    role = db.query(SysRole).filter(SysRole.role_key == role_key, SysRole.deleted == False).first()
+    if not role:
+        return
+    exists = db.query(SysUserRole).filter(
+        SysUserRole.user_id == user_id, SysUserRole.role_id == role.id,
+        SysUserRole.deleted == False,
+    ).first()
+    if not exists:
+        db.add(SysUserRole(user_id=user_id, role_id=role.id))
+        db.commit()
+
+
+def sync_employee_roles(db: Session, user_id: int, new_post: str | None) -> None:
+    """员工岗位变化时：移除旧的岗位默认角色，按新岗位关联默认角色"""
+    role_keys = list(POST_ROLE_MAP.values())
+    role_ids = [r.id for r in db.query(SysRole).filter(
+        SysRole.role_key.in_(role_keys), SysRole.deleted == False).all()]
+    if role_ids:
+        db.query(SysUserRole).filter(
+            SysUserRole.user_id == user_id,
+            SysUserRole.role_id.in_(role_ids),
+            SysUserRole.deleted == False,
+        ).update({SysUserRole.deleted: True}, synchronize_session=False)
+    db.commit()
+    assign_role_by_post(db, user_id, new_post)
+
+
+def get_user_role_keys(db: Session, user_id: int) -> list[str]:
+    rows = db.query(SysUserRole, SysRole).join(
+        SysRole, SysRole.id == SysUserRole.role_id
+    ).filter(
+        SysUserRole.user_id == user_id, SysUserRole.deleted == False,
+        SysRole.deleted == False, SysRole.status == 1,
+    ).all()
+    return [role.role_key for _, role in rows]
+
+
+def get_user_perms(db: Session, user_id: int) -> set[str]:
+    """当前用户的权限模块集合。超管拥有全部；场主拥有全部业务模块（不含 system）；员工按角色 perms。"""
+    user = db.query(User).filter(User.id == user_id, User.deleted == False).first()
+    if not user:
+        return set()
+    if user.user_type == 1:
+        return set(RBAC_MODULES)
+    if user.user_type == 2:
+        return {m for m in RBAC_MODULES if m != "system"}
+    rows = db.query(SysUserRole, SysRole).join(
+        SysRole, SysRole.id == SysUserRole.role_id
+    ).filter(
+        SysUserRole.user_id == user_id, SysUserRole.deleted == False,
+        SysRole.deleted == False, SysRole.status == 1,
+    ).all()
+    perms: set[str] = set()
+    for _, role in rows:
+        if role.perms:
+            try:
+                perms.update(json.loads(role.perms))
+            except (ValueError, TypeError):
+                pass
+    return perms
+
+
+def get_user_menus(db: Session, user_id: int) -> list[dict]:
+    """用户可见的目录菜单树（按权限过滤，前端可据此渲染）"""
+    perms = get_user_perms(db, user_id)
+    menus = db.query(SysMenu).filter(
+        SysMenu.deleted == False, SysMenu.status == 1,
+    ).order_by(SysMenu.sort, SysMenu.id).all()
+    nodes: dict[int, dict] = {}
+    for m in menus:
+        nodes[m.id] = {
+            "id": m.id, "parent_id": m.parent_id, "menu_name": m.menu_name,
+            "menu_type": m.menu_type, "path": m.path, "perms": m.perms,
+            "icon": m.icon, "children": [],
+        }
+    roots = []
+    for m in menus:
+        node = nodes[m.id]
+        if m.parent_id and m.parent_id in nodes:
+            nodes[m.parent_id]["children"].append(node)
+        else:
+            roots.append(node)
+    return [r for r in roots if not r["perms"] or r["perms"] in perms]

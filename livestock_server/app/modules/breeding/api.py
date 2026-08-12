@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.core.response import Result
 from app.core.deps import get_current_user
+from app.core.perms import require_perms
 from app.core.exceptions import BizException
 from app.models.user import User
 from app.modules.animal.schema import AnimalOut
@@ -27,7 +28,7 @@ from app.modules.breeding.schema import (
     AlertIn, AlertHandleIn, AlertOut, AlertQuery,
 )
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_perms("breeding"))])
 
 
 def _require_farm(current_user: User) -> int:

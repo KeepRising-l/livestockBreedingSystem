@@ -38,6 +38,7 @@ class SysRole(BasePO):
     role_key = Column(String(50), nullable=False, unique=True, comment="角色权限字符串（如 admin/owner/feeder）")
     sort = Column(Integer, nullable=False, default=0, comment="显示顺序")
     status = Column(Integer, nullable=False, default=1, comment="状态：1正常 0停用")
+    perms = Column(Text, nullable=True, comment="权限模块列表（JSON 数组，如 [\"feeding\",\"health\"]）")
     remark = Column(String(255), nullable=True, comment="备注")
 
 

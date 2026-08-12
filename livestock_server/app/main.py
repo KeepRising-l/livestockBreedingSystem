@@ -24,8 +24,24 @@ from app.database import Base, engine, SessionLocal
 from app.models import *  # noqa: F401,F403  引入所有模型，确保建表能发现
 from app.core.security import hash_password, decode_access_token
 from app.models.user import User
-from app.modules.system.service import init_dict_data, record_oper_log
+from app.modules.system.service import init_dict_data, init_rbac_data, record_oper_log
 from app.scheduler import start_scheduler, shutdown_scheduler
+
+
+def _ensure_sys_role_perms(db):
+    """老库 sys_role 表无 perms 列时补一列（MySQL；SQLite 测试库由 create_all 建新表，走异常忽略）"""
+    from sqlalchemy import text
+    try:
+        rows = db.execute(text(
+            "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
+            "WHERE TABLE_NAME='sys_role' AND COLUMN_NAME='perms'"
+        )).fetchall()
+        if not rows:
+            db.execute(text("ALTER TABLE sys_role ADD COLUMN perms TEXT"))
+            db.commit()
+            print("[init] 已为 sys_role 表补充 perms 列")
+    except Exception:
+        pass
 
 
 def init_db():
@@ -33,6 +49,7 @@ def init_db():
     初始化数据库：
     1. 自动建表（开发期用，生产环境建议用 alembic 迁移）
     2. 创建超级管理员账号（如果不存在）
+    3. 初始化字典 / RBAC 角色菜单（首次）
     """
     # 自动建表（已存在的表不会被覆盖，安全）
     Base.metadata.create_all(bind=engine)
@@ -40,6 +57,7 @@ def init_db():
     # 初始化超级管理员
     db = SessionLocal()
     try:
+        _ensure_sys_role_perms(db)
         admin = db.query(User).filter(User.username == settings.SUPER_ADMIN_USERNAME).first()
         if not admin:
             admin = User(
@@ -57,6 +75,8 @@ def init_db():
 
         # 初始化字典数据（首次启动时）
         init_dict_data(db)
+        # 初始化 RBAC 角色 + 菜单（首次启动时）
+        init_rbac_data(db)
     finally:
         db.close()
 

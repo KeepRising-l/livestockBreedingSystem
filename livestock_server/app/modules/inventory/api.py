@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.core.response import Result
 from app.core.deps import get_current_user
+from app.core.perms import require_perms
 from app.core.exceptions import BizException
 from app.models.user import User
 from app.modules.inventory.schema import (
@@ -21,7 +22,7 @@ from app.modules.inventory.schema import (
 )
 from app.modules.inventory import service as inventory_service
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_perms("inventory"))])
 
 
 def _check_manager(current_user: User):

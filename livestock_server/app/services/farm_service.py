@@ -74,7 +74,12 @@ def update_employee(db: Session, farm_id: int, employee_id: int, data: dict):
     if "phone" in data:
         user.phone = data["phone"]
     if "post" in data:
+        old_post = user.post
         user.post = data["post"]
+        if old_post != user.post:
+            # 岗位变化 → 同步 RBAC 岗位角色
+            from app.modules.system.service import sync_employee_roles
+            sync_employee_roles(db, user.id, user.post)
     if "status" in data:
         user.status = data["status"]
     db.commit()

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.core.response import Result
 from app.core.deps import get_current_user, resolve_farm_id
+from app.core.perms import require_perms
 from app.models.user import User
 from app.modules.animal.schema import (
     AnimalIndividualIn, AnimalBatchIn, AnimalQuery, AnimalOut, BatchDeleteIn,
@@ -14,7 +15,7 @@ from app.modules.animal.schema import (
 )
 from app.modules.animal import service as animal_service
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_perms("animal"))])
 
 
 @router.get("/history/list", summary="档案历史记录列表（已删除档案）")
