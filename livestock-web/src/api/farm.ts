@@ -56,3 +56,31 @@ export function updateEmployeeApi(id: number, params: any) {
 export function deleteEmployeeApi(id: number) {
   return http.delete(`/farm/employees/${id}`)
 }
+
+export interface SalaryConfig {
+  id: number
+  farm_id: number
+  post: string
+  base_salary: number
+  bonus_ratio: number | null
+  deduct_rule: string | null
+  status: number
+  remark: string | null
+  create_time: string | null
+}
+
+export function getSalaryConfigsApi(params: { post?: string; status?: number; pageNum?: number; pageSize?: number }) {
+  return http.get('/salary/list', { params })
+}
+
+export function addSalaryConfigApi(params: any) {
+  return http.post('/salary/add', params)
+}
+
+export function updateSalaryConfigApi(id: number, params: any) {
+  return http.put(`/salary/${id}`, params)
+}
+
+export function deleteSalaryConfigApi(id: number) {
+  return http.delete(`/salary/${id}`)
+}

@@ -13,6 +13,14 @@ export const POST_MAP: Record<string, string> = {
   '库管员': '库管员',
 }
 
+/** 岗位默认基础薪资（新建薪资配置时自动带出） */
+export const DEFAULT_SALARY_MAP: Record<string, number> = {
+  '饲喂员': 4500,
+  '兽医': 6500,
+  '繁育员': 5500,
+  '库管员': 4000,
+}
+
 /** 圈舍类型 */
 export const PEN_TYPE_MAP: Record<string, string> = {
   'A': '育雏舍',
