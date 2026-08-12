@@ -489,6 +489,19 @@ def audit_consume(db: Session, farm_id: int, consume_id: int, body: AuditActionI
 # 内部工具
 # ============================================================
 
+def refresh_all_stock_status(db: Session) -> int:
+    """刷新所有库存的过期/缺货状态（定时任务每日调用），返回状态发生变化的条数"""
+    stocks = db.query(MaterialStock).filter(MaterialStock.deleted == False).all()
+    changed = 0
+    for s in stocks:
+        old_status = s.status
+        _refresh_stock_status(s)
+        if s.status != old_status:
+            changed += 1
+    db.commit()
+    return changed
+
+
 def _refresh_stock_status(stock: MaterialStock):
     """
     实时刷新库存状态：

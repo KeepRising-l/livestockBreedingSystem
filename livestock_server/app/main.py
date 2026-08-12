@@ -24,6 +24,7 @@ from app.models import *  # noqa: F401,F403  引入所有模型，确保建表�
 from app.core.security import hash_password
 from app.models.user import User
 from app.modules.system.service import init_dict_data
+from app.scheduler import start_scheduler, shutdown_scheduler
 
 
 def init_db():
@@ -61,11 +62,13 @@ def init_db():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """应用生命周期：启动前执行初始化"""
+    """应用生命周期：启动前执行初始化 + 启动定时任务"""
     print(f"[启动] {settings.APP_NAME} 初始化中...")
     init_db()
+    start_scheduler()
     print(f"[启动] {settings.APP_NAME} 已就绪，访问 http://127.0.0.1:{settings.APP_PORT}/docs 查看接口文档")
     yield
+    shutdown_scheduler()
     print(f"[关闭] {settings.APP_NAME} 已停止")
 
 
