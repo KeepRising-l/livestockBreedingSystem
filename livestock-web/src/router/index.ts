@@ -56,6 +56,12 @@ const routes: RouteRecordRaw[] = [
       { path: 'finance/cost', name: 'FinanceCost', component: () => import('@/views/finance/CostListView.vue'), meta: { title: '成本支出' } },
       { path: 'finance/profit', name: 'FinanceProfit', component: () => import('@/views/finance/ProfitView.vue'), meta: { title: '利润核算' } },
       { path: 'finance/salary', name: 'FinanceSalary', component: () => import('@/views/finance/SalaryListView.vue'), meta: { title: '薪资记录' } },
+      // 统计分析
+      { path: 'statistics/dashboard', name: 'StatisticsDashboard', component: () => import('@/views/statistics/DashboardStatsView.vue'), meta: { title: '综合统计' } },
+      { path: 'statistics/breeding', name: 'StatisticsBreeding', component: () => import('@/views/statistics/BreedingStatsView.vue'), meta: { title: '存栏繁育统计' } },
+      { path: 'statistics/health', name: 'StatisticsHealth', component: () => import('@/views/statistics/HealthStatsView.vue'), meta: { title: '防疫诊疗统计' } },
+      { path: 'statistics/material', name: 'StatisticsMaterial', component: () => import('@/views/statistics/MaterialStatsView.vue'), meta: { title: '物资消耗统计' } },
+      { path: 'statistics/finance', name: 'StatisticsFinance', component: () => import('@/views/statistics/FinanceStatsView.vue'), meta: { title: '财务统计' } },
       { path: 'system/dict', name: 'SystemDict', component: () => import('@/views/system/DictListView.vue'), meta: { title: '字典管理' } },
     ],
   },

@@ -1,0 +1,101 @@
+import http from './request'
+import type { ProfitSummary } from './finance'
+
+export interface NameValue {
+  name: string
+  value: number
+}
+
+export interface TrendData {
+  months: string[]
+  values: number[]
+}
+
+export interface DashboardStats {
+  kpi: {
+    today_stock: number
+    month_in: number
+    month_out: number
+    total_sale: number
+    total_profit: number
+    pending_audit: number
+    pending_alert: number
+    staff_count: number
+  }
+  stock_trend: {
+    months: string[]
+    in_values: number[]
+    out_values: number[]
+  }
+  species_dist: NameValue[]
+  stage_dist: NameValue[]
+}
+
+export interface BreedingStats {
+  current_stock: number
+  species_dist: NameValue[]
+  gender_dist: NameValue[]
+  stage_dist: NameValue[]
+  pen_dist: NameValue[]
+  month_mating: number
+  month_birth: number
+  pregnant_count: number
+  alert_dist: NameValue[]
+  birth_trend: TrendData
+}
+
+export interface HealthStats {
+  month_vaccine: number
+  month_medical: number
+  vaccine_dist: NameValue[]
+  disease_dist: NameValue[]
+  treatment_dist: NameValue[]
+  health_trend: {
+    months: string[]
+    vaccine_values: number[]
+    medical_values: number[]
+  }
+}
+
+export interface MaterialStats {
+  stock_count: number
+  type_dist: NameValue[]
+  status_dist: NameValue[]
+  shortage_count: number
+  expired_count: number
+  expiring_count: number
+  month_purchase_amount: number
+  month_consume: number
+  consume_trend: TrendData
+}
+
+export interface FinanceStats {
+  total: ProfitSummary
+  month: ProfitSummary
+  profit_trend: {
+    months: string[]
+    sale_values: number[]
+    profit_values: number[]
+  }
+  expense_dist: NameValue[]
+}
+
+export function getDashboardStatsApi() {
+  return http.get<any, { data: DashboardStats }>('/statistics/dashboard')
+}
+
+export function getBreedingStatsApi() {
+  return http.get<any, { data: BreedingStats }>('/statistics/breeding')
+}
+
+export function getHealthStatsApi() {
+  return http.get<any, { data: HealthStats }>('/statistics/health')
+}
+
+export function getMaterialStatsApi() {
+  return http.get<any, { data: MaterialStats }>('/statistics/material')
+}
+
+export function getFinanceStatsApi() {
+  return http.get<any, { data: FinanceStats }>('/statistics/finance')
+}

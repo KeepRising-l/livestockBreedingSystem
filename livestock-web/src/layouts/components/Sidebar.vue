@@ -150,6 +150,17 @@ const allMenus: MenuItem[] = [
       { path: 'dict', meta: { title: '字典管理' } },
     ],
   },
+  {
+    path: '/statistics',
+    meta: { title: '统计分析', icon: 'TrendCharts', roles: [1, 2, 3] },
+    children: [
+      { path: 'dashboard', meta: { title: '综合统计' } },
+      { path: 'breeding', meta: { title: '存栏繁育统计' } },
+      { path: 'health', meta: { title: '防疫诊疗统计' } },
+      { path: 'material', meta: { title: '物资消耗统计' } },
+      { path: 'finance', meta: { title: '财务统计' } },
+    ],
+  },
 ]
 
 const menuItems = computed(() => {
