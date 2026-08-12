@@ -4,18 +4,19 @@
       <span v-if="!isCollapse">🐄 智能养殖</span>
       <span v-else>🐄</span>
     </div>
-    <el-menu
-      ref="menuRef"
-      unique-opened
-      :default-active="activeMenu"
-      :default-openeds="defaultOpeneds"
-      :collapse="isCollapse"
-      background-color="#001529"
-      text-color="#ffffffa6"
-      active-text-color="#fff"
-      router
-      class="side-menu"
-    >
+    <el-scrollbar class="menu-scrollbar">
+      <el-menu
+        ref="menuRef"
+        unique-opened
+        :default-active="activeMenu"
+        :default-openeds="defaultOpeneds"
+        :collapse="isCollapse"
+        background-color="#001529"
+        text-color="#ffffffa6"
+        active-text-color="#fff"
+        router
+        class="side-menu"
+      >
       <!-- 顶层：数据大屏（跨畜种） -->
       <el-menu-item v-if="showDashboard" index="/dashboard">
         <el-icon><DataAnalysis /></el-icon>
@@ -76,7 +77,8 @@
         <el-menu-item index="/system/log">日志管理</el-menu-item>
         <el-menu-item index="/system/notice">通知公告</el-menu-item>
       </el-sub-menu>
-    </el-menu>
+      </el-menu>
+    </el-scrollbar>
   </div>
 </template>
 
@@ -239,8 +241,11 @@ function modulesOf(sp: string): ModuleDef[] {
   font-weight: bold;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
+.menu-scrollbar {
+  flex: 1;
+  min-height: 0;
+}
 .side-menu {
   border-right: none;
-  flex: 1;
 }
 </style>
