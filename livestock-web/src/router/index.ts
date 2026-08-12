@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { getToken } from '@/utils/token'
+import { useAuthStore } from '@/stores/auth'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -94,7 +95,7 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
   document.title = (to.meta.title as string) || '智能养殖信息管理系统'
   const token = getToken()
 
@@ -111,6 +112,23 @@ router.beforeEach((to, _from, next) => {
   if (!token) {
     next('/login')
     return
+  }
+
+  // RBAC（P3-4）：员工按权限模块校验访问，超管/场主不受限
+  try {
+    const auth = useAuthStore()
+    if (auth.userType === 3 && to.path !== '/dashboard') {
+      if (auth.perms.length === 0) {
+        await auth.loadPermissions()
+      }
+      const perm = to.path.replace(/^\//, '').split('/')[0]
+      if (perm && !auth.perms.includes(perm)) {
+        next('/403')
+        return
+      }
+    }
+  } catch {
+    // 权限校验异常时放行，由页面接口自行拦截
   }
 
   next()

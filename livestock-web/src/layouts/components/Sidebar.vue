@@ -170,9 +170,16 @@ const allMenus: MenuItem[] = [
 
 const menuItems = computed(() => {
   const userType = authStore.userType
+  const isStaff = userType === 3
   return allMenus.filter(menu => {
     const roles = menu.meta?.roles || []
-    return roles.includes(userType)
+    if (!roles.includes(userType)) return false
+    // 员工按 RBAC 权限模块过滤（菜单模块 = 路径首段，与后端 perms 约定一致）
+    if (isStaff) {
+      const perm = menu.path.replace(/^\//, '').split('/')[0]
+      if (perm && !authStore.hasPerm(perm)) return false
+    }
+    return true
   })
 })
 </script>

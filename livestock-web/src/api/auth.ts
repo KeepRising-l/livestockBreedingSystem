@@ -33,8 +33,34 @@ export interface RegisterResult {
   farm_id: number
 }
 
+export interface MenuNode {
+  id: number
+  parent_id: number
+  menu_name: string
+  menu_type: string
+  path: string | null
+  perms: string | null
+  icon: string | null
+  children: MenuNode[]
+}
+
+export interface PermissionsResult {
+  user_id: number
+  username: string
+  user_type: number
+  farm_id: number | null
+  post: string | null
+  roles: string[]
+  perms: string[]
+  menus: MenuNode[]
+}
+
 export function loginApi(params: LoginParams) {
   return http.post<any, { data: TokenResult }>('/auth/login', params)
+}
+
+export function getPermissionsApi() {
+  return http.get<any, { data: PermissionsResult }>('/auth/permissions')
 }
 
 export function registerOwnerApi(params: OwnerRegisterParams) {
