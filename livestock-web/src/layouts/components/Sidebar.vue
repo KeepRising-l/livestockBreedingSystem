@@ -134,6 +134,16 @@ const allMenus: MenuItem[] = [
     ],
   },
   {
+    path: '/finance',
+    meta: { title: '销售财务', icon: 'Money', roles: [1, 2] },
+    children: [
+      { path: 'sale', meta: { title: '销售订单' } },
+      { path: 'cost', meta: { title: '成本支出' } },
+      { path: 'profit', meta: { title: '利润核算' } },
+      { path: 'salary', meta: { title: '薪资记录' } },
+    ],
+  },
+  {
     path: '/system',
     meta: { title: '系统管理', icon: 'Setting', roles: [1] },
     children: [

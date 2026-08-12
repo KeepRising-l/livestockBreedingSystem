@@ -51,6 +51,11 @@ const routes: RouteRecordRaw[] = [
       { path: 'breeding/alert', name: 'BreedingAlert', component: () => import('@/views/breeding/BreedingAlertView.vue'), meta: { title: '繁育预警' } },
       // 审核
       { path: 'review/list', name: 'ReviewList', component: () => import('@/views/review/ReviewListView.vue'), meta: { title: '审核中心' } },
+      // 销售财务
+      { path: 'finance/sale', name: 'FinanceSale', component: () => import('@/views/finance/SaleListView.vue'), meta: { title: '销售订单' } },
+      { path: 'finance/cost', name: 'FinanceCost', component: () => import('@/views/finance/CostListView.vue'), meta: { title: '成本支出' } },
+      { path: 'finance/profit', name: 'FinanceProfit', component: () => import('@/views/finance/ProfitView.vue'), meta: { title: '利润核算' } },
+      { path: 'finance/salary', name: 'FinanceSalary', component: () => import('@/views/finance/SalaryListView.vue'), meta: { title: '薪资记录' } },
       { path: 'system/dict', name: 'SystemDict', component: () => import('@/views/system/DictListView.vue'), meta: { title: '字典管理' } },
     ],
   },
