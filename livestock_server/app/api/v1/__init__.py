@@ -19,6 +19,7 @@ from app.modules.breeding import router as breeding_router
 from app.modules.review import router as review_router
 from app.modules.salary import router as salary_router
 from app.modules.finance import router as finance_router
+from app.modules.statistics import router as statistics_router
 
 router = APIRouter(prefix="/v1")
 router.include_router(auth.router, prefix="/auth", tags=["认证模块"])
@@ -33,3 +34,4 @@ router.include_router(breeding_router, prefix="/breeding", tags=["繁育模块"]
 router.include_router(review_router, prefix="/review", tags=["审核模块"])
 router.include_router(salary_router, prefix="/salary", tags=["薪资配置模块"])
 router.include_router(finance_router, prefix="/finance", tags=["销售财务模块"])
+router.include_router(statistics_router, prefix="/statistics", tags=["统计模块"])
