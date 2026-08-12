@@ -1,0 +1,25 @@
+# ===== Web 框架 =====
+fastapi==0.111.0
+uvicorn[standard]==0.30.1      # ASGI 服务器，standard 含 websocket 和并发优化
+
+# ===== 数据库 =====
+SQLAlchemy==2.0.30             # ORM 框架
+PyMySQL==1.1.0                 # MySQL 驱动
+alembic==1.13.1                # 数据库迁移工具（可选，前期手动建表也行）
+
+# ===== 缓存 =====
+redis==5.0.4                   # Redis 客户端
+
+# ===== 鉴权 =====
+python-jose[cryptography]==3.3.0   # JWT 生成与校验
+bcrypt==4.1.2                      # 密码哈希（直接用 bcrypt 库，不依赖 passlib）
+
+# ===== 数据校验 =====
+pydantic==2.7.1                # FastAPI 自带依赖，这里固定版本
+pydantic-settings==2.2.1       # 读取 .env 配置
+
+# ===== 工具 =====
+python-multipart==0.0.9        # 表单/Form 解析（登录用）
+python-dotenv==1.0.1           # 加载 .env 文件
+loguru==0.7.2                  # 好用的日志库
+APScheduler==3.10.4            # 定时任务（耳标清理、繁育预警等）

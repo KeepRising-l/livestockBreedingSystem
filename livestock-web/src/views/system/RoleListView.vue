@@ -1,0 +1,1 @@
+<template><div><h2 class="page-title">角色管理</h2><el-card><el-empty description="功能开发中，敬请期待" /></el-card></div></template><style scoped>.page-title{font-size:20px;font-weight:600;margin-bottom:16px;color:#333;}</style>

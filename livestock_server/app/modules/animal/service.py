@@ -1,0 +1,484 @@
+"""
+档案业务逻辑
+
+核心算法：
+1. 耳标生成：前2位=圈舍编号（去掉字母前缀取数字部分），后2位=顺序号（复用空出的耳标）
+2. 生长阶段判定：按出生日期 + 日龄区间 + 畜种判断
+3. 圈舍自动分配：按生长阶段判定圈舍类型，找空位
+4. 删除转历史：删除档案时转入 history 表，半年后自动清除
+"""
+from datetime import date, datetime, timedelta
+
+from sqlalchemy.orm import Session
+
+from app.core.exceptions import BizException
+from app.core.utils import get_effective_farm_id
+from app.modules.animal.model import Animal, AnimalHistory
+from app.modules.animal.schema import AnimalIndividualIn, AnimalBatchIn, AnimalQuery, AnimalHistoryQuery, AnimalUpdateIn
+from app.modules.pen.model import Pen
+from app.modules.pen.service import STAGE_TO_PEN_TYPE, find_available_pen
+
+
+# 各畜种生长阶段日龄配置
+# 格式：(阶段名, 起始日龄, 结束日龄)
+GROWTH_STAGE_CONFIG = {
+    "牛": [
+        ("犊牛期", 1, 60),
+        ("保育期", 61, 180),
+        ("生长期", 181, 365),
+        ("育肥期", 366, 540),
+    ],
+    "羊": [
+        ("羔羊期", 1, 45),
+        ("保育期", 46, 90),
+        ("生长期", 91, 180),
+        ("育肥期", 181, 270),
+    ],
+    "猪": [
+        ("仔猪期", 1, 28),
+        ("保育期", 29, 70),
+        ("生长期", 71, 120),
+        ("育肥期", 121, 180),
+    ],
+}
+
+# 可繁育起始日龄
+BREEDABLE_AGE = {"牛": 365, "羊": 300, "猪": 220}
+# 妊娠期天数
+GESTATION_DAYS = {"牛": 280, "羊": 150, "猪": 114}
+
+
+def calc_age_days(birth_date: date, ref_date: date = None) -> int:
+    """计算日龄"""
+    if not birth_date:
+        return 0
+    ref_date = ref_date or date.today()
+    return (ref_date - birth_date).days
+
+
+def determine_growth_stage(species: str, age_days: int) -> str:
+    """
+    根据畜种和日龄判定生长阶段
+    优先级：妊娠期 > 其它阶段（妊娠期由配种记录单独标记，这里只算基础阶段）
+    """
+    stages = GROWTH_STAGE_CONFIG.get(species)
+    if not stages:
+        raise BizException(f"不支持的畜种：{species}", code=40020)
+
+    for name, start, end in stages:
+        if start <= age_days <= end:
+            return name
+    # 超过育肥期，按繁育期处理
+    return "繁育期"
+
+
+def parse_pen_number(pen_code: str) -> str:
+    """
+    【已废弃，保留兼容】从圈舍编号提取2位数字部分作为耳标前缀
+    例如：A10 -> 10，B03 -> 03
+    注意：A01/B01/C01 这种字母不同数字相同的编号会冲突，推荐用 parse_pen_prefix
+    """
+    digits = "".join(c for c in pen_code if c.isdigit())
+    if not digits:
+        raise BizException(f"圈舍编号格式错误：{pen_code}", code=40021)
+    return digits.zfill(2)[-2:]  # 取后2位，不足补0
+
+
+def parse_pen_prefix(pen: Pen) -> str:
+    """
+    生成耳标前缀：用圈舍 ID 取后 2 位
+    - 保证全局唯一（圈舍 ID 自增，不会重复）
+    - 可容纳 99 个圈舍（小型养殖场足够）
+    - A01(ID=1)->01  B01(ID=3)->03  C01(ID=6)->06  不再冲突
+    """
+    return str(pen.id).zfill(2)[-2:]
+
+
+def generate_ear_tag(db: Session, farm_id: int, pen: Pen) -> str:
+    fid = get_effective_farm_id(db, farm_id)
+    """
+    生成耳标：前2位=圈舍ID后2位，后2位=顺序号（自动复用空出的耳标）
+
+    算法：
+    1. 找出该圈舍所有已用耳标号
+    2. 从 01 开始找第一个未使用的号
+    3. 同时考虑已删除档案释放的耳标号
+    """
+    prefix = parse_pen_prefix(pen)
+
+    # 查询该圈舍当前在用的耳标后2位
+    used_suffixes = set()
+    animals = db.query(Animal).filter(
+        Animal.farm_id == fid,
+        Animal.pen_id == pen.id,
+        Animal.deleted == False,
+        Animal.status.in_(["在栏", "种用", "隔离", "待出栏"]),
+    ).all()
+    for a in animals:
+        if len(a.ear_tag) == 4:
+            used_suffixes.add(a.ear_tag[2:])
+
+    # 从 01 到 capacity 找第一个空号
+    for i in range(1, 100):
+        suffix = str(i).zfill(2)
+        if suffix not in used_suffixes:
+            return prefix + suffix
+
+    raise BizException(f"圈舍 {pen.pen_code} 耳标号已用尽", code=40022)
+
+
+def list_animals(db: Session, farm_id: int, query: AnimalQuery) -> dict:
+    """档案列表，支持多条件筛选"""
+    fid = get_effective_farm_id(db, farm_id)
+    q = db.query(Animal).filter(Animal.farm_id == fid, Animal.deleted == False)
+    if query.ear_tag:
+        q = q.filter(Animal.ear_tag.like(f"%{query.ear_tag}%"))
+    if query.pen_id:
+        q = q.filter(Animal.pen_id == query.pen_id)
+    if query.breed:
+        q = q.filter(Animal.breed == query.breed)
+    if query.gender:
+        q = q.filter(Animal.gender == query.gender)
+    if query.status:
+        q = q.filter(Animal.status == query.status)
+
+    total = q.count()
+    items = q.order_by(Animal.ear_tag).offset(
+        (query.pageNum - 1) * query.pageSize
+    ).limit(query.pageSize).all()
+    return {"list": items, "total": total, "pageNum": query.pageNum, "pageSize": query.pageSize}
+
+
+def get_animal(db: Session, farm_id: int, animal_id: int) -> Animal:
+    fid = get_effective_farm_id(db, farm_id)
+    a = db.query(Animal).filter(
+        Animal.id == animal_id, Animal.farm_id == fid, Animal.deleted == False
+    ).first()
+    if not a:
+        raise BizException("档案不存在", code=40023)
+    return a
+
+
+def update_animal(db: Session, farm_id: int, animal_id: int, body: AnimalUpdateIn) -> Animal:
+    """
+    修改档案（仅更新传入字段）：
+    - pen_id 变更：校验新圈舍容量 → 旧圈舍存栏-1 / 新圈舍存栏+1 → 重新生成耳标
+    - birth_date 或 species 变更：重算生长阶段
+    """
+    fid = get_effective_farm_id(db, farm_id)
+    a = get_animal(db, fid, animal_id)
+
+    # 处理圈舍变更
+    if body.pen_id is not None and body.pen_id != a.pen_id:
+        new_pen = db.query(Pen).filter(
+            Pen.id == body.pen_id, Pen.farm_id == fid, Pen.deleted == False
+        ).first()
+        if not new_pen:
+            raise BizException("目标圈舍不存在", code=40029)
+        if (new_pen.current_count or 0) >= new_pen.capacity:
+            raise BizException(
+                f"目标圈舍 {new_pen.pen_code} 已满（{new_pen.current_count}/{new_pen.capacity}）",
+                code=40030,
+            )
+        # 旧圈舍存栏-1
+        if a.pen_id:
+            old_pen = db.query(Pen).filter(Pen.id == a.pen_id).first()
+            if old_pen and (old_pen.current_count or 0) > 0:
+                old_pen.current_count -= 1
+        # 生成新耳标
+        new_ear_tag = generate_ear_tag(db, fid, new_pen)
+        # 校验耳标唯一（排除自身）
+        conflict = db.query(Animal).filter(
+            Animal.farm_id == fid, Animal.ear_tag == new_ear_tag,
+            Animal.deleted == False, Animal.id != a.id,
+        ).first()
+        if conflict:
+            raise BizException(f"耳标 {new_ear_tag} 已存在", code=40031)
+        a.pen_id = new_pen.id
+        a.ear_tag = new_ear_tag
+        new_pen.current_count = (new_pen.current_count or 0) + 1
+
+    # 处理出生日期/畜种变更 → 重算生长阶段
+    if body.birth_date is not None or body.species is not None:
+        species = body.species if body.species is not None else a.species
+        birth_date = body.birth_date if body.birth_date is not None else a.birth_date
+        age_days = calc_age_days(birth_date, a.in_date or date.today())
+        a.growth_stage = determine_growth_stage(species, age_days)
+
+    # 更新普通字段
+    if body.breed is not None:
+        a.breed = body.breed
+    if body.species is not None:
+        a.species = body.species
+    if body.gender is not None:
+        a.gender = body.gender
+    if body.in_date is not None:
+        a.in_date = body.in_date
+    if body.status is not None:
+        a.status = body.status
+    if body.source is not None:
+        a.source = body.source
+    if body.sire_tag is not None:
+        a.sire_tag = body.sire_tag
+    if body.dam_tag is not None:
+        a.dam_tag = body.dam_tag
+    if body.remark is not None:
+        a.remark = body.remark
+
+    db.commit()
+    return a
+
+
+def individual_create(db: Session, farm_id: int, body: AnimalIndividualIn) -> Animal:
+    fid = get_effective_farm_id(db, farm_id)
+    """个体入栏"""
+    # 1. 确定圈舍：传了 pen_id 就用，没传就按生长阶段自动分配
+    if body.pen_id:
+        pen = db.query(Pen).filter(
+            Pen.id == body.pen_id, Pen.farm_id == fid, Pen.deleted == False
+        ).first()
+        if not pen:
+            raise BizException("指定圈舍不存在", code=40024)
+        if pen.current_count >= pen.capacity:
+            raise BizException("指定圈舍已满", code=40025)
+    else:
+        # 根据出生日期算日龄，再算生长阶段，再算圈舍类型
+        age_days = calc_age_days(body.birth_date, body.in_date or date.today())
+        stage = determine_growth_stage(body.species, age_days)
+        pen_type = STAGE_TO_PEN_TYPE.get(stage, "A")
+        pen = find_available_pen(db, fid, pen_type)
+
+    # 2. 生成耳标
+    ear_tag = generate_ear_tag(db, fid, pen)
+
+    # 3. 校验耳标唯一
+    exists = db.query(Animal).filter(
+        Animal.farm_id == fid, Animal.ear_tag == ear_tag, Animal.deleted == False
+    ).first()
+    if exists:
+        raise BizException(f"耳标 {ear_tag} 已存在", code=40026)
+
+    # 4. 计算生长阶段
+    age_days = calc_age_days(body.birth_date, body.in_date or date.today())
+    stage = determine_growth_stage(body.species, age_days)
+
+    # 5. 创建档案
+    animal = Animal(
+        farm_id=fid,
+        ear_tag=ear_tag,
+        species=body.species,
+        breed=body.breed,
+        pen_id=pen.id,
+        gender=body.gender,
+        birth_date=body.birth_date,
+        in_date=body.in_date or date.today(),
+        growth_stage=stage,
+        status=body.status,
+        source=body.source,
+        sire_tag=body.sire_tag,
+        dam_tag=body.dam_tag,
+        remark=body.remark,
+    )
+    db.add(animal)
+    # 6. 更新圈舍存栏数
+    pen.current_count = (pen.current_count or 0) + 1
+    db.commit()
+    return animal
+
+
+def batch_create(db: Session, farm_id: int, body: AnimalBatchIn) -> dict:
+    fid = get_effective_farm_id(db, farm_id)
+    """
+    批量入栏
+    返回分配方案：每个圈舍分配了多少只、耳标范围
+    """
+    # 先算单只的阶段和圈舍类型
+    age_days = calc_age_days(body.birth_date, body.in_date or date.today())
+    stage = determine_growth_stage(body.species, age_days)
+    pen_type = STAGE_TO_PEN_TYPE.get(stage, "A")
+
+    # 找出所有可用圈舍（按编号排序）
+    pens = db.query(Pen).filter(
+        Pen.farm_id == fid,
+        Pen.pen_type == pen_type,
+        Pen.deleted == False,
+        Pen.status == 1,
+        Pen.current_count < Pen.capacity,
+    ).order_by(Pen.pen_code).all()
+
+    # 计算总空位数
+    total_avail = sum(p.capacity - p.current_count for p in pens)
+    if total_avail < body.count:
+        raise BizException(
+            f"类型 {pen_type} 圈舍空位不足，需要 {body.count}，可用 {total_avail}",
+            code=40027,
+        )
+
+    # 依次分配
+    plan = []  # 分配方案
+    remain = body.count
+    created = []
+
+    for pen in pens:
+        if remain <= 0:
+            break
+        slot = min(remain, pen.capacity - pen.current_count)
+        # 为这个圈舍生成 slot 个耳标
+        ear_tags = []
+        for _ in range(slot):
+            et = generate_ear_tag(db, fid, pen)
+            animal = Animal(
+                farm_id=fid,
+                ear_tag=et,
+                species=body.species,
+                breed=body.breed,
+                pen_id=pen.id,
+                gender=body.gender,
+                birth_date=body.birth_date,
+                in_date=body.in_date or date.today(),
+                growth_stage=stage,
+                status=body.status,
+                source=body.source,
+                remark=body.remark,
+            )
+            db.add(animal)
+            db.flush()  # 拿到 id，但不提交
+            ear_tags.append(et)
+            pen.current_count = (pen.current_count or 0) + 1
+        plan.append({
+            "pen_id": pen.id,
+            "pen_code": pen.pen_code,
+            "count": slot,
+            "ear_tags": ear_tags,
+        })
+        remain -= slot
+
+    db.commit()
+    return {
+        "total": body.count,
+        "stage": stage,
+        "pen_type": pen_type,
+        "plan": plan,
+    }
+
+
+def batch_delete(db: Session, farm_id: int, ids: list[int]):
+    """批量删除：转入历史记录表"""
+    fid = get_effective_farm_id(db, farm_id)
+    today = date.today()
+    clean_deadline = today + timedelta(days=180)  # 半年后清除
+
+    for animal_id in ids:
+        a = get_animal(db, fid, animal_id)
+        # 转入历史
+        history = AnimalHistory(
+            farm_id=a.farm_id,
+            ear_tag=a.ear_tag,
+            species=a.species,
+            breed=a.breed,
+            pen_id=a.pen_id,
+            gender=a.gender,
+            birth_date=a.birth_date,
+            in_date=a.in_date,
+            out_date=a.out_date,
+            growth_stage=a.growth_stage,
+            status=a.status,
+            source=a.source,
+            sire_tag=a.sire_tag,
+            dam_tag=a.dam_tag,
+            remark=a.remark,
+            delete_time=today,
+        )
+        db.add(history)
+        # 逻辑删除档案
+        a.deleted = True
+        # 圈舍存栏数减1
+        if a.pen_id:
+            pen = db.query(Pen).filter(Pen.id == a.pen_id).first()
+            if pen and pen.current_count > 0:
+                pen.current_count -= 1
+
+    db.commit()
+    return {"deleted": len(ids)}
+
+
+def list_history(db: Session, farm_id: int, query: AnimalHistoryQuery) -> dict:
+    """历史记录列表，支持多条件筛选"""
+    fid = get_effective_farm_id(db, farm_id)
+    q = db.query(AnimalHistory).filter(
+        AnimalHistory.farm_id == fid, AnimalHistory.deleted == False
+    )
+    if query.ear_tag:
+        q = q.filter(AnimalHistory.ear_tag.like(f"%{query.ear_tag}%"))
+    if query.species:
+        q = q.filter(AnimalHistory.species == query.species)
+    if query.breed:
+        q = q.filter(AnimalHistory.breed == query.breed)
+    if query.gender:
+        q = q.filter(AnimalHistory.gender == query.gender)
+    if query.status:
+        q = q.filter(AnimalHistory.status == query.status)
+
+    total = q.count()
+    items = q.order_by(AnimalHistory.delete_time.desc()).offset(
+        (query.pageNum - 1) * query.pageSize
+    ).limit(query.pageSize).all()
+    return {"list": items, "total": total, "pageNum": query.pageNum, "pageSize": query.pageSize}
+
+
+def restore_animal(db: Session, farm_id: int, history_id: int) -> Animal:
+    """
+    恢复已删除的档案：
+    1. 校验历史记录存在
+    2. 校验原档案记录还在（逻辑删除未物理清除）
+    3. 校验耳标未被新档案占用（同圈舍+同耳标+未删除）
+    4. 校验原圈舍容量是否充足
+    5. 恢复原档案 deleted=False + 圈舍存栏+1 + 历史记录逻辑删除
+    """
+    fid = get_effective_farm_id(db, farm_id)
+    h = db.query(AnimalHistory).filter(
+        AnimalHistory.id == history_id, AnimalHistory.farm_id == fid, AnimalHistory.deleted == False
+    ).first()
+    if not h:
+        raise BizException("历史记录不存在或已恢复", code=40024)
+
+    # 找到原档案（同 ear_tag + 同 farm_id 的逻辑删除记录）
+    animal = db.query(Animal).filter(
+        Animal.farm_id == fid,
+        Animal.ear_tag == h.ear_tag,
+        Animal.deleted == True,
+    ).first()
+    if not animal:
+        raise BizException("原档案记录已被清除，无法恢复", code=40025)
+
+    # 校验耳标是否已被新档案占用（同圈舍+同耳标+未删除）
+    conflict = db.query(Animal).filter(
+        Animal.farm_id == fid,
+        Animal.pen_id == animal.pen_id,
+        Animal.ear_tag == h.ear_tag,
+        Animal.deleted == False,
+    ).first()
+    if conflict:
+        raise BizException(
+            f"耳标 {h.ear_tag} 已被该圈舍其他档案占用，请先处理冲突",
+            code=40026,
+        )
+
+    # 校验原圈舍是否还存在且容量充足
+    if animal.pen_id:
+        pen = db.query(Pen).filter(Pen.id == animal.pen_id, Pen.deleted == False).first()
+        if not pen:
+            raise BizException("原所在圈舍已被删除，无法恢复", code=40027)
+        if (pen.current_count or 0) >= pen.capacity:
+            raise BizException(
+                f"原圈舍 {pen.pen_code} 已满（当前 {pen.current_count}/{pen.capacity}），无法恢复",
+                code=40028,
+            )
+        pen.current_count = (pen.current_count or 0) + 1
+
+    # 恢复档案
+    animal.deleted = False
+    # 历史记录逻辑删除
+    h.deleted = True
+    db.commit()
+    return animal
