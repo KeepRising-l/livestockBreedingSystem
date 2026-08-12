@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智能养殖信息管理系统 - 项目介绍</title>
+<style>
+  :root {
+    --primary: #2E7D32;
+    --primary-dark: #1B5E20;
+    --accent: #6A1B9A;
+    --bg: #f5f7fa;
+    --card: #ffffff;
+    --text: #263238;
+    --text-sub: #607d8b;
+    --border: #e8ecf1;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.7;
+  }
+  a { color: var(--primary); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .nav {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(255,255,255,.92); backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .nav .brand { font-size: 18px; font-weight: 700; color: var(--primary-dark); }
+  .nav .link { font-size: 14px; }
+
+  .hero {
+    background: linear-gradient(135deg, #2E7D32 0%, #1B5E20 60%, #134a18 100%);
+    color: #fff; text-align: center; padding: 80px 24px 72px;
+  }
+  .hero h1 { font-size: 42px; font-weight: 800; letter-spacing: 2px; }
+  .hero .sub { font-size: 18px; opacity: .92; margin: 16px auto 8px; max-width: 680px; }
+  .hero .desc { font-size: 15px; opacity: .8; margin: 8px auto 28px; max-width: 720px; }
+  .hero .stack { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  .hero .tag {
+    background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.35);
+    border-radius: 999px; padding: 6px 16px; font-size: 13px;
+  }
+
+  .container { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+  .section { padding: 56px 0; }
+  .section h2 {
+    font-size: 26px; font-weight: 700; text-align: center; margin-bottom: 12px; color: var(--primary-dark);
+  }
+  .section .lead { text-align: center; color: var(--text-sub); margin-bottom: 32px; font-size: 15px; }
+
+  .intro-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 28px 32px; font-size: 15px;
+  }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 24px; transition: transform .18s ease, box-shadow .18s ease;
+  }
+  .card:hover { transform: translateY(-4px); box-shadow: 0 10px 24px rgba(0,0,0,.08); }
+  .card .icon {
+    width: 44px; height: 44px; border-radius: 10px; background: #e8f5e9;
+    color: var(--primary-dark); font-size: 22px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center; margin-bottom: 14px;
+  }
+  .card h3 { font-size: 17px; margin-bottom: 8px; }
+  .card p { font-size: 13.5px; color: var(--text-sub); }
+
+  .features { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+  .feature {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px 20px; font-size: 14px;
+  }
+  .feature b { color: var(--primary-dark); }
+
+  .arch {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 28px 32px;
+  }
+  .arch h3 { font-size: 16px; margin: 18px 0 10px; color: var(--primary-dark); }
+  .arch h3:first-child { margin-top: 0; }
+  .arch ul { padding-left: 20px; font-size: 14px; color: var(--text); }
+  .arch li { margin-bottom: 6px; }
+
+  .progress { text-align: center; }
+  .progress .bar {
+    max-width: 720px; margin: 0 auto; height: 14px; border-radius: 999px;
+    background: #e0e0e0; overflow: hidden;
+  }
+  .progress .fill { height: 100%; width: 92%; background: linear-gradient(90deg, var(--primary), var(--accent)); }
+  .progress .note { margin-top: 12px; font-size: 14px; color: var(--text-sub); }
+
+  .footer {
+    border-top: 1px solid var(--border); background: #fff;
+    text-align: center; padding: 28px 16px; font-size: 13px; color: var(--text-sub);
+  }
+  @media (max-width: 640px) {
+    .hero h1 { font-size: 30px; }
+    .hero { padding: 56px 16px 48px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <div class="brand">智能养殖信息管理系统</div>
+  <a class="link" href="https://gitcode.com/keeprising/livestockBreedingSystem" target="_blank" rel="noopener">GitCode 仓库</a>
+</div>
+
+<header class="hero">
+  <h1>智能养殖信息管理系统</h1>
+  <p class="sub">面向中小型养殖场的一体化数字管理平台</p>
+  <p class="desc">从畜禽档案、圈舍到饲喂、防疫、繁育、库存、财务与统计分析的全流程闭环管理，支持角色权限与数据大屏。</p>
+  <div class="stack">
+    <span class="tag">FastAPI</span>
+    <span class="tag">SQLAlchemy</span>
+    <span class="tag">MySQL</span>
+    <span class="tag">Vue 3</span>
+    <span class="tag">Element Plus</span>
+    <span class="tag">ECharts</span>
+    <span class="tag">JWT 认证</span>
+    <span class="tag">RBAC 权限</span>
+  </div>
+</header>
+
+<main>
+  <div class="container">
+
+    <section class="section">
+      <h2>项目简介</h2>
+      <div class="intro-card">
+        <p>智能养殖信息管理系统是一套为中小型养殖场（牛 / 羊 / 猪）设计的全栈业务管理系统。系统覆盖畜禽全生命周期管理，从个体/批量入栏、耳标自动生成与圈舍自动分配，到饲喂、防疫诊疗、繁育、物资库存的日常记录与审核，再到销售结算、成本核算、薪资发放和财务利润分析，并以统计大屏直观呈现经营状况。</p>
+        <p style="margin-top:12px">系统同时内置了每日自动执行的定时任务（生长阶段刷新、繁育预警、库存过期、历史清理）与基于岗位的 RBAC 权限体系，兼顾自动化与精细化管控。</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>核心功能</h2>
+      <p class="lead">按业务模块划分，覆盖养殖场经营全流程</p>
+      <div class="cards">
+        <div class="card"><div class="icon">档</div><h3>畜禽档案与圈舍</h3><p>牛/羊/猪个体与批量入栏，耳标自动生成，圈舍容量与自动分配，档案历史与恢复。</p></div>
+        <div class="card"><div class="icon">喂</div><h3>饲喂管理</h3><p>按畜种/阶段/圈舍配置饲喂方案，饲喂记录提交与场主审核，饲喂成本自动核算。</p></div>
+        <div class="card"><div class="icon">医</div><h3>防疫诊疗</h3><p>防疫记录（支持批量）与诊疗记录，疫苗白名单校验，提交后待审核流转。</p></div>
+        <div class="card"><div class="icon">育</div><h3>繁育管理</h3><p>母畜/公畜档案、配种记录（自动算预产期）、孕检登记、产犊记录、繁育预警。</p></div>
+        <div class="card"><div class="icon">库</div><h3>物资库存</h3><p>饲料/疫苗/兽药库存，进货与领用记录审核流转，库存状态与临期自动维护。</p></div>
+        <div class="card"><div class="icon">审</div><h3>审核中心</h3><p>饲喂/进货/领用/防疫/诊疗五类记录统一待审聚合，场主一键通过/驳回。</p></div>
+        <div class="card"><div class="icon">财</div><h3>销售财务</h3><p>出栏销售与结算，出栏成本分摊算法（饲喂/人工/药品），利润核算与薪资发放。</p></div>
+        <div class="card"><div class="icon">统</div><h3>统计分析</h3><p>综合大屏与存栏繁育、防疫诊疗、物资消耗、财务四维统计，ECharts 可视化。</p></div>
+        <div class="card"><div class="icon">权</div><h3>系统管理与权限</h3><p>用户/角色/菜单/日志/通知/字典管理，RBAC 岗位权限（饲喂员/兽医/繁育员/库管员）。</p></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>亮点特性</h2>
+      <p class="lead">算法与工程细节</p>
+      <div class="features">
+        <div class="feature"><b>耳标自动生成</b>：圈舍号 + 顺序号，空号自动复用，跨圈舍变更联动重算。</div>
+        <div class="feature"><b>圈舍自动分配</b>：按容量与空位智能分配入栏圈舍。</div>
+        <div class="feature"><b>生长阶段判定</b>：牛/羊/猪三套阶段配置，按日龄自动计算。</div>
+        <div class="feature"><b>出栏成本分摊</b>：饲喂成本按记录累加、人工按薪资分摊、药品成本核算，利润自动计算。</div>
+        <div class="feature"><b>自动预警</b>：孕检 60 天、临产 15 天、产后未发情 60 天提醒，每日定时扫描去重生成。</div>
+        <div class="feature"><b>定时任务</b>：APScheduler 每日刷新生长阶段、库存状态，并清理半年以上历史。</div>
+        <div class="feature"><b>RBAC 权限</b>：员工按岗位看到对应菜单、调用对应接口，超管/场主全量。</div>
+        <div class="feature"><b>数据大屏</b>：今日存栏、入栏出栏、销售利润 KPI 与趋势图一屏掌握。</div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>技术架构</h2>
+      <div class="arch">
+        <h3>后端（livestock_server）</h3>
+        <ul>
+          <li>FastAPI + SQLAlchemy 2.0 + PyMySQL，模块化分层（model / schema / service / api）</li>
+          <li>JWT 认证 + bcrypt 密码哈希，统一响应与业务异常体系</li>
+          <li>APScheduler 定时任务，登录/操作日志自动留痕</li>
+        </ul>
+        <h3>前端（livestock-web）</h3>
+        <ul>
+          <li>Vue 3 + Vite + TypeScript + Element Plus + Pinia</li>
+          <li>vue-echarts 统计图表，axios 统一请求封装与路由守卫</li>
+        </ul>
+        <h3>数据与运维</h3>
+        <ul>
+          <li>MySQL 数据库，20+ 张业务表（档案/圈舍/饲喂/防疫/繁育/库存/财务/系统/RBAC）</li>
+          <li>字典数据预置初始化，支持 Docker 化部署（规划中）</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>开发进度</h2>
+      <p class="lead">按 P0-P3 优先级推进，核心功能全部完成</p>
+      <div class="progress">
+        <div class="bar"><div class="fill"></div></div>
+        <p class="note">P0 基础架构 + P1 核心业务 + P2 财务/定时任务 + P3 统计/系统管理/RBAC 已全部完成（约 92%），剩余部署与迁移工具</p>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<footer class="footer">
+  <p>智能养殖信息管理系统 · 开源演示项目</p>
+  <p style="margin-top:6px"><a href="https://gitcode.com/keeprising/livestockBreedingSystem" target="_blank" rel="noopener">https://gitcode.com/keeprising/livestockBreedingSystem</a></p>
+</footer>
+
+</body>
+</html>
