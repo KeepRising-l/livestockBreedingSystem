@@ -124,6 +124,22 @@ for emp in [
     r = client.post("/api/v1/farm/employees", json=emp, headers=headers)
     print(f"  -> {emp['username']} ({emp['post']}): {r.json().get('msg', r.json())}")
 
+# 补绑员工岗位角色：本脚本用 TestClient 不触发 lifespan，RBAC 角色由后端启动时创建，
+# 创建员工时角色可能尚不存在导致 assign_role_by_post 静默跳过，这里确保每位员工都有关联角色
+from app.modules.system.service import assign_role_by_post
+from app.models.user import User
+_session = _session_factory()
+for emp in [
+    {"username": "feeder01", "post": "饲喂员"},
+    {"username": "feeder02", "post": "饲喂员"},
+    {"username": "vet01", "post": "兽医"},
+]:
+    u = _session.query(User).filter(User.username == emp["username"]).first()
+    if u:
+        assign_role_by_post(_session, u.id, u.post)
+_session.close()
+print("  -> 员工岗位角色补绑完成")
+
 # ============================================================
 # 3. 创建圈舍（A/B/C/D 四类各几个）
 # ============================================================
