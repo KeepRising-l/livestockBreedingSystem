@@ -70,7 +70,7 @@ function handleCommand(cmd: string) {
     ElMessage.success('已退出登录')
     router.push('/login')
   } else if (cmd === 'profile') {
-    router.push('/farm/info')
+    router.push('/profile')
   }
 }
 </script>
