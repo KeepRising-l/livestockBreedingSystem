@@ -17,6 +17,7 @@ from app.modules.system import router as system_router
 from app.modules.health import router as health_router
 from app.modules.breeding import router as breeding_router
 from app.modules.review import router as review_router
+from app.modules.salary import router as salary_router
 
 router = APIRouter(prefix="/v1")
 router.include_router(auth.router, prefix="/auth", tags=["认证模块"])
@@ -29,3 +30,4 @@ router.include_router(system_router, prefix="/system", tags=["系统管理模块
 router.include_router(health_router, prefix="/health", tags=["防疫诊疗模块"])
 router.include_router(breeding_router, prefix="/breeding", tags=["繁育模块"])
 router.include_router(review_router, prefix="/review", tags=["审核模块"])
+router.include_router(salary_router, prefix="/salary", tags=["薪资配置模块"])
