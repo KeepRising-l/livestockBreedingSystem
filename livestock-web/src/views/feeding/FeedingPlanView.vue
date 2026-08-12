@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="flex-between mb-16">
-      <h2 class="page-title">饲喂方案</h2>
+      <h2 class="page-title">饲喂方案<template v-if="speciesZh">（{{ speciesZh }}）</template></h2>
       <el-button type="primary" @click="handleAdd" v-if="canEdit">
         <el-icon><Plus /></el-icon> 新增方案
       </el-button>
@@ -103,7 +103,7 @@
           <el-input v-model="form.plan_name" placeholder="如 育肥牛方案V1" />
         </el-form-item>
         <el-form-item label="适用畜种" prop="species">
-          <el-select v-model="form.species" placeholder="请选择" style="width: 100%">
+          <el-select v-model="form.species" placeholder="请选择" style="width: 100%" disabled>
             <el-option v-for="o in SPECIES_CODE_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
           </el-select>
         </el-form-item>
@@ -177,9 +177,11 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { getFeedingPlanListApi, addFeedingPlanApi, updateFeedingPlanApi, deleteFeedingPlanApi, type FeedingPlan } from '@/api/feeding'
 import { useAuthStore } from '@/stores/auth'
 import { PEN_TYPE_MAP, SPECIES_CODE_OPTIONS, SPECIES_CODE_MAP } from '@/utils/constants'
+import { useSpecies } from '@/composables/useSpecies'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 
 const authStore = useAuthStore()
+const { species, speciesZh } = useSpecies()
 const canEdit = computed(() => authStore.userType !== 3)
 
 const list = ref<FeedingPlan[]>([])
@@ -188,7 +190,7 @@ const pageNum = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 
-const query = reactive<{ species: string; status: number | undefined }>({ species: '', status: undefined })
+const query = reactive<{ species: string; status: number | undefined }>({ species: species.value, status: undefined })
 
 const dialogVisible = ref(false)
 const isEdit = ref(false)
@@ -198,7 +200,7 @@ const editId = ref(0)
 
 const form = reactive({
   plan_name: '',
-  species: 'cattle',
+  species: species.value,
   applicable_stage: '',
   applicable_pen_type: '' as string,
   feed_times_per_day: 2,
@@ -224,7 +226,7 @@ function search() {
 }
 
 function resetSearch() {
-  query.species = ''
+  query.species = species.value
   query.status = undefined
   search()
 }
@@ -250,7 +252,7 @@ function handleAdd() {
   isEdit.value = false
   editId.value = 0
   Object.assign(form, {
-    plan_name: '', species: 'cattle', applicable_stage: '', applicable_pen_type: '',
+    plan_name: '', species: species.value, applicable_stage: '', applicable_pen_type: '',
     feed_times_per_day: 2,
     concentrate_weight: undefined, silage_weight: undefined, hay_weight: undefined,
     concentrate_price: undefined, silage_price: undefined, hay_price: undefined,

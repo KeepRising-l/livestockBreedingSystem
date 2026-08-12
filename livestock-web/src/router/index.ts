@@ -21,49 +21,49 @@ const routes: RouteRecordRaw[] = [
     redirect: '/dashboard',
     children: [
       { path: 'dashboard', name: 'Dashboard', component: () => import('@/views/dashboard/DashboardView.vue'), meta: { title: '数据大屏' } },
-      // 养殖场
+      // 养殖场（跨畜种）
       { path: 'farm/info', name: 'FarmInfo', component: () => import('@/views/farm/FarmInfoView.vue'), meta: { title: '养殖场信息' } },
       { path: 'farm/employees', name: 'FarmEmployees', component: () => import('@/views/farm/EmployeeListView.vue'), meta: { title: '员工管理' } },
       { path: 'farm/salary', name: 'SalaryConfig', component: () => import('@/views/farm/SalaryConfigView.vue'), meta: { title: '薪资配置' } },
-      // 圈舍
-      { path: 'pen/list', name: 'PenList', component: () => import('@/views/pen/PenListView.vue'), meta: { title: '圈舍管理' } },
-      { path: 'pen/:id', name: 'PenDetail', component: () => import('@/views/pen/PenDetailView.vue'), meta: { title: '圈舍详情' } },
+      // 圈舍（多畜种独立子模块，:species = cattle/sheep/pig）
+      { path: ':species/pen/list', name: 'PenList', component: () => import('@/views/pen/PenListView.vue'), meta: { title: '圈舍管理' } },
+      { path: ':species/pen/:id', name: 'PenDetail', component: () => import('@/views/pen/PenDetailView.vue'), meta: { title: '圈舍详情' } },
       // 档案
-      { path: 'animal/list', name: 'AnimalList', component: () => import('@/views/animal/AnimalListView.vue'), meta: { title: '畜禽档案' } },
-      { path: 'animal/:id', name: 'AnimalDetail', component: () => import('@/views/animal/AnimalDetailView.vue'), meta: { title: '档案详情' } },
-      { path: 'animal/individual-entry', name: 'AnimalIndividual', component: () => import('@/views/animal/AnimalIndividualView.vue'), meta: { title: '个体入栏' } },
-      { path: 'animal/batch-entry', name: 'AnimalBatch', component: () => import('@/views/animal/AnimalBatchView.vue'), meta: { title: '批量入栏' } },
-      { path: 'animal/history', name: 'AnimalHistory', component: () => import('@/views/animal/AnimalHistoryView.vue'), meta: { title: '历史记录' } },
+      { path: ':species/animal/list', name: 'AnimalList', component: () => import('@/views/animal/AnimalListView.vue'), meta: { title: '畜禽档案' } },
+      { path: ':species/animal/:id', name: 'AnimalDetail', component: () => import('@/views/animal/AnimalDetailView.vue'), meta: { title: '档案详情' } },
+      { path: ':species/animal/individual-entry', name: 'AnimalIndividual', component: () => import('@/views/animal/AnimalIndividualView.vue'), meta: { title: '个体入栏' } },
+      { path: ':species/animal/batch-entry', name: 'AnimalBatch', component: () => import('@/views/animal/AnimalBatchView.vue'), meta: { title: '批量入栏' } },
+      { path: ':species/animal/history', name: 'AnimalHistory', component: () => import('@/views/animal/AnimalHistoryView.vue'), meta: { title: '历史记录' } },
       // 饲喂
-      { path: 'feeding/plan', name: 'FeedingPlan', component: () => import('@/views/feeding/FeedingPlanView.vue'), meta: { title: '饲喂方案' } },
-      { path: 'feeding/record', name: 'FeedingRecord', component: () => import('@/views/feeding/FeedingRecordView.vue'), meta: { title: '饲喂记录' } },
+      { path: ':species/feeding/plan', name: 'FeedingPlan', component: () => import('@/views/feeding/FeedingPlanView.vue'), meta: { title: '饲喂方案' } },
+      { path: ':species/feeding/record', name: 'FeedingRecord', component: () => import('@/views/feeding/FeedingRecordView.vue'), meta: { title: '饲喂记录' } },
       // 物资库存
-      { path: 'inventory/stock', name: 'InventoryStock', component: () => import('@/views/inventory/StockListView.vue'), meta: { title: '物资库存' } },
-      { path: 'inventory/purchase', name: 'InventoryPurchase', component: () => import('@/views/inventory/PurchaseListView.vue'), meta: { title: '进货记录' } },
-      { path: 'inventory/consume', name: 'InventoryConsume', component: () => import('@/views/inventory/ConsumeListView.vue'), meta: { title: '领用记录' } },
+      { path: ':species/inventory/stock', name: 'InventoryStock', component: () => import('@/views/inventory/StockListView.vue'), meta: { title: '物资库存' } },
+      { path: ':species/inventory/purchase', name: 'InventoryPurchase', component: () => import('@/views/inventory/PurchaseListView.vue'), meta: { title: '进货记录' } },
+      { path: ':species/inventory/consume', name: 'InventoryConsume', component: () => import('@/views/inventory/ConsumeListView.vue'), meta: { title: '领用记录' } },
       // 防疫诊疗
-      { path: 'health/vaccine', name: 'HealthVaccine', component: () => import('@/views/health/VaccineListView.vue'), meta: { title: '防疫记录' } },
-      { path: 'health/medical', name: 'HealthMedical', component: () => import('@/views/health/MedicalListView.vue'), meta: { title: '诊疗记录' } },
+      { path: ':species/health/vaccine', name: 'HealthVaccine', component: () => import('@/views/health/VaccineListView.vue'), meta: { title: '防疫记录' } },
+      { path: ':species/health/medical', name: 'HealthMedical', component: () => import('@/views/health/MedicalListView.vue'), meta: { title: '诊疗记录' } },
       // 繁育
-      { path: 'breeding/females', name: 'BreedingFemale', component: () => import('@/views/breeding/BreedingFemaleView.vue'), meta: { title: '母畜档案' } },
-      { path: 'breeding/males', name: 'BreedingMale', component: () => import('@/views/breeding/BreedingMaleView.vue'), meta: { title: '公畜档案' } },
-      { path: 'breeding/mating', name: 'BreedingMating', component: () => import('@/views/breeding/BreedingMatingView.vue'), meta: { title: '配种记录' } },
-      { path: 'breeding/birth', name: 'BreedingBirth', component: () => import('@/views/breeding/BreedingBirthView.vue'), meta: { title: '产犊记录' } },
-      { path: 'breeding/alert', name: 'BreedingAlert', component: () => import('@/views/breeding/BreedingAlertView.vue'), meta: { title: '繁育预警' } },
+      { path: ':species/breeding/females', name: 'BreedingFemale', component: () => import('@/views/breeding/BreedingFemaleView.vue'), meta: { title: '母畜档案' } },
+      { path: ':species/breeding/males', name: 'BreedingMale', component: () => import('@/views/breeding/BreedingMaleView.vue'), meta: { title: '公畜档案' } },
+      { path: ':species/breeding/mating', name: 'BreedingMating', component: () => import('@/views/breeding/BreedingMatingView.vue'), meta: { title: '配种记录' } },
+      { path: ':species/breeding/birth', name: 'BreedingBirth', component: () => import('@/views/breeding/BreedingBirthView.vue'), meta: { title: '产犊记录' } },
+      { path: ':species/breeding/alert', name: 'BreedingAlert', component: () => import('@/views/breeding/BreedingAlertView.vue'), meta: { title: '繁育预警' } },
       // 审核
-      { path: 'review/list', name: 'ReviewList', component: () => import('@/views/review/ReviewListView.vue'), meta: { title: '审核中心' } },
+      { path: ':species/review/list', name: 'ReviewList', component: () => import('@/views/review/ReviewListView.vue'), meta: { title: '审核中心' } },
       // 销售财务
-      { path: 'finance/sale', name: 'FinanceSale', component: () => import('@/views/finance/SaleListView.vue'), meta: { title: '销售订单' } },
-      { path: 'finance/cost', name: 'FinanceCost', component: () => import('@/views/finance/CostListView.vue'), meta: { title: '成本支出' } },
-      { path: 'finance/profit', name: 'FinanceProfit', component: () => import('@/views/finance/ProfitView.vue'), meta: { title: '利润核算' } },
-      { path: 'finance/salary', name: 'FinanceSalary', component: () => import('@/views/finance/SalaryListView.vue'), meta: { title: '薪资记录' } },
+      { path: ':species/finance/sale', name: 'FinanceSale', component: () => import('@/views/finance/SaleListView.vue'), meta: { title: '销售订单' } },
+      { path: ':species/finance/cost', name: 'FinanceCost', component: () => import('@/views/finance/CostListView.vue'), meta: { title: '成本支出' } },
+      { path: ':species/finance/profit', name: 'FinanceProfit', component: () => import('@/views/finance/ProfitView.vue'), meta: { title: '利润核算' } },
+      { path: ':species/finance/salary', name: 'FinanceSalary', component: () => import('@/views/finance/SalaryListView.vue'), meta: { title: '薪资记录' } },
       // 统计分析
-      { path: 'statistics/dashboard', name: 'StatisticsDashboard', component: () => import('@/views/statistics/DashboardStatsView.vue'), meta: { title: '综合统计' } },
-      { path: 'statistics/breeding', name: 'StatisticsBreeding', component: () => import('@/views/statistics/BreedingStatsView.vue'), meta: { title: '存栏繁育统计' } },
-      { path: 'statistics/health', name: 'StatisticsHealth', component: () => import('@/views/statistics/HealthStatsView.vue'), meta: { title: '防疫诊疗统计' } },
-      { path: 'statistics/material', name: 'StatisticsMaterial', component: () => import('@/views/statistics/MaterialStatsView.vue'), meta: { title: '物资消耗统计' } },
-      { path: 'statistics/finance', name: 'StatisticsFinance', component: () => import('@/views/statistics/FinanceStatsView.vue'), meta: { title: '财务统计' } },
-      // 系统管理
+      { path: ':species/statistics/dashboard', name: 'StatisticsDashboard', component: () => import('@/views/statistics/DashboardStatsView.vue'), meta: { title: '综合统计' } },
+      { path: ':species/statistics/breeding', name: 'StatisticsBreeding', component: () => import('@/views/statistics/BreedingStatsView.vue'), meta: { title: '存栏繁育统计' } },
+      { path: ':species/statistics/health', name: 'StatisticsHealth', component: () => import('@/views/statistics/HealthStatsView.vue'), meta: { title: '防疫诊疗统计' } },
+      { path: ':species/statistics/material', name: 'StatisticsMaterial', component: () => import('@/views/statistics/MaterialStatsView.vue'), meta: { title: '物资消耗统计' } },
+      { path: ':species/statistics/finance', name: 'StatisticsFinance', component: () => import('@/views/statistics/FinanceStatsView.vue'), meta: { title: '财务统计' } },
+      // 系统管理（跨畜种，仅超管）
       { path: 'system/dict', name: 'SystemDict', component: () => import('@/views/system/DictListView.vue'), meta: { title: '字典管理' } },
       { path: 'system/user', name: 'SystemUser', component: () => import('@/views/system/UserListView.vue'), meta: { title: '用户管理' } },
       { path: 'system/role', name: 'SystemRole', component: () => import('@/views/system/RoleListView.vue'), meta: { title: '角色管理' } },
@@ -114,14 +114,27 @@ router.beforeEach(async (to, _from, next) => {
     return
   }
 
-  // RBAC（P3-4）：员工按权限模块校验访问，超管/场主不受限
+  const auth = useAuthStore()
+  // RBAC + 多畜种（P3-6 A）：畜种校验 + 员工按权限模块校验
   try {
-    const auth = useAuthStore()
+    // 1) 畜种校验：业务页面 /:species/... 的畜种必须属于当前养殖场可选畜种
+    const sp = to.params.species as string | undefined
+    if (sp) {
+      if (auth.livestockTypes.length === 0) {
+        await auth.loadFarmInfo()
+      }
+      if (auth.livestockTypes.length > 0 && !auth.speciesRouteList.includes(sp)) {
+        next('/404')
+        return
+      }
+    }
+    // 2) 员工权限：模块 = 路径第二段（:species/模块/...），根路径取第一段
     if (auth.userType === 3 && to.path !== '/dashboard') {
       if (auth.perms.length === 0) {
         await auth.loadPermissions()
       }
-      const perm = to.path.replace(/^\//, '').split('/')[0]
+      const segments = to.path.replace(/^\//, '').split('/')
+      const perm = segments.length >= 3 ? segments[1] : segments[0]
       if (perm && !auth.perms.includes(perm)) {
         next('/403')
         return

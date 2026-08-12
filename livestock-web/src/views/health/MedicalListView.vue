@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="flex-between mb-16">
-      <h2 class="page-title">诊疗记录</h2>
+      <h2 class="page-title">诊疗记录<template v-if="speciesZh">（{{ speciesZh }}）</template></h2>
       <el-button type="primary" @click="handleAdd">
         <el-icon><Plus /></el-icon> 新增诊疗
       </el-button>
@@ -121,7 +121,7 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="畜种" prop="species">
-              <el-select v-model="form.species" placeholder="请选择" style="width: 100%">
+              <el-select v-model="form.species" placeholder="请选择" style="width: 100%" disabled>
                 <el-option v-for="s in SPECIES_OPTIONS" :key="s.value" :label="s.label" :value="s.value" />
               </el-select>
             </el-form-item>
@@ -180,9 +180,11 @@ import {
 } from '@/api/health'
 import { useAuthStore } from '@/stores/auth'
 import { SPECIES_OPTIONS, AUDIT_STATUS_MAP } from '@/utils/constants'
+import { useSpecies } from '@/composables/useSpecies'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 
 const authStore = useAuthStore()
+const { species, speciesZh } = useSpecies()
 // 场主才能审核
 const canAudit = computed(() => authStore.userType !== 3)
 
@@ -204,7 +206,7 @@ const query = reactive<{ medical_date_start: string; medical_date_end: string; e
   medical_date_end: '',
   ear_tag: '',
   disease_type: '',
-  species: '',
+  species: speciesZh.value,
   treatment_status: '',
   audit_status: '',
 })
@@ -219,7 +221,7 @@ const form = reactive({
   medical_date: new Date().toISOString().slice(0, 10),
   onset_date: '',
   ear_tag: '',
-  species: '',
+  species: speciesZh.value,
   disease_type: '',
   symptom: '',
   medicine: '',
@@ -267,7 +269,7 @@ function resetSearch() {
   query.medical_date_end = ''
   query.ear_tag = ''
   query.disease_type = ''
-  query.species = ''
+  query.species = speciesZh.value
   query.treatment_status = ''
   query.audit_status = ''
   search()
@@ -312,7 +314,7 @@ function handleAdd() {
     medical_date: new Date().toISOString().slice(0, 10),
     onset_date: '',
     ear_tag: '',
-    species: '',
+    species: speciesZh.value,
     disease_type: '',
     symptom: '',
     medicine: '',

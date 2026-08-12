@@ -1,12 +1,12 @@
 <template>
   <div>
     <div class="flex-between mb-16">
-      <h2 class="page-title">畜禽档案</h2>
+      <h2 class="page-title">畜禽档案<template v-if="speciesZh">（{{ speciesZh }}）</template></h2>
       <div>
-        <el-button type="success" @click="router.push('/animal/individual-entry')">
+        <el-button type="success" @click="router.push(`/${species}/animal/individual-entry`)">
           <el-icon><Plus /></el-icon> 个体入栏
         </el-button>
-        <el-button type="warning" @click="router.push('/animal/batch-entry')">
+        <el-button type="warning" @click="router.push(`/${species}/animal/batch-entry`)">
           <el-icon><Upload /></el-icon> 批量入栏
         </el-button>
         <el-popconfirm title="确定批量删除选中档案？" @confirm="handleBatchDelete" v-if="selectedIds.length">
@@ -52,7 +52,7 @@
         v-loading="loading"
         stripe
         @selection-change="(rows: AnimalInfo[]) => selectedIds = rows.map(r => r.id)"
-        @row-click="(row: AnimalInfo) => router.push(`/animal/${row.id}`)"
+        @row-click="(row: AnimalInfo) => router.push(`/${species}/animal/${row.id}`)"
         style="cursor: pointer"
       >
         <el-table-column type="selection" width="50" @click.stop />
@@ -78,7 +78,7 @@
         <el-table-column prop="in_date" label="入栏日期" width="120" />
         <el-table-column label="操作" width="100" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" size="small" @click.stop="router.push(`/animal/${row.id}`)">详情</el-button>
+            <el-button link type="primary" size="small" @click.stop="router.push(`/${species}/animal/${row.id}`)">详情</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -102,9 +102,11 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getAnimalListApi, batchDeleteAnimalApi, type AnimalInfo } from '@/api/animal'
 import { GENDER_OPTIONS, ANIMAL_STATUS_MAP } from '@/utils/constants'
+import { useSpecies } from '@/composables/useSpecies'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
+const { species, speciesZh } = useSpecies()
 
 const list = ref<AnimalInfo[]>([])
 const loading = ref(false)
@@ -138,6 +140,7 @@ async function loadData() {
   try {
     const res = await getAnimalListApi({
       ...query,
+      species: speciesZh.value,
       pageNum: pageNum.value,
       pageSize: pageSize.value,
     })

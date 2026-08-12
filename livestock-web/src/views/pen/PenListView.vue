@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="flex-between mb-16">
-      <h2 class="page-title">圈舍管理</h2>
+      <h2 class="page-title">圈舍管理<template v-if="speciesZh">（{{ speciesZh }}）</template></h2>
       <el-button type="primary" @click="handleAdd" v-if="canEdit">
         <el-icon><Plus /></el-icon> 新增圈舍
       </el-button>
@@ -24,7 +24,7 @@
 
     <!-- 圈舍列表 -->
     <el-card>
-      <el-table :data="list" v-loading="loading" stripe @row-click="(row: PenInfo) => router.push(`/pen/${row.id}`)" style="cursor: pointer">
+      <el-table :data="list" v-loading="loading" stripe @row-click="(row: PenInfo) => router.push(`/${species}/pen/${row.id}`)" style="cursor: pointer">
         <el-table-column prop="id" label="ID" width="60" />
         <el-table-column prop="pen_code" label="编号" width="100" />
         <el-table-column prop="pen_type" label="类型" width="100">
@@ -49,7 +49,7 @@
         <el-table-column prop="remark" label="备注" min-width="150" show-overflow-tooltip />
         <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" size="small" @click.stop="router.push(`/pen/${row.id}`)">详情</el-button>
+            <el-button link type="primary" size="small" @click.stop="router.push(`/${species}/pen/${row.id}`)">详情</el-button>
             <el-button link type="warning" size="small" @click.stop="handleEdit(row)" v-if="canEdit">编辑</el-button>
             <el-popconfirm title="确定删除该圈舍？" @confirm="handleDelete(row.id)" v-if="canEdit">
               <template #reference>
@@ -104,10 +104,12 @@ import { useRouter } from 'vue-router'
 import { getPenListApi, addPenApi, updatePenApi, deletePenApi, type PenInfo } from '@/api/pen'
 import { useAuthStore } from '@/stores/auth'
 import { PEN_TYPE_MAP } from '@/utils/constants'
+import { useSpecies } from '@/composables/useSpecies'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { species, speciesZh } = useSpecies()
 const canEdit = computed(() => authStore.userType !== 3)
 
 const list = ref<PenInfo[]>([])
@@ -157,7 +159,7 @@ async function loadData() {
   loading.value = true
   progressReady.value = false
   try {
-    const params: any = { pageNum: pageNum.value, pageSize: pageSize.value }
+    const params: any = { pageNum: pageNum.value, pageSize: pageSize.value, species: speciesZh.value }
     if (query.pen_type) params.pen_type = query.pen_type
     const res = await getPenListApi(params)
     const data = res.data as any

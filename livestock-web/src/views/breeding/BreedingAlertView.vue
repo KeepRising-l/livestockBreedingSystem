@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="flex-between mb-16">
-      <h2 class="page-title">繁育预警</h2>
+      <h2 class="page-title">繁育预警<template v-if="speciesZh">（{{ speciesZh }}）</template></h2>
       <el-button type="primary" @click="handleAdd">
         <el-icon><Plus /></el-icon> 手动新增预警
       </el-button>
@@ -137,7 +137,10 @@
 import { ref, reactive, onMounted } from 'vue'
 import { getAlertListApi, addAlertApi, handleAlertApi, type BreedingAlert } from '@/api/breeding'
 import { ALERT_TYPE_MAP, ALERT_STATUS_MAP } from '@/utils/constants'
+import { useSpecies } from '@/composables/useSpecies'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+
+const { species, speciesZh } = useSpecies()
 
 const list = ref<BreedingAlert[]>([])
 const loading = ref(false)
@@ -213,7 +216,7 @@ function resetSearch() {
 async function loadData() {
   loading.value = true
   try {
-    const params: any = { pageNum: pageNum.value, pageSize: pageSize.value }
+    const params: any = { pageNum: pageNum.value, pageSize: pageSize.value, species: speciesZh.value }
     if (query.alert_type) params.alert_type = query.alert_type
     if (query.animal_tag) params.animal_tag = query.animal_tag
     if (query.status) params.status = query.status

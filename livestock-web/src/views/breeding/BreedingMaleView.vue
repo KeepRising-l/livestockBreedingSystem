@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="flex-between mb-16">
-      <h2 class="page-title">公畜档案</h2>
+      <h2 class="page-title">公畜档案<template v-if="speciesZh">（{{ speciesZh }}）</template></h2>
       <el-alert type="info" :closable="false" show-icon style="max-width: 480px"
         title="仅展示处于「繁育期 / 妊娠」的可繁育公畜，供配种登记时选畜" />
     </div>
@@ -64,7 +64,10 @@
 import { ref, reactive, onMounted } from 'vue'
 import { getBreedMalesApi, type BreedAnimal } from '@/api/breeding'
 import { SPECIES_OPTIONS } from '@/utils/constants'
+import { useSpecies } from '@/composables/useSpecies'
 import { ElMessage } from 'element-plus'
+
+const { species, speciesZh } = useSpecies()
 
 const list = ref<BreedAnimal[]>([])
 const loading = ref(false)
@@ -72,7 +75,7 @@ const pageNum = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 
-const query = reactive<{ species: string; keyword: string }>({ species: '', keyword: '' })
+const query = reactive<{ species: string; keyword: string }>({ species: speciesZh.value, keyword: '' })
 
 function search() {
   pageNum.value = 1
@@ -80,7 +83,7 @@ function search() {
 }
 
 function resetSearch() {
-  query.species = ''
+  query.species = speciesZh.value
   query.keyword = ''
   search()
 }

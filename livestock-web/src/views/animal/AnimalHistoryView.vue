@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="flex-between mb-16">
-      <h2 class="page-title">历史记录</h2>
+      <h2 class="page-title">历史记录<template v-if="speciesZh">（{{ speciesZh }}）</template></h2>
       <el-button type="primary" @click="search">
         <el-icon><Refresh /></el-icon> 刷新
       </el-button>
@@ -115,7 +115,10 @@
 import { ref, reactive, onMounted } from 'vue'
 import { getAnimalHistoryListApi, restoreAnimalApi, type AnimalHistoryInfo } from '@/api/animal'
 import { SPECIES_OPTIONS, GENDER_OPTIONS, ANIMAL_STATUS_MAP } from '@/utils/constants'
+import { useSpecies } from '@/composables/useSpecies'
 import { ElMessage } from 'element-plus'
+
+const { species, speciesZh } = useSpecies()
 
 const list = ref<AnimalHistoryInfo[]>([])
 const loading = ref(false)
@@ -124,7 +127,7 @@ const pageSize = ref(10)
 const total = ref(0)
 
 const query = reactive({
-  ear_tag: '', species: '', breed: '', gender: '', status: '',
+  ear_tag: '', species: speciesZh.value, breed: '', gender: '', status: '',
 })
 
 function statusColor(s: string) {
@@ -133,7 +136,7 @@ function statusColor(s: string) {
 
 function search() { pageNum.value = 1; loadData() }
 function resetSearch() {
-  query.ear_tag = ''; query.species = ''; query.breed = ''; query.gender = ''; query.status = ''
+  query.ear_tag = ''; query.species = speciesZh.value; query.breed = ''; query.gender = ''; query.status = ''
   search()
 }
 

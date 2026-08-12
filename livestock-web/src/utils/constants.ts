@@ -71,6 +71,13 @@ export const SPECIES_CODE_MAP: Record<string, string> = {
   pig: '猪',
 }
 
+/** 畜种中文 → 路由值（解析 farm.livestock_types 用） */
+export const SPECIES_ROUTE_MAP: Record<string, string> = {
+  '牛': 'cattle',
+  '羊': 'sheep',
+  '猪': 'pig',
+}
+
 /** 饲喂时段 */
 export const FEED_TIME_PERIOD_OPTIONS = [
   { label: '早', value: '早' },

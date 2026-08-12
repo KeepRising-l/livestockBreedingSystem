@@ -3,7 +3,7 @@
     <el-button link type="primary" @click="router.back()">
       <el-icon><ArrowLeft /></el-icon> 返回
     </el-button>
-    <h2 class="page-title mt-16">圈舍详情</h2>
+    <h2 class="page-title mt-16">圈舍详情<template v-if="speciesZh">（{{ speciesZh }}）</template></h2>
 
     <el-card class="mb-16" v-loading="loading">
       <template v-if="pen">
@@ -46,7 +46,7 @@
         <el-table-column prop="in_date" label="入栏日期" width="120" />
         <el-table-column label="操作" width="100">
           <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="router.push(`/animal/${row.id}`)">详情</el-button>
+            <el-button link type="primary" size="small" @click="router.push(`/${species}/animal/${row.id}`)">详情</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -60,10 +60,12 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getPenDetailApi, getPenAnimalsApi, type PenInfo } from '@/api/pen'
 import { PEN_TYPE_MAP } from '@/utils/constants'
+import { useSpecies } from '@/composables/useSpecies'
 import type { AnimalInfo } from '@/api/animal'
 
 const route = useRoute()
 const router = useRouter()
+const { species, speciesZh } = useSpecies()
 
 const pen = ref<PenInfo | null>(null)
 const animals = ref<AnimalInfo[]>([])
@@ -87,7 +89,7 @@ async function loadAnimals() {
   animalLoading.value = true
   try {
     const id = Number(route.params.id)
-    const res = await getPenAnimalsApi(id, { pageNum: 1, pageSize: 100 })
+    const res = await getPenAnimalsApi(id, { pageNum: 1, pageSize: 100, species: speciesZh.value } as any)
     const data = res.data as any
     animals.value = data.list || data || []
   } catch {

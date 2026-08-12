@@ -14,6 +14,7 @@ export interface PenInfo {
 
 export function getPenListApi(params: {
   pen_type?: string
+  species?: string
   keyword?: string
   pageNum?: number
   pageSize?: number

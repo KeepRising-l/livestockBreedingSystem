@@ -13,25 +13,61 @@
       router
       class="side-menu"
     >
-      <template v-for="item in menuItems" :key="item.path">
-        <el-sub-menu v-if="item.children" :index="item.path">
+      <!-- 顶层：数据大屏（跨畜种） -->
+      <el-menu-item v-if="showDashboard" index="/dashboard">
+        <el-icon><DataAnalysis /></el-icon>
+        <template #title>数据大屏</template>
+      </el-menu-item>
+      <!-- 顶层：养殖场管理（跨畜种，场主/超管） -->
+      <el-sub-menu v-if="showFarm" index="/farm">
+        <template #title>
+          <el-icon><OfficeBuilding /></el-icon>
+          <span>养殖场管理</span>
+        </template>
+        <el-menu-item index="/farm/info">养殖场信息</el-menu-item>
+        <el-menu-item index="/farm/employees">员工管理</el-menu-item>
+        <el-menu-item index="/farm/salary">薪资配置</el-menu-item>
+      </el-sub-menu>
+
+      <!-- 我的养殖场 → 畜种 → 模块 -->
+      <el-sub-menu index="livestock">
+        <template #title>
+          <el-icon><House /></el-icon>
+          <span>我的养殖场</span>
+        </template>
+        <el-sub-menu v-for="sp in speciesList" :key="sp" :index="'/' + sp">
           <template #title>
-            <el-icon v-if="item.meta?.icon"><component :is="item.meta.icon" /></el-icon>
-            <span>{{ item.meta?.title }}</span>
+            <span>{{ SPECIES_CODE_MAP[sp] || sp }}场</span>
           </template>
-          <el-menu-item
-            v-for="child in item.children"
-            :key="child.path"
-            :index="item.path + '/' + child.path"
-          >
-            {{ child.meta?.title }}
-          </el-menu-item>
+          <el-sub-menu v-for="mod in modulesOf(sp)" :key="mod.key" :index="`/${sp}/${mod.key}`">
+            <template #title>
+              <el-icon><component :is="mod.icon" /></el-icon>
+              <span>{{ mod.title }}</span>
+            </template>
+            <el-menu-item
+              v-for="pg in mod.pages"
+              :key="pg.path"
+              :index="`/${sp}/${mod.key}/${pg.path}`"
+            >
+              {{ pg.title }}
+            </el-menu-item>
+          </el-sub-menu>
         </el-sub-menu>
-        <el-menu-item v-else :index="item.path">
-          <el-icon v-if="item.meta?.icon"><component :is="item.meta.icon" /></el-icon>
-          <template #title>{{ item.meta?.title }}</template>
-        </el-menu-item>
-      </template>
+      </el-sub-menu>
+
+      <!-- 顶层：系统管理（仅超管） -->
+      <el-sub-menu v-if="showSystem" index="/system">
+        <template #title>
+          <el-icon><Setting /></el-icon>
+          <span>系统管理</span>
+        </template>
+        <el-menu-item index="/system/user">用户管理</el-menu-item>
+        <el-menu-item index="/system/role">角色管理</el-menu-item>
+        <el-menu-item index="/system/menu">菜单管理</el-menu-item>
+        <el-menu-item index="/system/dict">字典管理</el-menu-item>
+        <el-menu-item index="/system/log">日志管理</el-menu-item>
+        <el-menu-item index="/system/notice">通知公告</el-menu-item>
+      </el-sub-menu>
     </el-menu>
   </div>
 </template>
@@ -40,6 +76,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { SPECIES_CODE_MAP } from '@/utils/constants'
 
 defineProps<{ isCollapse: boolean }>()
 
@@ -48,140 +85,109 @@ const authStore = useAuthStore()
 
 const activeMenu = computed(() => route.path)
 
-interface MenuItem {
+const userType = computed(() => authStore.userType)
+
+/** 可选畜种（路由值 cattle/sheep/pig），farmInfo 未加载时兜底全量 */
+const speciesList = computed<string[]>(() =>
+  authStore.speciesRouteList.length ? authStore.speciesRouteList : ['cattle', 'sheep', 'pig'],
+)
+
+const showDashboard = computed(() => [1, 2, 3].includes(userType.value))
+const showFarm = computed(() => [1, 2].includes(userType.value))
+const showSystem = computed(() => userType.value === 1)
+
+interface PageDef {
   path: string
-  meta?: {
-    title?: string
-    icon?: string
-    roles?: number[]
-    hidden?: boolean
-  }
-  children?: { path: string; meta?: { title?: string; roles?: number[] } }[]
+  title: string
+}
+interface ModuleDef {
+  key: string
+  title: string
+  icon: string
+  roles: number[]
+  pages: PageDef[]
 }
 
-const allMenus: MenuItem[] = [
+/** 业务模块模板（畜种维度内） */
+const MODULES: ModuleDef[] = [
   {
-    path: '/dashboard',
-    meta: { title: '数据大屏', icon: 'DataAnalysis', roles: [1, 2, 3] },
+    key: 'pen', title: '圈舍管理', icon: 'Grid', roles: [1, 2, 3],
+    pages: [{ path: 'list', title: '圈舍列表' }],
   },
   {
-    path: '/farm',
-    meta: { title: '养殖场管理', icon: 'OfficeBuilding', roles: [1, 2] },
-    children: [
-      { path: 'info', meta: { title: '养殖场信息' } },
-      { path: 'employees', meta: { title: '员工管理' } },
-      { path: 'salary', meta: { title: '薪资配置' } },
+    key: 'animal', title: '档案管理', icon: 'Notebook', roles: [1, 2, 3],
+    pages: [
+      { path: 'list', title: '畜禽档案' },
+      { path: 'individual-entry', title: '个体入栏' },
+      { path: 'batch-entry', title: '批量入栏' },
+      { path: 'history', title: '历史记录' },
     ],
   },
   {
-    path: '/pen',
-    meta: { title: '圈舍管理', icon: 'Grid', roles: [1, 2, 3] },
-    children: [
-      { path: 'list', meta: { title: '圈舍列表' } },
+    key: 'feeding', title: '饲喂管理', icon: 'Food', roles: [1, 2, 3],
+    pages: [
+      { path: 'plan', title: '饲喂方案' },
+      { path: 'record', title: '饲喂记录' },
     ],
   },
   {
-    path: '/animal',
-    meta: { title: '档案管理', icon: 'Notebook', roles: [1, 2, 3] },
-    children: [
-      { path: 'list', meta: { title: '畜禽档案' } },
-      { path: 'individual-entry', meta: { title: '个体入栏' } },
-      { path: 'batch-entry', meta: { title: '批量入栏' } },
-      { path: 'history', meta: { title: '历史记录' } },
+    key: 'inventory', title: '物资库存', icon: 'Box', roles: [1, 2, 3],
+    pages: [
+      { path: 'stock', title: '物资库存' },
+      { path: 'purchase', title: '进货记录' },
+      { path: 'consume', title: '领用记录' },
     ],
   },
   {
-    path: '/feeding',
-    meta: { title: '饲喂管理', icon: 'Food', roles: [1, 2, 3] },
-    children: [
-      { path: 'plan', meta: { title: '饲喂方案' } },
-      { path: 'record', meta: { title: '饲喂记录' } },
+    key: 'health', title: '防疫诊疗', icon: 'FirstAidKit', roles: [1, 2, 3],
+    pages: [
+      { path: 'vaccine', title: '防疫记录' },
+      { path: 'medical', title: '诊疗记录' },
     ],
   },
   {
-    path: '/inventory',
-    meta: { title: '物资库存', icon: 'Box', roles: [1, 2, 3] },
-    children: [
-      { path: 'stock', meta: { title: '物资库存' } },
-      { path: 'purchase', meta: { title: '进货记录' } },
-      { path: 'consume', meta: { title: '领用记录' } },
+    key: 'breeding', title: '繁育管理', icon: 'Connection', roles: [1, 2, 3],
+    pages: [
+      { path: 'females', title: '母畜档案' },
+      { path: 'males', title: '公畜档案' },
+      { path: 'mating', title: '配种记录' },
+      { path: 'birth', title: '产犊记录' },
+      { path: 'alert', title: '繁育预警' },
     ],
   },
   {
-    path: '/health',
-    meta: { title: '防疫诊疗', icon: 'FirstAidKit', roles: [1, 2, 3] },
-    children: [
-      { path: 'vaccine', meta: { title: '防疫记录' } },
-      { path: 'medical', meta: { title: '诊疗记录' } },
+    key: 'review', title: '审核中心', icon: 'Stamp', roles: [1, 2],
+    pages: [{ path: 'list', title: '待审核列表' }],
+  },
+  {
+    key: 'finance', title: '销售财务', icon: 'Money', roles: [1, 2],
+    pages: [
+      { path: 'sale', title: '销售订单' },
+      { path: 'cost', title: '成本支出' },
+      { path: 'profit', title: '利润核算' },
+      { path: 'salary', title: '薪资记录' },
     ],
   },
   {
-    path: '/breeding',
-    meta: { title: '繁育管理', icon: 'Connection', roles: [1, 2, 3] },
-    children: [
-      { path: 'females', meta: { title: '母畜档案' } },
-      { path: 'males', meta: { title: '公畜档案' } },
-      { path: 'mating', meta: { title: '配种记录' } },
-      { path: 'birth', meta: { title: '产犊记录' } },
-      { path: 'alert', meta: { title: '繁育预警' } },
-    ],
-  },
-  {
-    path: '/review',
-    meta: { title: '审核中心', icon: 'Stamp', roles: [1, 2] },
-    children: [
-      { path: 'list', meta: { title: '待审核列表' } },
-    ],
-  },
-  {
-    path: '/finance',
-    meta: { title: '销售财务', icon: 'Money', roles: [1, 2] },
-    children: [
-      { path: 'sale', meta: { title: '销售订单' } },
-      { path: 'cost', meta: { title: '成本支出' } },
-      { path: 'profit', meta: { title: '利润核算' } },
-      { path: 'salary', meta: { title: '薪资记录' } },
-    ],
-  },
-  {
-    path: '/system',
-    meta: { title: '系统管理', icon: 'Setting', roles: [1] },
-    children: [
-      { path: 'user', meta: { title: '用户管理' } },
-      { path: 'role', meta: { title: '角色管理' } },
-      { path: 'menu', meta: { title: '菜单管理' } },
-      { path: 'log', meta: { title: '日志管理' } },
-      { path: 'notice', meta: { title: '通知公告' } },
-      { path: 'dict', meta: { title: '字典管理' } },
-    ],
-  },
-  {
-    path: '/statistics',
-    meta: { title: '统计分析', icon: 'TrendCharts', roles: [1, 2, 3] },
-    children: [
-      { path: 'dashboard', meta: { title: '综合统计' } },
-      { path: 'breeding', meta: { title: '存栏繁育统计' } },
-      { path: 'health', meta: { title: '防疫诊疗统计' } },
-      { path: 'material', meta: { title: '物资消耗统计' } },
-      { path: 'finance', meta: { title: '财务统计' } },
+    key: 'statistics', title: '统计分析', icon: 'TrendCharts', roles: [1, 2, 3],
+    pages: [
+      { path: 'dashboard', title: '综合统计' },
+      { path: 'breeding', title: '存栏繁育统计' },
+      { path: 'health', title: '防疫诊疗统计' },
+      { path: 'material', title: '物资消耗统计' },
+      { path: 'finance', title: '财务统计' },
     ],
   },
 ]
 
-const menuItems = computed(() => {
-  const userType = authStore.userType
-  const isStaff = userType === 3
-  return allMenus.filter(menu => {
-    const roles = menu.meta?.roles || []
-    if (!roles.includes(userType)) return false
-    // 员工按 RBAC 权限模块过滤（菜单模块 = 路径首段，与后端 perms 约定一致）
-    if (isStaff) {
-      const perm = menu.path.replace(/^\//, '').split('/')[0]
-      if (perm && !authStore.hasPerm(perm)) return false
-    }
+/** 当前用户可见的模块（roles + 员工 perms 过滤） */
+function modulesOf(sp: string): ModuleDef[] {
+  return MODULES.filter(mod => {
+    if (!mod.roles.includes(userType.value)) return false
+    if (userType.value === 3 && !authStore.hasPerm(mod.key)) return false
     return true
   })
-})
+}
 </script>
 
 <style scoped lang="scss">

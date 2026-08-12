@@ -14,15 +14,6 @@ export interface OwnerRegisterParams {
   livestock_types: string
 }
 
-export interface EmployeeRegisterParams {
-  farm_id: number
-  username: string
-  password: string
-  real_name: string
-  phone: string
-  post: string
-}
-
 export interface TokenResult {
   access_token: string
   token_type: string
@@ -65,8 +56,4 @@ export function getPermissionsApi() {
 
 export function registerOwnerApi(params: OwnerRegisterParams) {
   return http.post<any, { data: RegisterResult }>('/auth/register/owner', params)
-}
-
-export function registerEmployeeApi(params: EmployeeRegisterParams) {
-  return http.post<any, { data: RegisterResult }>('/auth/register/employee', params)
 }

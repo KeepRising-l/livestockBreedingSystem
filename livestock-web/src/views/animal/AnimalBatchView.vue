@@ -9,14 +9,16 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="畜种" prop="species">
-              <el-select v-model="form.species" placeholder="请选择" style="width: 100%">
-                <el-option v-for="s in SPECIES" :key="s" :label="s" :value="s" />
+              <el-select v-model="form.species" disabled style="width: 100%">
+                <el-option :label="speciesZh" :value="speciesZh" />
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="品种" prop="breed">
-              <el-input v-model="form.breed" placeholder="如西门塔尔牛" />
+              <el-select v-model="form.breed" placeholder="请选择品种" clearable filterable style="width: 100%">
+                <el-option v-for="b in breedOptions" :key="b.value" :label="b.label" :value="b.value" />
+              </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -87,14 +89,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { batchCreateAnimalApi } from '@/api/animal'
 import { GENDER_OPTIONS, SOURCE_OPTIONS } from '@/utils/constants'
+import { useSpecies } from '@/composables/useSpecies'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 
 const router = useRouter()
-const SPECIES = ['牛', '羊', '猪']
+const { species, speciesZh, breedOptions, loadBreedOptions } = useSpecies()
 
 const formRef = ref<FormInstance>()
 const saving = ref(false)
@@ -102,7 +105,7 @@ const resultVisible = ref(false)
 const result = ref<any>(null)
 
 const form = reactive({
-  species: '牛',
+  species: speciesZh.value,
   breed: '',
   gender: '母',
   count: 1,
@@ -147,8 +150,10 @@ async function handleSubmit() {
 
 function goToList() {
   resultVisible.value = false
-  router.push('/animal/list')
+  router.push(`/${species.value}/animal/list`)
 }
+
+onMounted(() => loadBreedOptions())
 </script>
 
 <style scoped>

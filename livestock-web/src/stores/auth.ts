@@ -1,8 +1,9 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { getToken, setToken, removeToken, setSelectedFarmId, removeSelectedFarmId, getSelectedFarmId } from '@/utils/token'
 import { loginApi, getPermissionsApi, type LoginParams } from '@/api/auth'
 import { getFarmInfoApi, getFarmListApi, type FarmInfo, type FarmListItem } from '@/api/farm'
+import { SPECIES_ROUTE_MAP } from '@/utils/constants'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(getToken())
@@ -16,6 +17,17 @@ export const useAuthStore = defineStore('auth', () => {
   // RBAC（P3-4）：当前用户拥有的角色与权限模块
   const roleKeys = ref<string[]>([])
   const perms = ref<string[]>([])
+  // 多畜种（P3-6 A）：当前选中的畜种（路由值 cattle/sheep/pig）
+  const currentSpecies = ref<string>('cattle')
+
+  /** 养殖场可选畜种中文数组（来自 farm.livestock_types，逗号分隔） */
+  const livestockTypes = computed<string[]>(() =>
+    (farmInfo.value?.livestock_types || '').split(',').filter(Boolean),
+  )
+  /** 养殖场可选畜种路由值数组（cattle/sheep/pig） */
+  const speciesRouteList = computed<string[]>(() =>
+    livestockTypes.value.map(t => SPECIES_ROUTE_MAP[t]).filter(Boolean),
+  )
 
   function parseToken() {
     if (!token.value) return
@@ -67,9 +79,18 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const res = await getFarmInfoApi()
       farmInfo.value = res.data
+      // 多畜种：若当前畜种不在养殖场可选范围内，默认切到第一个
+      if (speciesRouteList.value.length > 0 && !speciesRouteList.value.includes(currentSpecies.value)) {
+        currentSpecies.value = speciesRouteList.value[0]
+      }
     } catch {
       // 忽略获取养殖场信息失败
     }
+  }
+
+  /** 切换当前畜种（仅允许养殖场可选畜种） */
+  function setSpecies(s: string) {
+    if (speciesRouteList.value.includes(s)) currentSpecies.value = s
   }
 
   async function loadFarmList() {
@@ -99,6 +120,7 @@ export const useAuthStore = defineStore('auth', () => {
     farmList.value = []
     roleKeys.value = []
     perms.value = []
+    currentSpecies.value = 'cattle'
     removeToken()
     removeSelectedFarmId()
   }
@@ -109,7 +131,7 @@ export const useAuthStore = defineStore('auth', () => {
   if (token.value) {
     loadPermissions()
   }
-  // 超管初始化：加载农场列表和农场信息
+  // 超管初始化：恢复 selectedFarmId + 加载农场列表
   if (userType.value === 1) {
     // 先同步从 localStorage 恢复 selectedFarmId（如果有的话）
     const savedFarmId = getSelectedFarmId()
@@ -124,14 +146,17 @@ export const useAuthStore = defineStore('auth', () => {
         setSelectedFarmId(farmList.value[0].id)
       }
     })
-    // 超管也需要加载农场信息
+  }
+  // 所有登录用户都加载农场信息（校正可选畜种，Sidebar 按 livestock_types 收窄）
+  if (token.value) {
     loadFarmInfo()
   }
 
   return {
     token, userType, farmId, post, farmInfo,
     selectedFarmId, farmList, roleKeys, perms,
+    currentSpecies, livestockTypes, speciesRouteList,
     login, logout, loadFarmInfo, loadFarmList, switchFarm, parseToken,
-    loadPermissions, hasPerm,
+    loadPermissions, hasPerm, setSpecies,
   }
 })

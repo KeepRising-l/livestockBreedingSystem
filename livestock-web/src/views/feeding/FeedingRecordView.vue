@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="flex-between mb-16">
-      <h2 class="page-title">饲喂记录</h2>
+      <h2 class="page-title">饲喂记录<template v-if="speciesZh">（{{ speciesZh }}）</template></h2>
       <el-button type="primary" @click="handleAdd">
         <el-icon><Plus /></el-icon> 提交饲喂记录
       </el-button>
@@ -194,9 +194,11 @@ import { getFeedingPlanListApi, type FeedingPlan } from '@/api/feeding'
 import { getPenListApi, type PenInfo } from '@/api/pen'
 import { useAuthStore } from '@/stores/auth'
 import { FEED_TIME_PERIOD_OPTIONS, AUDIT_STATUS_MAP } from '@/utils/constants'
+import { useSpecies } from '@/composables/useSpecies'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 
 const authStore = useAuthStore()
+const { species, speciesZh } = useSpecies()
 // 场主才能审核
 const canAudit = computed(() => authStore.userType !== 3)
 
@@ -296,7 +298,7 @@ function auditStatusColor(s: string) {
 async function loadData() {
   loading.value = true
   try {
-    const params: any = { pageNum: pageNum.value, pageSize: pageSize.value }
+    const params: any = { pageNum: pageNum.value, pageSize: pageSize.value, species: speciesZh.value }
     if (query.feed_date_start) params.feed_date_start = query.feed_date_start
     if (query.feed_date_end) params.feed_date_end = query.feed_date_end
     if (query.pen_id) params.pen_id = query.pen_id
@@ -315,7 +317,7 @@ async function loadData() {
 
 async function loadPenOptions() {
   try {
-    const res = await getPenListApi({ pageNum: 1, pageSize: 100 })
+    const res = await getPenListApi({ pageNum: 1, pageSize: 100, species: speciesZh.value })
     penOptions.value = (res.data as any).list || []
   } catch {
     // ignored
@@ -324,7 +326,7 @@ async function loadPenOptions() {
 
 async function loadPlanOptions() {
   try {
-    const res = await getFeedingPlanListApi({ pageNum: 1, pageSize: 100, status: 1 })
+    const res = await getFeedingPlanListApi({ pageNum: 1, pageSize: 100, status: 1, species: species.value })
     planOptions.value = (res.data as any).list || []
   } catch {
     // ignored

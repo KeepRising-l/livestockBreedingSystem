@@ -22,6 +22,7 @@ export interface AnimalInfo {
 
 export interface AnimalQuery {
   ear_tag?: string
+  species?: string
   pen_id?: number
   breed?: string
   gender?: string

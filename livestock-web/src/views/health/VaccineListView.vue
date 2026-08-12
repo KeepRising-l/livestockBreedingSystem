@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="flex-between mb-16">
-      <h2 class="page-title">防疫记录</h2>
+      <h2 class="page-title">防疫记录<template v-if="speciesZh">（{{ speciesZh }}）</template></h2>
       <div>
         <el-button type="primary" @click="handleAdd">
           <el-icon><Plus /></el-icon> 新增防疫
@@ -108,7 +108,7 @@
           <el-input v-model="form.ear_tag" placeholder="请输入耳标，如 0101" clearable style="width: 100%" />
         </el-form-item>
         <el-form-item label="畜种" prop="species">
-          <el-select v-model="form.species" placeholder="请选择" style="width: 100%">
+          <el-select v-model="form.species" placeholder="请选择" style="width: 100%" disabled>
             <el-option v-for="s in SPECIES_OPTIONS" :key="s.value" :label="s.label" :value="s.value" />
           </el-select>
         </el-form-item>
@@ -145,7 +145,7 @@
           <el-date-picker v-model="batchForm.vaccine_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
         </el-form-item>
         <el-form-item label="畜种" prop="species">
-          <el-select v-model="batchForm.species" placeholder="请选择" style="width: 100%">
+          <el-select v-model="batchForm.species" placeholder="请选择" style="width: 100%" disabled>
             <el-option v-for="s in SPECIES_OPTIONS" :key="s.value" :label="s.label" :value="s.value" />
           </el-select>
         </el-form-item>
@@ -217,9 +217,11 @@ import { getAnimalListApi, type AnimalInfo } from '@/api/animal'
 import { queryDictDataByTypeApi } from '@/api/system'
 import { useAuthStore } from '@/stores/auth'
 import { SPECIES_OPTIONS, AUDIT_STATUS_MAP } from '@/utils/constants'
+import { useSpecies } from '@/composables/useSpecies'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 
 const authStore = useAuthStore()
+const { species, speciesZh } = useSpecies()
 // 场主才能审核
 const canAudit = computed(() => authStore.userType !== 3)
 
@@ -240,7 +242,7 @@ const query = reactive<{ vaccine_date_start: string; vaccine_date_end: string; e
   vaccine_date_end: '',
   ear_tag: '',
   vaccine_type: '',
-  species: '',
+  species: speciesZh.value,
   audit_status: '',
 })
 
@@ -253,7 +255,7 @@ const editId = ref(0)
 const form = reactive({
   vaccine_date: new Date().toISOString().slice(0, 10),
   ear_tag: '',
-  species: '',
+  species: speciesZh.value,
   vaccine_type: '',
   vaccine_name: '',
   dosage: '',
@@ -274,7 +276,7 @@ const batchSaving = ref(false)
 const batchFormRef = ref<FormInstance>()
 const batchForm = reactive({
   vaccine_date: new Date().toISOString().slice(0, 10),
-  species: '',
+  species: speciesZh.value,
   vaccine_type: '',
   vaccine_name: '',
   dosage: '',
@@ -319,7 +321,7 @@ function resetSearch() {
   query.vaccine_date_end = ''
   query.ear_tag = ''
   query.vaccine_type = ''
-  query.species = ''
+  query.species = speciesZh.value
   query.audit_status = ''
   search()
 }
@@ -362,7 +364,7 @@ async function loadVaccineTypeOptions() {
 
 async function loadAnimalOptions() {
   try {
-    const res = await getAnimalListApi({ pageNum: 1, pageSize: 100 })
+    const res = await getAnimalListApi({ pageNum: 1, pageSize: 100, species: speciesZh.value })
     animalOptions.value = (res.data as any).list || []
   } catch {
     // ignored
@@ -379,7 +381,7 @@ function handleAdd() {
   Object.assign(form, {
     vaccine_date: new Date().toISOString().slice(0, 10),
     ear_tag: '',
-    species: '',
+    species: speciesZh.value,
     vaccine_type: '',
     vaccine_name: '',
     dosage: '',
@@ -392,7 +394,7 @@ function handleAdd() {
 function handleBatchAdd() {
   Object.assign(batchForm, {
     vaccine_date: new Date().toISOString().slice(0, 10),
-    species: '',
+    species: speciesZh.value,
     vaccine_type: '',
     vaccine_name: '',
     dosage: '',

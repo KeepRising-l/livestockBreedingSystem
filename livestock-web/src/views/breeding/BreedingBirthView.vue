@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="flex-between mb-16">
-      <h2 class="page-title">产犊记录</h2>
+      <h2 class="page-title">产犊记录<template v-if="speciesZh">（{{ speciesZh }}）</template></h2>
       <el-button type="primary" @click="handleAdd">
         <el-icon><Plus /></el-icon> 新增产犊
       </el-button>
@@ -87,7 +87,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="畜种" prop="species">
-          <el-select v-model="form.species" placeholder="请选择" style="width: 100%" :disabled="isEdit">
+          <el-select v-model="form.species" placeholder="请选择" style="width: 100%" disabled>
             <el-option v-for="s in SPECIES_OPTIONS" :key="s.value" :label="s.label" :value="s.value" />
           </el-select>
         </el-form-item>
@@ -136,7 +136,10 @@ import {
   type BirthRecord, type BreedAnimal, type MatingRecord,
 } from '@/api/breeding'
 import { SPECIES_OPTIONS } from '@/utils/constants'
+import { useSpecies } from '@/composables/useSpecies'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+
+const { species, speciesZh } = useSpecies()
 
 const list = ref<BirthRecord[]>([])
 const loading = ref(false)
@@ -150,7 +153,7 @@ const matingOptions = ref<MatingRecord[]>([])
 const dateRange = ref<string[]>([])
 const query = reactive<{ female_tag: string; species: string; birth_date_start: string; birth_date_end: string }>({
   female_tag: '',
-  species: '',
+  species: speciesZh.value,
   birth_date_start: '',
   birth_date_end: '',
 })
@@ -163,7 +166,7 @@ const editId = ref(0)
 const form = reactive({
   female_tag: '',
   mating_id: undefined as number | undefined,
-  species: '',
+  species: speciesZh.value,
   birth_date: new Date().toISOString().slice(0, 10),
   total_count: 1,
   alive_count: 1,
@@ -197,7 +200,7 @@ function search() {
 function resetSearch() {
   dateRange.value = []
   query.female_tag = ''
-  query.species = ''
+  query.species = speciesZh.value
   query.birth_date_start = ''
   query.birth_date_end = ''
   search()
@@ -225,8 +228,8 @@ async function loadData() {
 async function loadOptions() {
   try {
     const [f, m] = await Promise.all([
-      getBreedFemalesApi({ pageSize: 100 }),
-      getMatingListApi({ pageSize: 100 }),
+      getBreedFemalesApi({ pageSize: 100, species: speciesZh.value }),
+      getMatingListApi({ pageSize: 100, species: speciesZh.value }),
     ])
     femaleOptions.value = (f.data as any)?.list || []
     matingOptions.value = (m.data as any)?.list || []
@@ -241,7 +244,7 @@ function handleAdd() {
   Object.assign(form, {
     female_tag: '',
     mating_id: undefined,
-    species: '',
+    species: speciesZh.value,
     birth_date: new Date().toISOString().slice(0, 10),
     total_count: 1,
     alive_count: 1,

@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="flex-between mb-16">
-      <h2 class="page-title">销售订单</h2>
+      <h2 class="page-title">销售订单<template v-if="speciesZh">（{{ speciesZh }}）</template></h2>
       <el-button type="primary" @click="openSale">
         <el-icon><Sell /></el-icon> 出栏销售
       </el-button>
@@ -140,6 +140,9 @@ import {
 } from '@/api/finance'
 import { ElMessage } from 'element-plus'
 import type { TableInstance } from 'element-plus'
+import { useSpecies } from '@/composables/useSpecies'
+
+const { species, speciesZh } = useSpecies()
 
 const orders = ref<SaleOrder[]>([])
 const loading = ref(false)
@@ -189,7 +192,7 @@ async function loadOrders() {
 async function loadCandidates() {
   candLoading.value = true
   try {
-    const res = await getSaleCandidatesApi({})
+    const res = await getSaleCandidatesApi({ species: speciesZh.value })
     candidates.value = (res.data as SaleCandidate[]) || []
     candidates.value.forEach((c: any) => { c._weight = 100 })
   } catch {

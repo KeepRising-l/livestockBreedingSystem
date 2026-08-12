@@ -78,22 +78,27 @@ import { GridComponent, TooltipComponent, LegendComponent } from 'echarts/compon
 import { getDashboardStatsApi, type DashboardStats } from '@/api/statistics'
 import { getPenListApi, type PenInfo } from '@/api/pen'
 import { getFarmInfoApi, type FarmInfo } from '@/api/farm'
+import { useAuthStore } from '@/stores/auth'
 
 use([CanvasRenderer, BarChart, PieChart, GridComponent, TooltipComponent, LegendComponent])
 
 const router = useRouter()
+const authStore = useAuthStore()
 const farmInfo = ref<FarmInfo | null>(null)
 const pens = ref<PenInfo[]>([])
 const stats = ref<DashboardStats | null>(null)
 
-const quickLinks = [
-  { path: '/animal/list', icon: 'Notebook', label: '畜禽档案' },
-  { path: '/pen/list', icon: 'Grid', label: '圈舍管理' },
-  { path: '/animal/individual-entry', icon: 'Plus', label: '个体入栏' },
-  { path: '/animal/batch-entry', icon: 'Upload', label: '批量入栏' },
-  { path: '/farm/info', icon: 'OfficeBuilding', label: '养殖场信息' },
-  { path: '/farm/employees', icon: 'UserFilled', label: '员工管理' },
-]
+const quickLinks = computed(() => {
+  const sp = authStore.currentSpecies
+  return [
+    { path: `/${sp}/animal/list`, icon: 'Notebook', label: '畜禽档案' },
+    { path: `/${sp}/pen/list`, icon: 'Grid', label: '圈舍管理' },
+    { path: `/${sp}/animal/individual-entry`, icon: 'Plus', label: '个体入栏' },
+    { path: `/${sp}/animal/batch-entry`, icon: 'Upload', label: '批量入栏' },
+    { path: '/farm/info', icon: 'OfficeBuilding', label: '养殖场信息' },
+    { path: '/farm/employees', icon: 'UserFilled', label: '员工管理' },
+  ]
+})
 
 const kpiCards = computed(() => {
   const k = stats.value?.kpi
