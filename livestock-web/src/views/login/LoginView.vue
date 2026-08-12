@@ -3,7 +3,6 @@
     <!-- 右侧登录卡片（背景图右侧留白区） -->
     <div class="login-card">
       <div class="card-logo">
-        <span class="logo-badge">智</span>
         <h1>智能养殖信息管理系统</h1>
         <p>Smart Livestock Information Management System</p>
       </div>
@@ -75,7 +74,7 @@ async function handleLogin() {
 
 <style scoped lang="scss">
 .login-page {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -84,20 +83,26 @@ async function handleLogin() {
   position: relative;
   overflow: hidden;
 
-  // 半透明青色叠层：左侧压暗提科技感、右侧提亮留白区，保证卡片可读
+  // 左右平滑溶解：左侧保留照片细节，向右渐变过渡到接近纯白的承载面，
+  // 让右侧表单区域与背景融为一体，不再有生硬的卡片边界
   &::before {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(90deg,
-      rgba(8, 44, 66, 0.22) 0%,
-      rgba(8, 44, 66, 0.10) 42%,
-      rgba(255, 255, 255, 0.28) 100%);
+    background: linear-gradient(100deg,
+      rgba(9, 40, 60, 0.20) 0%,
+      rgba(255, 255, 255, 0.10) 34%,
+      rgba(255, 255, 255, 0.55) 58%,
+      rgba(255, 255, 255, 0.96) 100%);
   }
 
   @media (max-width: 768px) {
     justify-content: center;
     padding: 16px;
+    // 移动端表单居中，改为整体提亮的白色承载面保证可读性
+    &::before {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0.78) 100%);
+    }
   }
 }
 
@@ -107,11 +112,10 @@ async function handleLogin() {
   width: 420px;
   padding: 40px 36px 30px;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.70);
-  backdrop-filter: blur(16px) saturate(1.5);
-  -webkit-backdrop-filter: blur(16px) saturate(1.5);
-  border: 1px solid rgba(255, 255, 255, 0.65);
-  box-shadow: 0 24px 64px rgba(14, 72, 98, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  // 无边框无底色：表单表面由页面右侧的白色渐变承载，组件直接“嵌”进背景
+  background: transparent;
+  border: none;
+  box-shadow: 0 30px 80px rgba(10, 40, 60, 0.08);
 
   // 本页青蓝色主题覆盖（仅作用于卡片内部表单/按钮）
   --el-color-primary: #0ea5c9;
@@ -122,6 +126,21 @@ async function handleLogin() {
   --el-color-primary-light-9: #e9f8fc;
   --el-color-primary-dark-2: #0b85a5;
 
+  // 表单控件顺着页面左→右渐变：左缘透出照片、向右过渡到实白，与背景溶解方向一致
+  :deep(.el-input__wrapper) {
+    background: linear-gradient(100deg,
+      rgba(255, 255, 255, 0.12) 0%,
+      rgba(255, 255, 255, 0.30) 40%,
+      rgba(255, 255, 255, 0.97) 80%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 0 0 1px rgba(14, 133, 165, 0.14) inset;
+    transition: box-shadow 0.2s ease;
+    &.is-focus {
+      box-shadow: 0 0 0 1px var(--el-color-primary) inset, 0 6px 18px rgba(14, 133, 165, 0.12);
+    }
+  }
+
   @media (max-width: 768px) {
     width: 100%;
     max-width: 420px;
@@ -130,35 +149,22 @@ async function handleLogin() {
 
 .card-logo {
   text-align: center;
-  margin-bottom: 26px;
-
-  .logo-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 52px;
-    height: 52px;
-    border-radius: 14px;
-    font-size: 24px;
-    font-weight: 700;
-    color: #fff;
-    background: linear-gradient(135deg, #0ea5c9, #0b5c99);
-    box-shadow: 0 8px 20px rgba(14, 133, 165, 0.35);
-    margin-bottom: 12px;
-  }
+  margin-bottom: 30px;
 
   h1 {
-    font-size: 20px;
+    font-size: 26px;
     font-weight: 600;
     color: #0a4a66;
-    margin: 0 0 6px;
-    letter-spacing: 1px;
+    margin: 0 0 8px;
+    letter-spacing: 2px;
+    line-height: 1.4;
+    text-wrap: balance;
   }
 
   p {
     font-size: 12px;
     color: #7a9cb0;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.6px;
   }
 }
 
@@ -169,6 +175,9 @@ async function handleLogin() {
   font-size: 16px;
   letter-spacing: 6px;
   border-radius: 8px;
+  transition: all 0.25s ease;
+  &:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(14, 133, 165, 0.28); }
+  &:active { transform: translateY(0) scale(0.98); }
 }
 
 .links {

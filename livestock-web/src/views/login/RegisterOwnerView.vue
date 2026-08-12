@@ -111,7 +111,7 @@ async function handleRegister() {
 
 <style scoped lang="scss">
 .login-container {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: flex-end;
