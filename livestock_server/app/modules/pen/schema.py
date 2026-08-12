@@ -43,6 +43,7 @@ class PenUpdateIn(BaseModel):
 class PenQuery(BaseModel):
     """圈舍列表查询"""
     pen_type: Optional[str] = None
+    species: Optional[str] = None
     status: Optional[int] = None
     pageNum: int = 1
     pageSize: int = 10

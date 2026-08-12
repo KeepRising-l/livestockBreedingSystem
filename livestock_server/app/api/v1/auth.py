@@ -9,7 +9,7 @@ from app.core.exceptions import BizException
 from app.database import get_db
 from app.core.response import Result
 from app.models.user import User
-from app.schemas.auth import LoginIn, OwnerRegisterIn, EmployeeRegisterIn
+from app.schemas.auth import LoginIn, OwnerRegisterIn
 from app.schemas.common import TokenOut
 from app.services import auth_service
 from app.modules.system import service as system_service
@@ -87,10 +87,4 @@ def get_permissions(
 @router.post("/register/owner", summary="养殖场主注册")
 def register_owner(body: OwnerRegisterIn, db: Session = Depends(get_db)):
     result = auth_service.register_owner(db, body)
-    return Result.ok(data=result, msg="注册成功")
-
-
-@router.post("/register/employee", summary="员工注册")
-def register_employee(body: EmployeeRegisterIn, db: Session = Depends(get_db)):
-    result = auth_service.register_employee(db, body)
     return Result.ok(data=result, msg="注册成功")

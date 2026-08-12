@@ -33,13 +33,22 @@ DEFAULT_CAPACITY = {
 }
 
 
-def list_pens(db: Session, farm_id: int, pen_type: str = None, status: int = None,
-              page_num: int = 1, page_size: int = 10) -> dict:
+def list_pens(db: Session, farm_id: int, pen_type: str = None, species: str = None,
+              status: int = None, page_num: int = 1, page_size: int = 10) -> dict:
     """圈舍列表"""
     fid = get_effective_farm_id(db, farm_id)
     query = db.query(Pen).filter(Pen.farm_id == fid, Pen.deleted == False)
     if pen_type:
         query = query.filter(Pen.pen_type == pen_type)
+    if species:
+        # 只返回圈养了该畜种畜禽的圈舍（延迟导入避免与 animal.service 循环依赖）
+        from app.modules.animal.model import Animal
+        # 只返回圈养了该畜种畜禽的圈舍
+        pen_ids = db.query(Animal.pen_id).filter(
+            Animal.farm_id == fid, Animal.species == species, Animal.deleted == False
+        ).distinct().all()
+        ids = [r[0] for r in pen_ids if r[0] is not None]
+        query = query.filter(Pen.id.in_(ids) if ids else False)
     if status is not None:
         query = query.filter(Pen.status == status)
     total = query.count()

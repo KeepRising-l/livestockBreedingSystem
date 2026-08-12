@@ -133,6 +133,8 @@ def list_animals(db: Session, farm_id: int, query: AnimalQuery) -> dict:
     q = db.query(Animal).filter(Animal.farm_id == fid, Animal.deleted == False)
     if query.ear_tag:
         q = q.filter(Animal.ear_tag.like(f"%{query.ear_tag}%"))
+    if query.species:
+        q = q.filter(Animal.species == query.species)
     if query.pen_id:
         q = q.filter(Animal.pen_id == query.pen_id)
     if query.breed:

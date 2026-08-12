@@ -133,6 +133,7 @@ class FeedingRecordOut(BaseModel):
 
 class FeedingRecordQuery(BaseModel):
     """饲喂记录列表查询"""
+    species: Optional[str] = None
     feed_date_start: Optional[date] = None
     feed_date_end: Optional[date] = None
     pen_id: Optional[int] = None

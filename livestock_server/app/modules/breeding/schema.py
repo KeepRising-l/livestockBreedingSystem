@@ -172,6 +172,7 @@ class AlertOut(BaseModel):
 class AlertQuery(BaseModel):
     """繁育预警列表查询"""
     alert_type: Optional[str] = None
+    species: Optional[str] = None
     animal_tag: Optional[str] = None
     status: Optional[str] = None
     alert_date_start: Optional[date] = None

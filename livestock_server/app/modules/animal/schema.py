@@ -62,6 +62,7 @@ class AnimalBatchIn(BaseModel):
 class AnimalQuery(BaseModel):
     """档案列表查询"""
     ear_tag: Optional[str] = None
+    species: Optional[str] = None
     pen_id: Optional[int] = None
     breed: Optional[str] = None
     gender: Optional[str] = None

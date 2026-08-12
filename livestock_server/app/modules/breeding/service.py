@@ -366,6 +366,13 @@ def list_alerts(db: Session, farm_id: int, query: AlertQuery) -> dict:
     )
     if query.alert_type:
         q = q.filter(BreedingAlert.alert_type == query.alert_type)
+    if query.species:
+        # 只返回该畜种动物的预警
+        tags = db.query(Animal.ear_tag).filter(
+            Animal.farm_id == farm_id, Animal.species == query.species, Animal.deleted == False
+        ).all()
+        tag_list = [r[0] for r in tags]
+        q = q.filter(BreedingAlert.animal_tag.in_(tag_list) if tag_list else False)
     if query.animal_tag:
         q = q.filter(BreedingAlert.animal_tag == query.animal_tag)
     if query.status:

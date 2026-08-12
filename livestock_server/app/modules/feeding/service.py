@@ -14,6 +14,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import BizException
+from app.modules.animal.model import Animal
 from app.modules.feeding.model import FeedingPlan, FeedingRecord
 from app.modules.pen.model import Pen
 from app.modules.feeding.schema import (
@@ -172,6 +173,13 @@ def list_records(db: Session, farm_id: int, query: FeedingRecordQuery) -> dict:
     q = db.query(FeedingRecord).filter(
         FeedingRecord.farm_id == farm_id, FeedingRecord.deleted == False
     )
+    if query.species:
+        # 只返回圈养了该畜种畜禽的圈舍的饲喂记录
+        pen_rows = db.query(Animal.pen_id).filter(
+            Animal.farm_id == farm_id, Animal.species == query.species, Animal.deleted == False
+        ).distinct().all()
+        ids = [r[0] for r in pen_rows if r[0] is not None]
+        q = q.filter(FeedingRecord.pen_id.in_(ids) if ids else False)
     if query.feed_date_start:
         q = q.filter(FeedingRecord.feed_date >= query.feed_date_start)
     if query.feed_date_end:

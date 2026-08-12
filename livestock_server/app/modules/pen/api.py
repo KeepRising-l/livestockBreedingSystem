@@ -20,6 +20,7 @@ router = APIRouter(dependencies=[Depends(require_perms("pen"))])
 @router.get("/list", summary="圈舍列表")
 def list_pens(
     pen_type: str = Query(None, description="圈舍类型 A/B/C/D"),
+    species: str = Query(None, description="畜种：牛/羊/猪（只返回养该畜种的圈舍）"),
     status: int = Query(None, description="状态：1正常 0空闲"),
     pageNum: int = Query(1, ge=1),
     pageSize: int = Query(10, ge=1, le=100),
@@ -29,7 +30,7 @@ def list_pens(
 ):
     farm_id = resolve_farm_id(current_user, x_farm_id)
     result = pen_service.list_pens(
-        db, farm_id, pen_type, status, pageNum, pageSize
+        db, farm_id, pen_type, species, status, pageNum, pageSize
     )
     result["list"] = [PenOut.model_validate(p) for p in result["list"]]
     return Result.ok(data=result)

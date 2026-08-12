@@ -56,6 +56,7 @@ def restore_animal(
 @router.get("/list", summary="档案列表（多条件筛选）")
 def list_animals(
     ear_tag: str = Query(None),
+    species: str = Query(None),
     pen_id: int = Query(None),
     breed: str = Query(None),
     gender: str = Query(None),
@@ -68,7 +69,7 @@ def list_animals(
 ):
     farm_id = resolve_farm_id(current_user, x_farm_id)
     query = AnimalQuery(
-        ear_tag=ear_tag, pen_id=pen_id, breed=breed,
+        ear_tag=ear_tag, species=species, pen_id=pen_id, breed=breed,
         gender=gender, status=status, pageNum=pageNum, pageSize=pageSize,
     )
     result = animal_service.list_animals(db, farm_id, query)

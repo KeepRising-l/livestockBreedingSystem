@@ -94,6 +94,7 @@ def delete_plan(plan_id: int, db: Session = Depends(get_db),
 
 @router.get("/record/list", summary="饲喂记录列表")
 def list_records(
+    species: str = Query(None, description="畜种：牛/羊/猪"),
     feed_date_start: date = Query(None),
     feed_date_end: date = Query(None),
     pen_id: int = Query(None),
@@ -108,6 +109,7 @@ def list_records(
     if not current_user.farm_id:
         raise BizException("当前用户未关联养殖场", code=40300)
     query = FeedingRecordQuery(
+        species=species,
         feed_date_start=feed_date_start, feed_date_end=feed_date_end,
         pen_id=pen_id, time_period=time_period,
         audit_status=audit_status, status=status,

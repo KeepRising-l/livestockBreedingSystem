@@ -204,6 +204,7 @@ def delete_birth(record_id: int, db: Session = Depends(get_db),
 @router.get("/alert/list", summary="繁育预警列表")
 def list_alerts(
     alert_type: str = Query(None),
+    species: str = Query(None, description="畜种：牛/羊/猪"),
     animal_tag: str = Query(None),
     status: str = Query(None),
     alert_date_start: date = Query(None),
@@ -215,7 +216,7 @@ def list_alerts(
 ):
     farm_id = _require_farm(current_user)
     query = AlertQuery(
-        alert_type=alert_type, animal_tag=animal_tag, status=status,
+        alert_type=alert_type, species=species, animal_tag=animal_tag, status=status,
         alert_date_start=alert_date_start, alert_date_end=alert_date_end,
         pageNum=pageNum, pageSize=pageSize,
     )
