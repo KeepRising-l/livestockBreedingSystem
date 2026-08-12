@@ -30,9 +30,9 @@ try:
     pen_map = {p.pen_code: p.id for p in pens}
     print(f"圈舍映射: {pen_map}")
 
-    cattle_breeds = ['黄牛', '西门塔尔牛', '荷斯坦牛', '安格斯牛', '夏洛莱牛']
-    sheep_breeds = ['小尾寒羊', '湖羊', '杜泊羊', '波尔山羊']
-    pig_breeds = ['长白猪', '大白猪', '杜洛克', '皮特兰']
+    cattle_breeds = ['黄牛', '西门塔尔牛', '安格斯牛', '秦川牛']
+    sheep_breeds = ['波尔山羊', '黄淮山羊', '小尾寒羊', '山羊', '绵羊']
+    pig_breeds = ['大白猪', '长白猪', '杜长大三元猪', '黑土猪']
 
     animals = []
     ear_tag_pool = {

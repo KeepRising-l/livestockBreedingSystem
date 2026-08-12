@@ -214,17 +214,20 @@ DICT_DATA = [
     ("sys_vaccine_type", "蓝耳病", "prrs", 5, '{"species":"pig"}'),
     ("sys_vaccine_type", "伪狂犬", "pseudorabies", 6, '{"species":"pig,sheep"}'),
     ("sys_vaccine_type", "牛结节性皮肤病", "lsd", 7, '{"species":"cattle"}'),
-    # 品种
-    ("sys_breed", "荷斯坦", "荷斯坦", 1, '{"species":"cattle"}'),
-    ("sys_breed", "安格斯", "安格斯", 2, '{"species":"cattle"}'),
-    ("sys_breed", "西门塔尔", "西门塔尔", 3, '{"species":"cattle"}'),
-    ("sys_breed", "黄牛", "黄牛", 4, '{"species":"cattle"}'),
-    ("sys_breed", "杜泊", "杜泊", 5, '{"species":"sheep"}'),
-    ("sys_breed", "小尾寒羊", "小尾寒羊", 6, '{"species":"sheep"}'),
-    ("sys_breed", "湖羊", "湖羊", 7, '{"species":"sheep"}'),
-    ("sys_breed", "长白", "长白", 8, '{"species":"pig"}'),
-    ("sys_breed", "大约克", "大约克", 9, '{"species":"pig"}'),
-    ("sys_breed", "杜洛克", "杜洛克", 10, '{"species":"pig"}'),
+    # 品种（权威清单，对齐功能描述.docx：牛=黄牛/西门塔尔牛/安格斯牛/秦川牛；羊=波尔山羊/黄淮山羊/小尾寒羊/山羊/绵羊；猪=大白猪/长白猪/杜长大三元猪/黑土猪）
+    ("sys_breed", "黄牛", "黄牛", 1, '{"species":"cattle"}'),
+    ("sys_breed", "西门塔尔牛", "西门塔尔牛", 2, '{"species":"cattle"}'),
+    ("sys_breed", "安格斯牛", "安格斯牛", 3, '{"species":"cattle"}'),
+    ("sys_breed", "秦川牛", "秦川牛", 4, '{"species":"cattle"}'),
+    ("sys_breed", "波尔山羊", "波尔山羊", 5, '{"species":"sheep"}'),
+    ("sys_breed", "黄淮山羊", "黄淮山羊", 6, '{"species":"sheep"}'),
+    ("sys_breed", "小尾寒羊", "小尾寒羊", 7, '{"species":"sheep"}'),
+    ("sys_breed", "山羊", "山羊", 8, '{"species":"sheep"}'),
+    ("sys_breed", "绵羊", "绵羊", 9, '{"species":"sheep"}'),
+    ("sys_breed", "大白猪", "大白猪", 10, '{"species":"pig"}'),
+    ("sys_breed", "长白猪", "长白猪", 11, '{"species":"pig"}'),
+    ("sys_breed", "杜长大三元猪", "杜长大三元猪", 12, '{"species":"pig"}'),
+    ("sys_breed", "黑土猪", "黑土猪", 13, '{"species":"pig"}'),
 ]
 
 
