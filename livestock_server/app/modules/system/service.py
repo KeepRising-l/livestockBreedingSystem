@@ -1,13 +1,26 @@
 """
-系统管理 service：字典类型 + 字典数据 CRUD + 字典初始化
+系统管理 service：字典 + 用户/角色/菜单 + 日志 + 通知
 """
+from datetime import datetime
+
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import BizException
-from app.modules.system.model import DictType, DictData
+from app.core.security import hash_password
+from app.models.farm import Farm
+from app.models.user import User
+from app.modules.system.model import (
+    DictType, DictData,
+    SysRole, SysMenu, SysUserRole, OperLog, LoginLog, SysNotice,
+)
 from app.modules.system.schema import (
     DictTypeIn, DictTypeUpdateIn, DictTypeQuery,
     DictDataIn, DictDataUpdateIn, DictDataQuery,
+    UserIn, UserUpdateIn, UserQuery,
+    RoleIn, RoleUpdateIn, RoleQuery,
+    MenuIn, MenuUpdateIn, MenuQuery,
+    LogQuery,
+    NoticeIn, NoticeUpdateIn, NoticeQuery,
 )
 
 
@@ -228,3 +241,386 @@ def init_dict_data(db: Session) -> None:
 
     db.commit()
     print(f"[init] 已初始化字典数据：{len(DICT_TYPES)} 个类型，{len(DICT_DATA)} 条数据")
+
+
+# ============================================================
+# 用户管理（超管视角，场主/员工/超管统一管理）
+# ============================================================
+
+def _user_role_map(db: Session, user_ids: list[int]) -> dict[int, list[str]]:
+    """按用户ID分组返回角色名列表"""
+    if not user_ids:
+        return {}
+    rows = db.query(SysUserRole, SysRole).join(
+        SysRole, SysRole.id == SysUserRole.role_id
+    ).filter(
+        SysUserRole.user_id.in_(user_ids),
+        SysUserRole.deleted == False,
+        SysRole.deleted == False,
+    ).all()
+    result: dict[int, list[str]] = {}
+    for ur, role in rows:
+        result.setdefault(ur.user_id, []).append(role.role_name)
+    return result
+
+
+def list_users(db: Session, query: UserQuery) -> dict:
+    q = db.query(User).filter(User.deleted == False)
+    if query.username:
+        q = q.filter(User.username.like(f"%{query.username}%"))
+    if query.real_name:
+        q = q.filter(User.real_name.like(f"%{query.real_name}%"))
+    if query.phone:
+        q = q.filter(User.phone.like(f"%{query.phone}%"))
+    if query.user_type is not None:
+        q = q.filter(User.user_type == query.user_type)
+    if query.farm_id:
+        q = q.filter(User.farm_id == query.farm_id)
+    if query.status is not None:
+        q = q.filter(User.status == query.status)
+
+    total = q.count()
+    users = q.order_by(User.id).offset(
+        (query.pageNum - 1) * query.pageSize
+    ).limit(query.pageSize).all()
+
+    farm_ids = {u.farm_id for u in users if u.farm_id}
+    farms = {f.id: f.farm_name for f in db.query(Farm).filter(
+        Farm.id.in_(farm_ids), Farm.deleted == False).all()} if farm_ids else {}
+    role_map = _user_role_map(db, [u.id for u in users])
+
+    items = [{
+        "id": u.id, "username": u.username, "real_name": u.real_name,
+        "phone": u.phone, "user_type": u.user_type, "farm_id": u.farm_id,
+        "farm_name": farms.get(u.farm_id) if u.farm_id else None,
+        "post": u.post, "status": u.status,
+        "role_names": role_map.get(u.id, []),
+        "create_time": u.create_time,
+    } for u in users]
+    return {"list": items, "total": total, "pageNum": query.pageNum, "pageSize": query.pageSize}
+
+
+def add_user(db: Session, body: UserIn) -> User:
+    if db.query(User).filter(User.username == body.username, User.deleted == False).first():
+        raise BizException("账号已存在", code=40040)
+    user = User(
+        username=body.username,
+        password=hash_password(body.password),
+        real_name=body.real_name,
+        phone=body.phone,
+        user_type=body.user_type,
+        farm_id=body.farm_id,
+        post=body.post,
+        status=body.status,
+    )
+    db.add(user)
+    db.flush()
+    if body.role_ids:
+        for rid in set(body.role_ids):
+            db.add(SysUserRole(user_id=user.id, role_id=rid))
+    db.commit()
+    return user
+
+
+def update_user(db: Session, user_id: int, body: UserUpdateIn) -> User:
+    user = db.query(User).filter(User.id == user_id, User.deleted == False).first()
+    if not user:
+        raise BizException("用户不存在", code=40041)
+    data = body.model_dump(exclude_unset=True)
+    pwd = data.pop("password", None)
+    role_ids = data.pop("role_ids", None)
+    for k, v in data.items():
+        setattr(user, k, v)
+    if pwd:
+        user.password = hash_password(pwd)
+    if role_ids is not None:
+        _replace_user_roles(db, user_id, role_ids)
+    db.commit()
+    return user
+
+
+def delete_user(db: Session, user_id: int) -> None:
+    user = db.query(User).filter(User.id == user_id, User.deleted == False).first()
+    if not user:
+        raise BizException("用户不存在", code=40041)
+    if user.user_type == 1:
+        raise BizException("超级管理员账号不允许删除", code=40042)
+    user.deleted = True
+    db.query(SysUserRole).filter(SysUserRole.user_id == user_id, SysUserRole.deleted == False).update(
+        {SysUserRole.deleted: True}, synchronize_session=False
+    )
+    db.commit()
+
+
+def reset_password(db: Session, user_id: int, new_password: str) -> None:
+    user = db.query(User).filter(User.id == user_id, User.deleted == False).first()
+    if not user:
+        raise BizException("用户不存在", code=40041)
+    user.password = hash_password(new_password)
+    db.commit()
+
+
+def _replace_user_roles(db: Session, user_id: int, role_ids: list[int]) -> None:
+    """重置用户角色：旧关联逻辑删除，新关联插入"""
+    db.query(SysUserRole).filter(SysUserRole.user_id == user_id, SysUserRole.deleted == False).update(
+        {SysUserRole.deleted: True}, synchronize_session=False
+    )
+    for rid in set(role_ids):
+        db.add(SysUserRole(user_id=user_id, role_id=rid))
+
+
+def assign_roles(db: Session, user_id: int, role_ids: list[int]) -> None:
+    if not db.query(User).filter(User.id == user_id, User.deleted == False).first():
+        raise BizException("用户不存在", code=40041)
+    _replace_user_roles(db, user_id, role_ids)
+    db.commit()
+
+
+def list_user_role_ids(db: Session, user_id: int) -> list[int]:
+    rows = db.query(SysUserRole).filter(
+        SysUserRole.user_id == user_id, SysUserRole.deleted == False
+    ).all()
+    return [r.role_id for r in rows]
+
+
+# ============================================================
+# 角色管理
+# ============================================================
+
+def list_roles(db: Session, query: RoleQuery) -> dict:
+    q = db.query(SysRole).filter(SysRole.deleted == False)
+    if query.role_name:
+        q = q.filter(SysRole.role_name.like(f"%{query.role_name}%"))
+    if query.status is not None:
+        q = q.filter(SysRole.status == query.status)
+    total = q.count()
+    items = q.order_by(SysRole.sort, SysRole.id).offset(
+        (query.pageNum - 1) * query.pageSize
+    ).limit(query.pageSize).all()
+    return {"list": items, "total": total, "pageNum": query.pageNum, "pageSize": query.pageSize}
+
+
+def add_role(db: Session, body: RoleIn) -> SysRole:
+    if db.query(SysRole).filter(SysRole.role_key == body.role_key, SysRole.deleted == False).first():
+        raise BizException(f"角色权限标识 {body.role_key} 已存在", code=40043)
+    role = SysRole(**body.model_dump())
+    db.add(role)
+    db.commit()
+    return role
+
+
+def update_role(db: Session, role_id: int, body: RoleUpdateIn) -> SysRole:
+    role = db.query(SysRole).filter(SysRole.id == role_id, SysRole.deleted == False).first()
+    if not role:
+        raise BizException("角色不存在", code=40044)
+    data = body.model_dump(exclude_unset=True)
+    if "role_key" in data and data["role_key"] != role.role_key:
+        exists = db.query(SysRole).filter(
+            SysRole.role_key == data["role_key"], SysRole.deleted == False
+        ).first()
+        if exists:
+            raise BizException(f"角色权限标识 {data['role_key']} 已存在", code=40043)
+    for k, v in data.items():
+        setattr(role, k, v)
+    db.commit()
+    return role
+
+
+def delete_role(db: Session, role_id: int) -> None:
+    role = db.query(SysRole).filter(SysRole.id == role_id, SysRole.deleted == False).first()
+    if not role:
+        raise BizException("角色不存在", code=40044)
+    cnt = db.query(SysUserRole).filter(
+        SysUserRole.role_id == role_id, SysUserRole.deleted == False
+    ).count()
+    if cnt > 0:
+        raise BizException(f"该角色已分配给 {cnt} 个用户，无法删除", code=40045)
+    role.deleted = True
+    db.commit()
+
+
+# ============================================================
+# 菜单管理（RBAC，P3-4 用）
+# ============================================================
+
+def list_menus(db: Session, query: MenuQuery) -> list:
+    """返回菜单树（含 children）"""
+    q = db.query(SysMenu).filter(SysMenu.deleted == False)
+    if query.menu_name:
+        q = q.filter(SysMenu.menu_name.like(f"%{query.menu_name}%"))
+    if query.status is not None:
+        q = q.filter(SysMenu.status == query.status)
+    menus = q.order_by(SysMenu.sort, SysMenu.id).all()
+
+    nodes: dict[int, dict] = {}
+    for m in menus:
+        nodes[m.id] = {
+            "id": m.id, "parent_id": m.parent_id, "menu_name": m.menu_name,
+            "menu_type": m.menu_type, "path": m.path, "component": m.component,
+            "perms": m.perms, "icon": m.icon, "sort": m.sort,
+            "visible": m.visible, "status": m.status, "children": [],
+        }
+    roots = []
+    for m in menus:
+        node = nodes[m.id]
+        if m.parent_id and m.parent_id in nodes:
+            nodes[m.parent_id]["children"].append(node)
+        else:
+            roots.append(node)
+    return roots
+
+
+def add_menu(db: Session, body: MenuIn) -> SysMenu:
+    menu = SysMenu(**body.model_dump())
+    db.add(menu)
+    db.commit()
+    return menu
+
+
+def update_menu(db: Session, menu_id: int, body: MenuUpdateIn) -> SysMenu:
+    menu = db.query(SysMenu).filter(SysMenu.id == menu_id, SysMenu.deleted == False).first()
+    if not menu:
+        raise BizException("菜单不存在", code=40046)
+    data = body.model_dump(exclude_unset=True)
+    if "parent_id" in data and data["parent_id"] == menu.id:
+        raise BizException("父菜单不能是自身", code=40047)
+    for k, v in data.items():
+        setattr(menu, k, v)
+    db.commit()
+    return menu
+
+
+def delete_menu(db: Session, menu_id: int) -> None:
+    menu = db.query(SysMenu).filter(SysMenu.id == menu_id, SysMenu.deleted == False).first()
+    if not menu:
+        raise BizException("菜单不存在", code=40046)
+    child_cnt = db.query(SysMenu).filter(
+        SysMenu.parent_id == menu_id, SysMenu.deleted == False
+    ).count()
+    if child_cnt > 0:
+        raise BizException(f"该菜单下有 {child_cnt} 个子菜单，请先删除子菜单", code=40048)
+    menu.deleted = True
+    db.commit()
+
+
+# ============================================================
+# 登录日志 / 操作日志
+# ============================================================
+
+def record_login_log(db: Session, username: str, user_id: int | None = None,
+                     ip: str | None = None, browser: str | None = None,
+                     os: str | None = None, status: int = 1,
+                     msg: str | None = None) -> None:
+    db.add(LoginLog(username=username, user_id=user_id, ip=ip, browser=browser,
+                    os=os, status=status, msg=msg, login_time=datetime.now()))
+    db.commit()
+
+
+def record_oper_log(db: Session, title: str, business_type: str, method: str,
+                    oper_url: str, oper_user_id: int | None, oper_name: str | None,
+                    oper_ip: str | None, status: int = 1, error_msg: str | None = None) -> None:
+    db.add(OperLog(title=title, business_type=business_type, method=method,
+                   oper_url=oper_url, oper_user_id=oper_user_id, oper_name=oper_name,
+                   oper_ip=oper_ip, status=status, error_msg=error_msg,
+                   oper_time=datetime.now()))
+    db.commit()
+
+
+def list_login_log(db: Session, query: LogQuery) -> dict:
+    q = db.query(LoginLog).filter(LoginLog.deleted == False)
+    if query.username:
+        q = q.filter(LoginLog.username.like(f"%{query.username}%"))
+    if query.status is not None:
+        q = q.filter(LoginLog.status == query.status)
+    if query.date_start:
+        q = q.filter(LoginLog.login_time >= query.date_start)
+    if query.date_end:
+        q = q.filter(LoginLog.login_time <= query.date_end)
+    total = q.count()
+    items = q.order_by(LoginLog.id.desc()).offset(
+        (query.pageNum - 1) * query.pageSize
+    ).limit(query.pageSize).all()
+    return {"list": items, "total": total, "pageNum": query.pageNum, "pageSize": query.pageSize}
+
+
+def clear_login_log(db: Session) -> None:
+    db.query(LoginLog).filter(LoginLog.deleted == False).delete(synchronize_session=False)
+    db.commit()
+
+
+def list_oper_log(db: Session, query: LogQuery) -> dict:
+    q = db.query(OperLog).filter(OperLog.deleted == False)
+    if query.username:
+        q = q.filter(OperLog.oper_name.like(f"%{query.username}%"))
+    if query.status is not None:
+        q = q.filter(OperLog.status == query.status)
+    if query.date_start:
+        q = q.filter(OperLog.oper_time >= query.date_start)
+    if query.date_end:
+        q = q.filter(OperLog.oper_time <= query.date_end)
+    total = q.count()
+    items = q.order_by(OperLog.id.desc()).offset(
+        (query.pageNum - 1) * query.pageSize
+    ).limit(query.pageSize).all()
+    return {"list": items, "total": total, "pageNum": query.pageNum, "pageSize": query.pageSize}
+
+
+def clear_oper_log(db: Session) -> None:
+    db.query(OperLog).filter(OperLog.deleted == False).delete(synchronize_session=False)
+    db.commit()
+
+
+# ============================================================
+# 通知公告
+# ============================================================
+
+def list_notices(db: Session, query: NoticeQuery) -> dict:
+    q = db.query(SysNotice).filter(SysNotice.deleted == False)
+    if query.notice_title:
+        q = q.filter(SysNotice.notice_title.like(f"%{query.notice_title}%"))
+    if query.notice_type:
+        q = q.filter(SysNotice.notice_type == query.notice_type)
+    if query.status is not None:
+        q = q.filter(SysNotice.status == query.status)
+    total = q.count()
+    items = q.order_by(SysNotice.id.desc()).offset(
+        (query.pageNum - 1) * query.pageSize
+    ).limit(query.pageSize).all()
+    return {"list": items, "total": total, "pageNum": query.pageNum, "pageSize": query.pageSize}
+
+
+def list_published_notices(db: Session) -> list:
+    """已发布的公告列表（首页/登录后展示用）"""
+    return db.query(SysNotice).filter(
+        SysNotice.deleted == False, SysNotice.status == 1
+    ).order_by(SysNotice.id.desc()).limit(10).all()
+
+
+def get_notice(db: Session, notice_id: int) -> SysNotice:
+    notice = db.query(SysNotice).filter(
+        SysNotice.id == notice_id, SysNotice.deleted == False
+    ).first()
+    if not notice:
+        raise BizException("公告不存在", code=40049)
+    return notice
+
+
+def add_notice(db: Session, body: NoticeIn, create_by: str) -> SysNotice:
+    notice = SysNotice(**body.model_dump(), create_by=create_by)
+    db.add(notice)
+    db.commit()
+    return notice
+
+
+def update_notice(db: Session, notice_id: int, body: NoticeUpdateIn) -> SysNotice:
+    notice = get_notice(db, notice_id)
+    for k, v in body.model_dump(exclude_unset=True).items():
+        setattr(notice, k, v)
+    db.commit()
+    return notice
+
+
+def delete_notice(db: Session, notice_id: int) -> None:
+    notice = get_notice(db, notice_id)
+    notice.deleted = True
+    db.commit()

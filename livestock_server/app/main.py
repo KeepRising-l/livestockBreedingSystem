@@ -7,9 +7,10 @@ FastAPI 应用入口
 或者直接运行本文件：
     python -m app.main
 """
+import json
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
@@ -21,9 +22,9 @@ from fastapi.exceptions import RequestValidationError
 from app.api.v1 import router as v1_router
 from app.database import Base, engine, SessionLocal
 from app.models import *  # noqa: F401,F403  引入所有模型，确保建表能发现
-from app.core.security import hash_password
+from app.core.security import hash_password, decode_access_token
 from app.models.user import User
-from app.modules.system.service import init_dict_data
+from app.modules.system.service import init_dict_data, record_oper_log
 from app.scheduler import start_scheduler, shutdown_scheduler
 
 
@@ -84,6 +85,66 @@ app = FastAPI(
 app.add_exception_handler(BizException, biz_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, global_exception_handler)
+
+
+@app.middleware("http")
+async def oper_log_middleware(request: Request, call_next):
+    """操作日志中间件：记录 POST/PUT/DELETE 写请求到 oper_log 表"""
+    method = request.method
+    path = request.url.path
+    if method not in ("POST", "PUT", "DELETE") or not path.startswith("/api/"):
+        return await call_next(request)
+
+    # 从 token 解析当前用户
+    user_id, user_name = None, None
+    auth = request.headers.get("authorization", "")
+    try:
+        parts = auth.split()
+        if len(parts) == 2 and parts[0].lower() == "bearer":
+            payload = decode_access_token(parts[1])
+            if payload and payload.get("sub"):
+                user_id = int(payload["sub"])
+    except Exception:
+        pass
+
+    response = await call_next(request)
+
+    # 从响应体判断业务成败（BizException 也返回 HTTP 200，需看 body 的 code）
+    status, error_msg = 1, None
+    try:
+        body = getattr(response, "body", None)
+        if body:
+            data = json.loads(body)
+            if data.get("code", 200) != 200:
+                status = 0
+                error_msg = str(data.get("msg", ""))[:200]
+    except Exception:
+        pass
+
+    if user_id is not None:
+        try:
+            db = SessionLocal()
+            try:
+                if user_name is None:
+                    u = db.query(User).filter(User.id == user_id).first()
+                    user_name = u.username if u else None
+                record_oper_log(
+                    db,
+                    title=None,
+                    business_type={"POST": "add", "PUT": "update", "DELETE": "delete"}.get(method, "other"),
+                    method=method,
+                    oper_url=path,
+                    oper_user_id=user_id,
+                    oper_name=user_name,
+                    oper_ip=request.client.host if request.client else None,
+                    status=status,
+                    error_msg=error_msg,
+                )
+            finally:
+                db.close()
+        except Exception:
+            pass
+    return response
 
 # CORS 跨域配置
 app.add_middleware(
