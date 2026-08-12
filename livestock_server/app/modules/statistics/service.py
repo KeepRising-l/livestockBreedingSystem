@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from app.models.user import User
 from app.modules.animal.model import Animal
 from app.modules.breeding.model import MatingRecord, BirthRecord, BreedingAlert
+from app.modules.pen.model import Pen
 from app.modules.feeding.model import FeedingRecord
 from app.modules.finance.model import SaleOrder, SaleOrderDetail, CostExpense
 from app.modules.finance.service import profit_summary
@@ -131,13 +132,49 @@ def dashboard_stats(db: Session, farm_id: int) -> dict:
             mod.farm_id == farm_id, mod.deleted == False, mod.audit_status == "待审核"
         ).count() for mod in AUDIT_MODELS
     )
-    pending_alert = db.query(BreedingAlert).filter(
+    pending_alerts = db.query(BreedingAlert).filter(
         BreedingAlert.farm_id == farm_id, BreedingAlert.deleted == False,
         BreedingAlert.status == "待处理",
-    ).count()
+    ).all()
+    pending_alert = len(pending_alerts)
     staff_count = db.query(User).filter(
         User.farm_id == farm_id, User.deleted == False
     ).count()
+
+    # ---- 今日待办（圈舍总数 + 临产/库存不足提醒） ----
+    pen_count = db.query(Pen).filter(
+        Pen.farm_id == farm_id, Pen.deleted == False
+    ).count()
+
+    stocks = db.query(MaterialStock).filter(
+        MaterialStock.farm_id == farm_id, MaterialStock.deleted == False,
+    ).all()
+    for s in stocks:
+        _refresh_stock_status(s)
+    shortage_stocks = [s for s in stocks if s.is_shortage == 1]
+    expiring_count = sum(1 for s in stocks if s.status == "即将过期")
+    expired_count = sum(1 for s in stocks if s.status == "已过期")
+
+    alert_by_type = _dist(pending_alerts, lambda a: a.alert_type)
+    recent_alerts = [
+        {
+            "id": a.id,
+            "alert_type": a.alert_type,
+            "animal_tag": a.animal_tag,
+            "alert_content": a.alert_content,
+            "alert_date": a.alert_date.isoformat() if a.alert_date else None,
+        }
+        for a in sorted(pending_alerts, key=lambda x: (x.alert_date or date.min, x.id), reverse=True)[:8]
+    ]
+    shortage_items = [
+        {
+            "id": s.id,
+            "material_name": s.material_name,
+            "material_type": s.material_type,
+            "quantity": float(s.quantity or 0),
+        }
+        for s in sorted(shortage_stocks, key=lambda x: float(x.quantity or 0))[:5]
+    ]
 
     # ---- 近 12 月入栏/出栏趋势 ----
     months = _last_n_month_keys()
@@ -167,6 +204,15 @@ def dashboard_stats(db: Session, farm_id: int) -> dict:
             "pending_audit": pending_audit,
             "pending_alert": pending_alert,
             "staff_count": staff_count,
+        },
+        "todos": {
+            "pen_count": pen_count,
+            "shortage_count": len(shortage_stocks),
+            "expiring_count": expiring_count,
+            "expired_count": expired_count,
+            "alert_by_type": alert_by_type,
+            "recent_alerts": recent_alerts,
+            "shortage_items": shortage_items,
         },
         "stock_trend": {
             "months": months,

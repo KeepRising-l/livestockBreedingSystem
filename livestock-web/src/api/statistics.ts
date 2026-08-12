@@ -11,6 +11,21 @@ export interface TrendData {
   values: number[]
 }
 
+export interface DashboardAlert {
+  id: number
+  alert_type: string
+  animal_tag: string
+  alert_content: string
+  alert_date: string | null
+}
+
+export interface DashboardShortage {
+  id: number
+  material_name: string
+  material_type: string
+  quantity: number
+}
+
 export interface DashboardStats {
   kpi: {
     today_stock: number
@@ -21,6 +36,15 @@ export interface DashboardStats {
     pending_audit: number
     pending_alert: number
     staff_count: number
+  }
+  todos: {
+    pen_count: number
+    shortage_count: number
+    expiring_count: number
+    expired_count: number
+    alert_by_type: NameValue[]
+    recent_alerts: DashboardAlert[]
+    shortage_items: DashboardShortage[]
   }
   stock_trend: {
     months: string[]
