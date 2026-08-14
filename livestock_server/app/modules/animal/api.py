@@ -10,7 +10,7 @@ from app.core.deps import get_current_user, resolve_farm_id
 from app.core.perms import require_perms
 from app.models.user import User
 from app.modules.animal.schema import (
-    AnimalIndividualIn, AnimalBatchIn, AnimalQuery, AnimalOut, BatchDeleteIn,
+    AnimalIndividualIn, AnimalBatchIn, AnimalImportIn, AnimalQuery, AnimalOut, BatchDeleteIn,
     AnimalHistoryOut, AnimalHistoryQuery, AnimalUpdateIn,
 )
 from app.modules.animal import service as animal_service
@@ -112,6 +112,18 @@ def individual_create(
     farm_id = resolve_farm_id(current_user, x_farm_id)
     a = animal_service.individual_create(db, farm_id, body)
     return Result.ok(data=AnimalOut.model_validate(a), msg="入栏成功")
+
+
+@router.post("/import", summary="Excel 批量导入（逐头，跳过坏行）")
+def import_animals(
+    body: AnimalImportIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    x_farm_id: int | None = Header(None, alias="X-Farm-Id"),
+):
+    farm_id = resolve_farm_id(current_user, x_farm_id)
+    result = animal_service.import_create(db, farm_id, body)
+    return Result.ok(data=result, msg=f"导入完成：成功 {result['success']} 头，失败 {result['failed']} 行")
 
 
 @router.post("/batch", summary="批量入栏")

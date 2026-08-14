@@ -7,7 +7,7 @@ import type { App, Component } from 'vue'
  */
 const ICON_NAMES = [
   'ArrowDown', 'ArrowLeft', 'Box', 'Connection', 'DataAnalysis', 'Delete',
-  'Expand', 'Files', 'FirstAidKit', 'Fold', 'Food', 'Grid', 'House',
+  'Download', 'Expand', 'Files', 'FirstAidKit', 'Fold', 'Food', 'Grid', 'House',
   'InfoFilled', 'Money', 'Notebook', 'OfficeBuilding', 'Plus', 'Refresh',
   'Sell', 'Setting', 'Stamp', 'Suitcase', 'TrendCharts', 'Upload', 'UserFilled',
 ]

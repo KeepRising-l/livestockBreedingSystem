@@ -1,6 +1,11 @@
 <template>
   <div>
-    <h2 class="page-title">数据大屏</h2>
+    <div class="page-header">
+      <h2 class="page-title">数据大屏</h2>
+      <el-button type="primary" plain @click="handleExport">
+        <el-icon><Download /></el-icon> 导出 Excel
+      </el-button>
+    </div>
 
     <!-- 今日待办 -->
     <el-card class="mb-16">
@@ -97,6 +102,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
@@ -106,6 +112,7 @@ import { getDashboardStatsApi, type DashboardStats } from '@/api/statistics'
 import { getPenListApi, type PenInfo } from '@/api/pen'
 import { getFarmInfoApi, type FarmInfo } from '@/api/farm'
 import { useAuthStore } from '@/stores/auth'
+import { exportToExcel, type ExportSheet } from '@/utils/excel'
 
 use([CanvasRenderer, BarChart, PieChart, GridComponent, TooltipComponent, LegendComponent])
 
@@ -247,6 +254,58 @@ const stageOption = computed(() => {
   }
 })
 
+function handleExport() {
+  const sheets: ExportSheet[] = []
+  if (kpiCards.value.length) {
+    sheets.push({ name: 'KPI概览', headers: ['指标', '数值'], rows: kpiCards.value.map((c) => [c.label, c.value]) })
+  }
+  if (todoCards.value.length) {
+    sheets.push({ name: '今日待办', headers: ['指标', '数值'], rows: todoCards.value.map((c) => [c.label, c.value]) })
+  }
+  if (todoItems.value.length) {
+    sheets.push({
+      name: '待办明细',
+      headers: ['类型', '内容', '关联'],
+      rows: todoItems.value.map((i) => [i.type, i.text, i.meta || '']),
+    })
+  }
+  const t = stats.value?.stock_trend
+  if (t?.months?.length) {
+    sheets.push({
+      name: '入栏出栏趋势',
+      headers: ['月份', '入栏', '出栏'],
+      rows: t.months.map((m, i) => [m, t.in_values[i] ?? 0, t.out_values[i] ?? 0]),
+    })
+  }
+  if (stats.value?.species_dist?.length) {
+    sheets.push({
+      name: '畜种分布',
+      headers: ['畜种', '数量'],
+      rows: stats.value.species_dist.map((d) => [d.name, d.value]),
+    })
+  }
+  if (stats.value?.stage_dist?.length) {
+    sheets.push({
+      name: '生长阶段分布',
+      headers: ['生长阶段', '数量'],
+      rows: stats.value.stage_dist.map((d) => [d.name, d.value]),
+    })
+  }
+  if (pens.value.length) {
+    sheets.push({
+      name: '圈舍存栏',
+      headers: ['圈舍编号', '容量', '存栏'],
+      rows: pens.value.map((p) => [p.pen_code, p.capacity, p.current_count]),
+    })
+  }
+  if (!sheets.length) {
+    ElMessage.warning('暂无数据可导出')
+    return
+  }
+  const today = new Date().toISOString().split('T')[0]
+  exportToExcel(`数据大屏报表_${today}.xlsx`, sheets)
+}
+
 onMounted(async () => {
   try {
     const fRes = await getFarmInfoApi()
@@ -266,7 +325,8 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #333; }
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.page-title { font-size: 20px; font-weight: 600; color: #333; }
 .mb-16 { margin-bottom: 16px; }
 .stat-card { text-align: center; padding: 8px; }
 .stat-value { font-size: 26px; font-weight: 700; color: #2E7D32; }

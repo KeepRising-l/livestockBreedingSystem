@@ -14,7 +14,10 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import BizException
 from app.core.utils import get_effective_farm_id
 from app.modules.animal.model import Animal, AnimalHistory
-from app.modules.animal.schema import AnimalIndividualIn, AnimalBatchIn, AnimalQuery, AnimalHistoryQuery, AnimalUpdateIn
+from app.modules.animal.schema import (
+    AnimalIndividualIn, AnimalBatchIn, AnimalImportIn, AnimalQuery,
+    AnimalHistoryQuery, AnimalUpdateIn,
+)
 from app.modules.pen.model import Pen
 from app.modules.pen.service import STAGE_TO_PEN_TYPE, find_available_pen
 
@@ -374,6 +377,59 @@ def batch_create(db: Session, farm_id: int, body: AnimalBatchIn) -> dict:
         "stage": stage,
         "pen_type": pen_type,
         "plan": plan,
+    }
+
+
+def import_create(db: Session, farm_id: int, body: AnimalImportIn) -> dict:
+    """
+    Excel 批量导入：逐行复用 individual_create（自动分配圈舍 + 生成耳标）
+    跳过坏行、部分成功：单行失败 rollback 后继续下一行
+    """
+    fid = get_effective_farm_id(db, farm_id)
+    results = []
+    for i, row in enumerate(body.rows, start=1):
+        # 基础字段校验（逐行跳过，不中断）
+        if not row.breed.strip():
+            results.append({"row": i, "ok": False, "ear_tag": None, "breed": row.breed, "gender": row.gender, "error": "品种不能为空"})
+            continue
+        if row.gender not in ("公", "母"):
+            results.append({"row": i, "ok": False, "ear_tag": None, "breed": row.breed, "gender": row.gender, "error": "性别须为 公/母"})
+            continue
+        try:
+            a = individual_create(db, fid, AnimalIndividualIn(
+                species=body.species,
+                breed=row.breed,
+                gender=row.gender,
+                birth_date=row.birth_date,
+                in_date=row.in_date,
+                source=row.source,
+                remark=row.remark,
+            ))
+            results.append({
+                "row": i,
+                "ok": True,
+                "ear_tag": a.ear_tag,
+                "breed": a.breed,
+                "gender": a.gender,
+                "error": None,
+            })
+        except BizException as e:
+            db.rollback()
+            results.append({
+                "row": i,
+                "ok": False,
+                "ear_tag": None,
+                "breed": row.breed,
+                "gender": row.gender,
+                "error": str(e),
+            })
+
+    success = sum(1 for r in results if r["ok"])
+    return {
+        "total": len(results),
+        "success": success,
+        "failed": len(results) - success,
+        "results": results,
     }
 
 

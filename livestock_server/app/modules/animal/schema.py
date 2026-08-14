@@ -60,6 +60,22 @@ class AnimalBatchIn(BaseModel):
     remark: Optional[str] = None
 
 
+class AnimalImportRow(BaseModel):
+    """Excel 导入单行（畜种由接口参数统一指定，沿用当前页面物种）"""
+    breed: str = Field(..., description="品种")
+    gender: str = Field(..., description="性别：公/母")
+    birth_date: Optional[date] = None
+    in_date: Optional[date] = None
+    source: Optional[str] = None
+    remark: Optional[str] = None
+
+
+class AnimalImportIn(BaseModel):
+    """Excel 批量导入请求"""
+    species: str = Field(..., description="畜种：牛/羊/猪")
+    rows: list[AnimalImportRow] = Field(..., min_length=1, description="导入行列表")
+
+
 class AnimalQuery(BaseModel):
     """档案列表查询"""
     ear_tag: Optional[str] = None

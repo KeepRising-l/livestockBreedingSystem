@@ -81,6 +81,10 @@ export function batchCreateAnimalApi(params: any) {
   return http.post('/animal/batch', params)
 }
 
+export function importAnimalsApi(params: { species: string; rows: any[] }) {
+  return http.post('/animal/import', params)
+}
+
 export function batchDeleteAnimalApi(ids: number[]) {
   return http.post('/animal/batch/batch-delete', { ids })
 }
