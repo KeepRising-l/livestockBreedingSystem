@@ -311,6 +311,19 @@ def health_stats(db: Session, farm_id: int) -> dict:
     disease_dist = _dist(approved_medicals, lambda m: m.disease_type)
     treatment_dist = _dist(approved_medicals, lambda m: m.treatment_status)
 
+    # ---- 免疫/发病/死亡指标（缺口2，口径：分母=当前存栏；免疫=本月审核通过防疫记录去重耳标；
+    #      发病=本月审核通过诊疗记录数；死亡=本月审核通过诊疗记录中治疗状态=死亡的去重耳标） ----
+    approved_vaccines_month = [v for v in approved_vaccines if v.vaccine_date >= m_start]
+    approved_medicals_month = [m for m in approved_medicals if m.medical_date >= m_start]
+    month_immunized_animals = len({v.ear_tag for v in approved_vaccines_month})
+    month_medical_approved = len(approved_medicals_month)
+    death_count = len({m.ear_tag for m in approved_medicals_month if m.treatment_status == "死亡"})
+    current_stock = _stock_q(db, farm_id).count()
+    base = current_stock or 0
+    immunization_coverage = round(month_immunized_animals / base * 100, 1) if base else 0
+    morbidity_rate = round(month_medical_approved / base * 100, 1) if base else 0
+    mortality_rate = round(death_count / base * 100, 1) if base else 0
+
     months = _last_n_month_keys()
     vaccine_rows = db.query(VaccineRecord).filter(
         VaccineRecord.farm_id == farm_id, VaccineRecord.deleted == False,
@@ -326,6 +339,12 @@ def health_stats(db: Session, farm_id: int) -> dict:
     return {
         "month_vaccine": month_vaccine,
         "month_medical": month_medical,
+        "month_immunized_animals": month_immunized_animals,
+        "immunization_coverage": immunization_coverage,
+        "month_medical_approved": month_medical_approved,
+        "death_count": death_count,
+        "morbidity_rate": morbidity_rate,
+        "mortality_rate": mortality_rate,
         "vaccine_dist": vaccine_dist,
         "disease_dist": disease_dist,
         "treatment_dist": treatment_dist,

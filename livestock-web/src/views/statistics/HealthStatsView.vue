@@ -3,10 +3,12 @@
     <h2 class="page-title">防疫诊疗统计</h2>
 
     <!-- KPI 卡片 -->
+    <el-alert type="info" :closable="false" show-icon class="mb-16"
+      title="统计口径：分母=当前存栏；已免疫=本月审核通过防疫记录去重耳标；发病=本月审核通过诊疗记录数；死亡=本月审核通过诊疗记录中治疗状态为死亡的去重耳标" />
     <el-row :gutter="16" class="mb-16">
       <el-col :span="6" v-for="card in kpiCards" :key="card.label">
         <el-card shadow="hover" class="stat-card">
-          <div class="stat-value" :style="{ color: card.color }">{{ card.value }}</div>
+          <div class="stat-value" :style="{ color: card.color }">{{ card.value }}{{ card.suffix || '' }}</div>
           <div class="stat-label">{{ card.label }}</div>
         </el-card>
       </el-col>
@@ -68,9 +70,13 @@ const kpiCards = computed(() => {
   if (!s) return []
   return [
     { label: '本月防疫记录', value: s.month_vaccine, color: '#1976D2' },
+    { label: '本月已免疫牛只', value: s.month_immunized_animals, color: '#2E7D32' },
+    { label: '免疫覆盖率', value: s.immunization_coverage, suffix: '%', color: '#6A1B9A' },
     { label: '本月诊疗记录', value: s.month_medical, color: '#E65100' },
-    { label: '已康复', value: (s.treatment_dist.find(i => i.name === '已康复')?.value ?? 0), color: '#2E7D32' },
-    { label: '治疗中', value: (s.treatment_dist.find(i => i.name === '治疗中')?.value ?? 0), color: '#F57F17' },
+    { label: '发病率', value: s.morbidity_rate, suffix: '%', color: '#F57F17' },
+    { label: '死亡率', value: s.mortality_rate, suffix: '%', color: '#C62828' },
+    { label: '死亡数量', value: s.death_count, color: '#B71C1C' },
+    { label: '治疗中', value: (s.treatment_dist.find(i => i.name === '治疗中')?.value ?? 0), color: '#455A64' },
   ]
 })
 

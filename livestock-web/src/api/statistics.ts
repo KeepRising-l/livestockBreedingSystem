@@ -71,6 +71,12 @@ export interface BreedingStats {
 export interface HealthStats {
   month_vaccine: number
   month_medical: number
+  month_immunized_animals: number
+  immunization_coverage: number
+  month_medical_approved: number
+  death_count: number
+  morbidity_rate: number
+  mortality_rate: number
   vaccine_dist: NameValue[]
   disease_dist: NameValue[]
   treatment_dist: NameValue[]
