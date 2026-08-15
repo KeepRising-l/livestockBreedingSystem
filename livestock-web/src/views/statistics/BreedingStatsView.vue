@@ -3,10 +3,12 @@
     <h2 class="page-title">存栏繁育统计</h2>
 
     <!-- KPI 卡片 -->
+    <el-alert type="info" :closable="false" show-icon class="mb-16"
+      title="统计口径：受孕率=累计已孕检定论配种中成功怀孕占比（待孕检不计入）；生产率=本月产犊数÷本月配种数；平均成活率=产犊记录成活率均值" />
     <el-row :gutter="16" class="mb-16">
       <el-col :span="6" v-for="card in kpiCards" :key="card.label">
         <el-card shadow="hover" class="stat-card">
-          <div class="stat-value" :style="{ color: card.color }">{{ card.value }}</div>
+          <div class="stat-value" :style="{ color: card.color }">{{ card.value }}{{ card.suffix || '' }}</div>
           <div class="stat-label">{{ card.label }}</div>
         </el-card>
       </el-col>
@@ -89,6 +91,10 @@ const kpiCards = computed(() => {
     { label: '本月配种', value: s.month_mating, color: '#1976D2' },
     { label: '本月产犊', value: s.month_birth, color: '#E65100' },
     { label: '妊娠母畜', value: s.pregnant_count, color: '#6A1B9A' },
+    { label: '受孕率', value: s.pregnancy_rate, suffix: '%', color: '#00897B' },
+    { label: '生产率', value: s.reproduction_rate, suffix: '%', color: '#F57F17' },
+    { label: '平均成活率', value: s.avg_survival_rate, suffix: '%', color: '#43A047' },
+    { label: '待处理预警', value: s.pending_alert_count, color: '#C62828' },
   ]
 })
 

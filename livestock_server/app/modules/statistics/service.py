@@ -15,6 +15,7 @@
 """
 from datetime import date, timedelta
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.user import User
@@ -253,6 +254,27 @@ def breeding_stats(db: Session, farm_id: int) -> dict:
         Animal.growth_stage == "妊娠",
     ).count()
 
+    # ---- 比率指标（缺口3：受孕率/生产率/平均成活率） ----
+    # 受孕率：已孕检定论的配种中，成功怀孕占比（待孕检不计入）
+    preg_ok = db.query(MatingRecord).filter(
+        MatingRecord.farm_id == farm_id, MatingRecord.deleted == False,
+        MatingRecord.status == "成功怀孕",
+    ).count()
+    preg_fail = db.query(MatingRecord).filter(
+        MatingRecord.farm_id == farm_id, MatingRecord.deleted == False,
+        MatingRecord.status == "配种失败",
+    ).count()
+    preg_total = preg_ok + preg_fail
+    pregnancy_rate = round(preg_ok / preg_total * 100, 1) if preg_total else 0
+    # 生产率：本月产犊数 / 本月配种数（无配种返回 0）
+    reproduction_rate = round(month_birth / month_mating * 100, 1) if month_mating else 0
+    # 平均成活率：产犊记录成活率均值
+    avg_survival = db.query(func.avg(BirthRecord.survival_rate)).filter(
+        BirthRecord.farm_id == farm_id, BirthRecord.deleted == False,
+        BirthRecord.survival_rate.isnot(None),
+    ).scalar()
+    avg_survival_rate = round(float(avg_survival), 1) if avg_survival is not None else 0
+
     alerts = db.query(BreedingAlert).filter(
         BreedingAlert.farm_id == farm_id, BreedingAlert.deleted == False,
         BreedingAlert.status == "待处理",
@@ -275,6 +297,10 @@ def breeding_stats(db: Session, farm_id: int) -> dict:
         "month_mating": month_mating,
         "month_birth": month_birth,
         "pregnant_count": pregnant_count,
+        "pregnancy_rate": pregnancy_rate,
+        "reproduction_rate": reproduction_rate,
+        "avg_survival_rate": avg_survival_rate,
+        "pending_alert_count": len(alerts),
         "alert_dist": alert_dist,
         "birth_trend": {"months": months, "values": [birth_map[m] for m in months]},
     }

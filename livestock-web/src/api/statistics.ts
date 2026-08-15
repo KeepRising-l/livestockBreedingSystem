@@ -64,6 +64,10 @@ export interface BreedingStats {
   month_mating: number
   month_birth: number
   pregnant_count: number
+  pregnancy_rate: number
+  reproduction_rate: number
+  avg_survival_rate: number
+  pending_alert_count: number
   alert_dist: NameValue[]
   birth_trend: TrendData
 }
