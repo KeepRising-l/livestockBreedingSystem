@@ -44,6 +44,47 @@ def _ensure_sys_role_perms(db):
         pass
 
 
+def _ensure_stock_unit_price(db):
+    """
+    缺口1 轻量迁移：为 material_stock / material_consume 补充 unit_price 列并回填存量数据
+    （v1.30 药品疫苗成本核算支持；MySQL 老库补列，新库由 create_all 自动建列）
+    """
+    from sqlalchemy import text
+    try:
+        # 1. 补列
+        for table, col, ddl in (
+            ("material_stock", "unit_price", "ALTER TABLE material_stock ADD COLUMN unit_price NUMERIC(10,2)"),
+            ("material_consume", "unit_price", "ALTER TABLE material_consume ADD COLUMN unit_price NUMERIC(10,2)"),
+        ):
+            rows = db.execute(text(
+                "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
+                f"WHERE TABLE_NAME='{table}' AND COLUMN_NAME='{col}'"
+            )).fetchall()
+            if not rows:
+                db.execute(text(ddl))
+                print(f"[init] 已为 {table} 表补充 {col} 列")
+
+        # 2. 存量回填：库存均价 = 最近一条审核通过进货的单价；领用快照 = 关联库存均价
+        db.execute(text(
+            "UPDATE material_stock s SET s.unit_price = ("
+            "  SELECT p.cost_price FROM material_purchase p "
+            "  WHERE p.farm_id = s.farm_id AND p.material_name = s.material_name "
+            "    AND p.audit_status = '通过' AND p.deleted = 0 "
+            "  ORDER BY p.purchase_date DESC, p.id DESC LIMIT 1"
+            ") WHERE s.unit_price IS NULL"
+        ))
+        db.execute(text(
+            "UPDATE material_consume c SET c.unit_price = ("
+            "  SELECT s.unit_price FROM material_stock s WHERE s.id = c.stock_id"
+            ") WHERE c.unit_price IS NULL AND c.stock_id IS NOT NULL"
+        ))
+        db.commit()
+        print("[init] material_stock / material_consume unit_price 存量回填完成")
+    except Exception as e:
+        print(f"[init] unit_price 迁移跳过（非 MySQL 或已迁移）：{e}")
+        db.rollback()
+
+
 def init_db():
     """
     初始化数据库：
@@ -58,6 +99,7 @@ def init_db():
     db = SessionLocal()
     try:
         _ensure_sys_role_perms(db)
+        _ensure_stock_unit_price(db)
         admin = db.query(User).filter(User.username == settings.SUPER_ADMIN_USERNAME).first()
         if not admin:
             admin = User(

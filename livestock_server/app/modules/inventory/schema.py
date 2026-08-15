@@ -16,6 +16,7 @@ class MaterialStockIn(BaseModel):
     specification: Optional[str] = Field(None, max_length=100, description="规格型号")
     quantity: float = Field(0, ge=0, description="初始库存数量")
     unit: str = Field("kg", max_length=10, description="单位：kg/瓶/盒/袋")
+    unit_price: Optional[float] = Field(None, ge=0, description="初始库存单价（元/单位，后续以进货均价为准）")
     warning_threshold: Optional[float] = Field(None, description="缺货预警阈值")
     production_date: Optional[date] = Field(None, description="生产日期")
     expiry_date: Optional[date] = Field(None, description="有效期")
@@ -27,6 +28,7 @@ class MaterialStockUpdateIn(BaseModel):
     """修改库存物资基本信息（数量不在此处改，走进货/领用）"""
     specification: Optional[str] = None
     unit: Optional[str] = None
+    unit_price: Optional[float] = Field(None, ge=0, description="库存均价（元/单位），留空不修改")
     warning_threshold: Optional[float] = None
     production_date: Optional[date] = None
     expiry_date: Optional[date] = None
@@ -42,6 +44,7 @@ class MaterialStockOut(BaseModel):
     specification: Optional[str] = None
     quantity: Optional[float] = None
     unit: Optional[str] = None
+    unit_price: Optional[float] = None
     warning_threshold: Optional[float] = None
     production_date: Optional[date] = None
     expiry_date: Optional[date] = None
@@ -162,6 +165,7 @@ class MaterialConsumeOut(BaseModel):
     batch_no: Optional[str] = None
     quantity: Optional[float] = None
     unit: Optional[str] = None
+    unit_price: Optional[float] = None
     consume_date: date
     related_module: Optional[str] = None
     related_id: Optional[int] = None

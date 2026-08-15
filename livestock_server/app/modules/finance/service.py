@@ -3,7 +3,11 @@
 
 核心：出栏销售成本分摊算法（对应 DBD 8.2 sp_calc_animal_total_cost）
 - feed_cost：耳标所在圈舍饲喂记录成本累加（入栏~出栏，仅审核通过）
-- medicine_cost：防疫/诊疗用药成本（当前物资表无单价，置 0）
+- medicine_cost：防疫/诊疗用药成本
+  - 精确匹配：领用记录 related_module IN (防疫/诊疗) 且 related_id 命中该耳标
+    审核通过的防疫/诊疗记录 → Σ 数量 × 单价快照
+  - 兜底均摊：related_id 为空（未精确关联）的药品领用总额，按出栏当天存栏
+    （在栏/待出栏/隔离/种用 + 本次出栏数）均摊
 - labor_cost：月均人工成本 × 饲养天数 / 30
 - total_cost = feed + medicine + labor + consumable(0)
 - sale_amount = weight × unit_price；profit = sale_amount - total_cost
@@ -19,6 +23,8 @@ from app.models.user import User
 from app.modules.animal.model import Animal
 from app.modules.pen.model import Pen
 from app.modules.feeding.model import FeedingRecord
+from app.modules.health.model import VaccineRecord, MedicalRecord
+from app.modules.inventory.model import MaterialConsume
 from app.modules.salary.model import SalaryConfig
 from app.modules.salary.service import DEFAULT_SALARY
 from app.modules.finance.model import SaleOrder, SaleOrderDetail, CostExpense, SalaryRecord
@@ -82,8 +88,10 @@ def sale_out(db: Session, farm_id: int, body: SaleOutIn, user_id: int) -> SaleOr
 
     total_weight = 0.0
     total_amount = 0.0
+    # 未精确关联的药品领用总额 + 均摊基数（出栏当天在栏 + 本次出栏数），按只均摊
+    unlinked_medicine_total, allot_base = _unlinked_medicine_allot(db, farm_id, len(animals))
     for animal, weight in animals:
-        costs = _calc_animal_cost(db, farm_id, animal, order_date)
+        costs = _calc_animal_cost(db, farm_id, animal, order_date, unlinked_medicine_total, allot_base)
         sale_amount = _round2(weight * body.unit_price)
         total_cost = costs["total_cost"]
         profit = _round2(sale_amount - total_cost)
@@ -117,7 +125,8 @@ def sale_out(db: Session, farm_id: int, body: SaleOutIn, user_id: int) -> SaleOr
     return order
 
 
-def _calc_animal_cost(db: Session, farm_id: int, animal: Animal, out_date: date) -> dict:
+def _calc_animal_cost(db: Session, farm_id: int, animal: Animal, out_date: date,
+                      unlinked_medicine_total: float = 0.0, allot_base: int = 0) -> dict:
     """计算单只饲养成本（DBD 8.2 sp_calc_animal_total_cost）"""
     in_date = animal.in_date or out_date
     raise_days = max((out_date - in_date).days, 0)
@@ -134,8 +143,38 @@ def _calc_animal_cost(db: Session, farm_id: int, animal: Animal, out_date: date)
             FeedingRecord.deleted == False,
         ).scalar() or 0
 
-    # 药品疫苗成本：当前物资表无单价，置 0（需物资单价支持后再精确分摊）
-    medicine_cost = 0
+    # 药品疫苗成本：
+    # 1) 精确匹配——领用记录关联到该耳标审核通过的防疫/诊疗记录 → Σ 数量 × 单价快照
+    medicine_cost = 0.0
+    related_ids = set()
+    vaccine_ids = [r.id for r in db.query(VaccineRecord.id).filter(
+        VaccineRecord.farm_id == farm_id,
+        VaccineRecord.ear_tag == animal.ear_tag,
+        VaccineRecord.audit_status == "通过",
+        VaccineRecord.deleted == False,
+    ).all()]
+    medical_ids = [r.id for r in db.query(MedicalRecord.id).filter(
+        MedicalRecord.farm_id == farm_id,
+        MedicalRecord.ear_tag == animal.ear_tag,
+        MedicalRecord.audit_status == "通过",
+        MedicalRecord.deleted == False,
+    ).all()]
+    related_ids.update(vaccine_ids)
+    related_ids.update(medical_ids)
+    if related_ids:
+        consume_rows = db.query(MaterialConsume).filter(
+            MaterialConsume.farm_id == farm_id,
+            MaterialConsume.related_module.in_(("防疫", "诊疗")),
+            MaterialConsume.related_id.in_(related_ids),
+            MaterialConsume.audit_status == "通过",
+            MaterialConsume.deleted == False,
+        ).all()
+        medicine_cost = sum(
+            float(c.quantity or 0) * float(c.unit_price or 0) for c in consume_rows
+        )
+    # 2) 兜底均摊——related_id 为空（未精确关联）的药品领用，按出栏当天存栏只数均摊
+    if allot_base > 0 and unlinked_medicine_total > 0:
+        medicine_cost += unlinked_medicine_total / allot_base
 
     # 分摊人工成本：月均人工 × 饲养天数 / 30
     labor_cost = _avg_monthly_labor(db, farm_id) * raise_days / 30
@@ -150,6 +189,33 @@ def _calc_animal_cost(db: Session, farm_id: int, animal: Animal, out_date: date)
         "consumable_cost": _round2(0),
         "total_cost": _round2(feed_cost + medicine_cost + labor_cost),
     }
+
+
+def _unlinked_medicine_allot(db: Session, farm_id: int, sale_count: int) -> tuple:
+    """
+    计算未精确关联的药品/疫苗领用成本均摊参数：
+    - 总额：物资类型为疫苗/兽药、related_id 为空（未精确关联到防疫/诊疗记录）、
+      审核通过的领用金额合计（精确匹配部分已按记录归属到对应耳标，不会重复）
+    - 基数：出栏当天仍在栏（在栏/待出栏/隔离/种用）的头数 + 本次出栏头数
+    返回 (总额, 基数)；基数为 0 时返回 (0, 0) 不摊。
+    """
+    total = db.query(func.coalesce(
+        func.sum(MaterialConsume.quantity * func.coalesce(MaterialConsume.unit_price, 0)), 0
+    )).filter(
+        MaterialConsume.farm_id == farm_id,
+        MaterialConsume.material_type.in_(("疫苗", "兽药")),
+        MaterialConsume.related_id.is_(None),
+        MaterialConsume.audit_status == "通过",
+        MaterialConsume.deleted == False,
+    ).scalar() or 0
+
+    base = db.query(Animal).filter(
+        Animal.farm_id == farm_id,
+        Animal.status.in_(("在栏", "待出栏", "隔离", "种用")),
+        Animal.deleted == False,
+    ).count() + sale_count
+    total = float(total)
+    return (round(total, 2), base) if base > 0 else (0.0, 0)
 
 
 def _avg_monthly_labor(db: Session, farm_id: int) -> float:

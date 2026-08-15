@@ -107,6 +107,7 @@ def add_stock(db: Session, farm_id: int, body: MaterialStockIn, user_id: int) ->
         specification=body.specification,
         quantity=body.quantity,
         unit=body.unit,
+        unit_price=body.unit_price,
         warning_threshold=body.warning_threshold,
         production_date=body.production_date,
         expiry_date=body.expiry_date,
@@ -125,6 +126,8 @@ def update_stock(db: Session, farm_id: int, stock_id: int, body: MaterialStockUp
         s.specification = body.specification
     if body.unit is not None:
         s.unit = body.unit
+    if body.unit_price is not None:
+        s.unit_price = body.unit_price
     if body.warning_threshold is not None:
         s.warning_threshold = body.warning_threshold
     if body.production_date is not None:
@@ -306,6 +309,7 @@ def audit_purchase(db: Session, farm_id: int, purchase_id: int, body: AuditActio
                 specification=None,
                 quantity=0,
                 unit=p.unit,
+                unit_price=float(p.cost_price or 0),  # 首次建档直接取进货单价
                 warning_threshold=None,
                 production_date=p.production_date,
                 expiry_date=p.expiry_date,
@@ -316,7 +320,12 @@ def audit_purchase(db: Session, farm_id: int, purchase_id: int, body: AuditActio
             db.flush()
 
         # 增加库存数量
-        stock.quantity = (float(stock.quantity or 0)) + float(p.quantity)
+        old_qty = float(stock.quantity or 0)
+        old_price = float(stock.unit_price or 0)
+        in_qty = float(p.quantity)
+        stock.quantity = old_qty + in_qty
+        # 移动加权平均价：新均价 = (旧库存量×旧均价 + 本次进货量×进货单价) / 新库存量
+        stock.unit_price = round((old_qty * old_price + in_qty * float(p.cost_price or 0)) / stock.quantity, 2)
         # 更新最新批次的有效期/生产日期
         if p.production_date:
             stock.production_date = p.production_date
@@ -395,6 +404,7 @@ def add_consume(db: Session, farm_id: int, body: MaterialConsumeIn, user_id: int
         batch_no=body.batch_no,
         quantity=body.quantity,
         unit=body.unit,
+        unit_price=float(stock.unit_price or 0),  # 单价快照，防止后续进货改价影响历史成本
         consume_date=body.consume_date,
         related_module=body.related_module,
         related_id=body.related_id,
@@ -480,6 +490,9 @@ def audit_consume(db: Session, farm_id: int, consume_id: int, body: AuditActionI
         stock.quantity = float(stock.quantity) - float(c.quantity)
         # 刷新状态
         _refresh_stock_status(stock)
+        # 补单价快照（老数据可能为空；库存均价可能已被后续进货更新，按当前均价补齐）
+        if c.unit_price is None:
+            c.unit_price = float(stock.unit_price or 0)
 
     db.commit()
     return c

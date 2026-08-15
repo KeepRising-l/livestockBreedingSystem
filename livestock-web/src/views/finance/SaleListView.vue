@@ -117,6 +117,7 @@
           <el-table-column prop="weight" label="重量kg" width="80" />
           <el-table-column prop="raise_days" label="饲养天数" width="80" />
           <el-table-column prop="feed_cost" label="饲料成本" width="90" />
+          <el-table-column prop="medicine_cost" label="药品成本" width="90" />
           <el-table-column prop="labor_cost" label="人工成本" width="90" />
           <el-table-column prop="total_cost" label="总成本" width="90" />
           <el-table-column prop="sale_amount" label="销售额" width="90" />

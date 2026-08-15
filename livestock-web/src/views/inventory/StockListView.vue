@@ -56,6 +56,12 @@
             </span>
           </template>
         </el-table-column>
+        <el-table-column label="当前均价" width="100">
+          <template #default="{ row }">
+            <span v-if="row.unit_price !== null && row.unit_price !== undefined">{{ row.unit_price }} 元/{{ row.unit }}</span>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column label="预警阈值" width="100">
           <template #default="{ row }">{{ row.warning_threshold ?? '-' }}</template>
         </el-table-column>
@@ -123,6 +129,10 @@
             <el-option v-for="u in MATERIAL_UNIT_OPTIONS" :key="u" :label="u" :value="u" />
           </el-select>
         </el-form-item>
+        <el-form-item label="单价">
+          <el-input-number v-model="form.unit_price" :min="0" :precision="2" style="width: 100%" />
+          <div style="color:#999;font-size:12px;">元/单位；进货审核通过后按移动加权平均自动更新，用于出栏药品成本核算</div>
+        </el-form-item>
         <el-form-item label="预警阈值">
           <el-input-number v-model="form.warning_threshold" :min="0" :precision="2" style="width: 100%" />
           <div style="color:#999;font-size:12px;">库存低于此值时标记为缺货</div>
@@ -177,6 +187,7 @@ const form = reactive({
   specification: '',
   quantity: 0,
   unit: 'kg',
+  unit_price: undefined as number | undefined,
   warning_threshold: undefined as number | undefined,
   production_date: '',
   expiry_date: '',
@@ -223,7 +234,8 @@ function handleAdd() {
   editId.value = 0
   Object.assign(form, {
     material_type: '饲料', material_name: '', specification: '',
-    quantity: 0, unit: 'kg', warning_threshold: undefined,
+    quantity: 0, unit: 'kg', unit_price: undefined,
+    warning_threshold: undefined,
     production_date: '', expiry_date: '', remark: '',
   })
   dialogVisible.value = true
@@ -238,6 +250,7 @@ function handleEdit(row: MaterialStock) {
     specification: row.specification || '',
     quantity: 0,
     unit: row.unit || 'kg',
+    unit_price: row.unit_price ?? undefined,
     warning_threshold: row.warning_threshold ?? undefined,
     production_date: row.production_date || '',
     expiry_date: row.expiry_date || '',

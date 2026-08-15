@@ -10,6 +10,7 @@ export interface MaterialStock {
   specification: string | null
   quantity: number | null
   unit: string | null
+  unit_price: number | null
   warning_threshold: number | null
   production_date: string | null
   expiry_date: string | null
@@ -50,6 +51,7 @@ export interface MaterialConsume {
   batch_no: string | null
   quantity: number | null
   unit: string | null
+  unit_price: number | null
   consume_date: string
   related_module: string | null
   related_id: number | null
