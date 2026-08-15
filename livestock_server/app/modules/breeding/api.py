@@ -26,7 +26,7 @@ from app.modules.breeding.schema import (
     MatingIn, MatingUpdateIn, PregnancyCheckIn, MatingOut, MatingQuery,
     BirthIn, BirthUpdateIn, BirthOut, BirthQuery,
     AlertIn, AlertHandleIn, AlertOut, AlertQuery,
-    PhysioStatusIn,
+    PhysioStatusIn, MaleHealthIn,
 )
 
 router = APIRouter(dependencies=[Depends(require_perms("breeding"))])
@@ -74,7 +74,7 @@ def set_female_physio_status(
     return Result.ok(data=AnimalOut.model_validate(female), msg="生理状态已更新")
 
 
-@router.get("/males", summary="可繁育公畜列表")
+@router.get("/males", summary="可繁育公畜列表（含健康档案/使用年限/配种统计）")
 def list_males(
     species: str = Query(None),
     keyword: str = Query(None),
@@ -84,9 +84,20 @@ def list_males(
     current_user: User = Depends(get_current_user),
 ):
     farm_id = _require_farm(current_user)
-    result = breeding_service.list_breed_animals(db, farm_id, "公", species, keyword, pageNum, pageSize)
-    result["list"] = [AnimalOut.model_validate(a) for a in result["list"]]
+    result = breeding_service.list_males(db, farm_id, species, keyword, pageNum, pageSize)
     return Result.ok(data=result)
+
+
+@router.put("/males/{male_tag}/health", summary="编辑公畜健康档案（健康/亚健康/淘汰 + 启用日期）")
+def update_male_health(
+    male_tag: str,
+    body: MaleHealthIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    farm_id = _require_farm(current_user)
+    male = breeding_service.update_male_health(db, farm_id, male_tag, body)
+    return Result.ok(data=male, msg="公畜健康档案已更新")
 
 
 # ============================================================

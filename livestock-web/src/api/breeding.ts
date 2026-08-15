@@ -13,6 +13,21 @@ export interface BreedAnimal {
   status: string
 }
 
+/** 公畜档案（缺口4：健康档案 + 配种统计） */
+export interface BreedMale extends BreedAnimal {
+  birth_date: string | null
+  in_date: string | null
+  pen_id: number | null
+  health_status: string
+  use_start_date: string | null
+  semen_quality: string | null
+  health_remark: string | null
+  service_years: number | null
+  mating_count: number
+  success_count: number
+  last_mating_date: string | null
+}
+
 export interface MatingRecord {
   id: number
   farm_id: number
@@ -71,6 +86,16 @@ export function getBreedFemalesApi(params: { species?: string; keyword?: string;
 
 export function getBreedMalesApi(params: { species?: string; keyword?: string; pageNum?: number; pageSize?: number }) {
   return http.get('/breeding/males', { params })
+}
+
+/** 编辑公畜健康档案（健康/亚健康/淘汰 + 启用日期/精液质量/备注） */
+export function updateMaleHealthApi(earTag: string, params: {
+  health_status?: string
+  use_start_date?: string
+  semen_quality?: string
+  remark?: string
+}) {
+  return http.put(`/breeding/males/${earTag}/health`, params)
 }
 
 /** 设置母畜生理状态（发情/妊娠/泌乳/休情/淘汰） */

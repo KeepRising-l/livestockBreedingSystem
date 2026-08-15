@@ -17,11 +17,12 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import BizException
 from app.modules.animal.model import Animal
 from app.modules.animal.service import GESTATION_DAYS, PHYSIO_STATUSES
-from app.modules.breeding.model import MatingRecord, BirthRecord, BreedingAlert
+from app.modules.breeding.model import MatingRecord, BirthRecord, BreedingAlert, BreedingMale
 from app.modules.breeding.schema import (
     MatingIn, MatingUpdateIn, PregnancyCheckIn, MatingQuery,
     BirthIn, BirthUpdateIn, BirthQuery,
     AlertIn, AlertHandleIn, AlertQuery,
+    MaleHealthIn,
 )
 
 SPECIES = {"牛", "羊", "猪"}
@@ -31,6 +32,7 @@ PREGNANCY_RESULTS = {"阳性", "阴性"}
 BREEDING_STAGES = ("繁育期", "妊娠")
 ALERT_TYPES = {"孕检", "临产", "未发情"}
 ALERT_HANDLE_STATUSES = {"已处理", "已忽略"}
+MALE_HEALTH_STATUSES = {"健康", "亚健康", "淘汰"}
 
 
 # ============================================================
@@ -73,6 +75,90 @@ def _get_animal(db: Session, farm_id: int, ear_tag: str) -> Animal:
     if not animal:
         raise BizException(f"档案中不存在耳标 {ear_tag}", code=40101)
     return animal
+
+
+# ============================================================
+# 公畜健康档案（缺口4：健康状态/使用年限/配种记录）
+# ============================================================
+
+def list_males(
+    db: Session, farm_id: int,
+    species: Optional[str] = None, keyword: Optional[str] = None,
+    page_num: int = 1, page_size: int = 10,
+) -> dict:
+    """公畜列表（档案基础信息 + 健康档案 + 配种统计）"""
+    result = list_breed_animals(db, farm_id, "公", species, keyword, page_num=page_num, page_size=page_size)
+    items = []
+    for a in result["list"]:
+        profile = db.query(BreedingMale).filter(
+            BreedingMale.farm_id == farm_id, BreedingMale.ear_tag == a.ear_tag
+        ).first()
+        items.append(_male_out(db, a, profile))
+    result["list"] = items
+    return result
+
+
+def update_male_health(db: Session, farm_id: int, ear_tag: str, body: MaleHealthIn) -> dict:
+    """编辑公畜健康档案（不存在则创建；已淘汰公畜从可繁育列表剔除由档案状态控制）"""
+    male = _get_animal(db, farm_id, ear_tag)
+    if male.gender != "公":
+        raise BizException(f"耳标 {ear_tag} 不是公畜，不能维护健康档案", code=40136)
+    if body.health_status is not None and body.health_status not in MALE_HEALTH_STATUSES:
+        raise BizException(f"健康状态只能是：{'/'.join(sorted(MALE_HEALTH_STATUSES))}", code=40137)
+
+    profile = db.query(BreedingMale).filter(
+        BreedingMale.farm_id == farm_id, BreedingMale.ear_tag == ear_tag
+    ).first()
+    if not profile:
+        profile = BreedingMale(farm_id=farm_id, ear_tag=ear_tag)
+        db.add(profile)
+    data = body.model_dump(exclude_unset=True)
+    for k, v in data.items():
+        setattr(profile, k, v)
+    # 未填启用日期时，用出生日期兜底
+    if profile.use_start_date is None and male.birth_date:
+        profile.use_start_date = male.birth_date
+    db.commit()
+    return _male_out(db, male, profile)
+
+
+def _male_out(db: Session, a: Animal, profile: Optional[BreedingMale]) -> dict:
+    """组装公畜返回：档案基础字段 + 健康档案 + 配种统计"""
+    d = {
+        "id": a.id, "farm_id": a.farm_id, "ear_tag": a.ear_tag, "species": a.species,
+        "breed": a.breed, "pen_id": a.pen_id, "gender": a.gender,
+        "birth_date": a.birth_date, "in_date": a.in_date, "out_date": a.out_date,
+        "growth_stage": a.growth_stage, "physio_status": a.physio_status,
+        "status": a.status, "source": a.source, "remark": a.remark,
+        "create_time": a.create_time,
+    }
+    # 健康档案（无则默认健康，使用年限起点回退出生日期）
+    health_status = profile.health_status if profile else "健康"
+    use_start = profile.use_start_date if profile else a.birth_date
+    d["health_status"] = health_status
+    d["use_start_date"] = use_start
+    d["semen_quality"] = profile.semen_quality if profile else None
+    d["health_remark"] = profile.remark if profile else None
+    # 使用年限（年，保留 1 位）
+    if use_start:
+        d["service_years"] = round((date.today() - use_start).days / 365.25, 1)
+    else:
+        d["service_years"] = None
+    # 配种统计
+    d["mating_count"] = db.query(MatingRecord).filter(
+        MatingRecord.farm_id == a.farm_id, MatingRecord.male_tag == a.ear_tag,
+        MatingRecord.deleted == False,
+    ).count()
+    d["success_count"] = db.query(MatingRecord).filter(
+        MatingRecord.farm_id == a.farm_id, MatingRecord.male_tag == a.ear_tag,
+        MatingRecord.status == "成功怀孕", MatingRecord.deleted == False,
+    ).count()
+    last = db.query(MatingRecord.mating_date).filter(
+        MatingRecord.farm_id == a.farm_id, MatingRecord.male_tag == a.ear_tag,
+        MatingRecord.deleted == False,
+    ).order_by(MatingRecord.mating_date.desc()).first()
+    d["last_mating_date"] = last[0] if last else None
+    return d
 
 
 def set_female_physio_status(db: Session, farm_id: int, female_tag: str, physio_status: str) -> Animal:

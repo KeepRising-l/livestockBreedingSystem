@@ -18,6 +18,16 @@ class PhysioStatusIn(BaseModel):
     physio_status: str = Field(..., max_length=20, description="生理状态：发情/妊娠/泌乳/休情/淘汰")
 
 
+# ============ 公畜健康档案 ============
+
+class MaleHealthIn(BaseModel):
+    """编辑公畜健康档案（缺口4）"""
+    health_status: Optional[str] = Field(None, max_length=10, description="健康状态：健康/亚健康/淘汰")
+    use_start_date: Optional[date] = Field(None, description="启用日期（使用年限计算起点）")
+    semen_quality: Optional[str] = Field(None, max_length=255, description="精液质量备注")
+    remark: Optional[str] = Field(None, max_length=255, description="备注")
+
+
 # ============ 配种记录 ============
 
 class MatingIn(BaseModel):

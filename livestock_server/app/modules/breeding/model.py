@@ -1,14 +1,15 @@
 """
 繁育 ORM 模型
 
-三张表：
+四张表：
 - MatingRecord：配种记录（母畜 + 公畜，expected_birth_date = 配种日期 + 妊娠期）
 - BirthRecord：产犊记录（关联配种记录，记录产仔数与仔畜耳标）
 - BreedingAlert：繁育预警（孕检/临产/未发情，P2 定时任务自动生成，此处仅存储与处理）
+- BreedingMale：公畜健康档案（缺口4：健康状态/启用日期/精液质量，配种次数动态统计）
 """
 from datetime import date, datetime
 
-from sqlalchemy import Column, String, Integer, Date, DateTime
+from sqlalchemy import Column, String, Integer, Date, DateTime, UniqueConstraint
 
 from app.models.base import BasePO
 
@@ -72,3 +73,18 @@ class BreedingAlert(BasePO):
     handle_time = Column(DateTime, nullable=True, comment="处理时间")
     handle_by = Column(Integer, nullable=True, comment="处理人ID")
     handle_remark = Column(String(255), nullable=True, comment="处理备注")
+
+
+class BreedingMale(BasePO):
+    """公畜健康档案表（缺口4：功能描述「公牛档案：健康状态、使用年限、配种记录」）"""
+    __tablename__ = "breeding_male"
+    __table_args__ = (
+        UniqueConstraint("farm_id", "ear_tag", name="uk_farm_male_tag"),
+    )
+
+    farm_id = Column(Integer, nullable=False, index=True, comment="养殖场ID")
+    ear_tag = Column(String(10), nullable=False, index=True, comment="耳标")
+    health_status = Column(String(10), nullable=False, default="健康", comment="健康状态：健康/亚健康/淘汰")
+    use_start_date = Column(Date, nullable=True, comment="启用日期（使用年限计算起点）")
+    semen_quality = Column(String(255), nullable=True, comment="精液质量备注")
+    remark = Column(String(255), nullable=True, comment="备注")
