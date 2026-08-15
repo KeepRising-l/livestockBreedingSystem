@@ -11,7 +11,7 @@ from app.core.perms import require_perms
 from app.models.user import User
 from app.modules.animal.schema import (
     AnimalIndividualIn, AnimalBatchIn, AnimalImportIn, AnimalQuery, AnimalOut, BatchDeleteIn,
-    AnimalHistoryOut, AnimalHistoryQuery, AnimalUpdateIn,
+    AnimalHistoryOut, AnimalHistoryQuery, AnimalUpdateIn, TransferIn,
 )
 from app.modules.animal import service as animal_service
 
@@ -100,6 +100,31 @@ def update_animal(
     farm_id = resolve_farm_id(current_user, x_farm_id)
     a = animal_service.update_animal(db, farm_id, animal_id, body)
     return Result.ok(data=AnimalOut.model_validate(a), msg="修改成功")
+
+
+@router.post("/transfer/{animal_id}", summary="转入其他圈舍（自动重生耳标，缺口5）")
+def transfer_animal(
+    animal_id: int,
+    body: TransferIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    x_farm_id: int | None = Header(None, alias="X-Farm-Id"),
+):
+    farm_id = resolve_farm_id(current_user, x_farm_id)
+    a = animal_service.transfer_animal(db, farm_id, animal_id, body.target_pen_id)
+    return Result.ok(data=AnimalOut.model_validate(a), msg="转舍成功，耳标已更新")
+
+
+@router.post("/remove-from-pen/{animal_id}", summary="移出圈舍（缺口5）")
+def remove_from_pen(
+    animal_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    x_farm_id: int | None = Header(None, alias="X-Farm-Id"),
+):
+    farm_id = resolve_farm_id(current_user, x_farm_id)
+    a = animal_service.remove_from_pen(db, farm_id, animal_id)
+    return Result.ok(data=AnimalOut.model_validate(a), msg="已移出圈舍")
 
 
 @router.post("/individual", summary="个体入栏")

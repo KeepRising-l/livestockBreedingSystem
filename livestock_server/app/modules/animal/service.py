@@ -245,6 +245,25 @@ def update_animal(db: Session, farm_id: int, animal_id: int, body: AnimalUpdateI
     return a
 
 
+def transfer_animal(db: Session, farm_id: int, animal_id: int, target_pen_id: int) -> Animal:
+    """转入其他圈舍（缺口5）：复用 update_animal 圈舍变更逻辑（容量校验/存栏联动/耳标重生）"""
+    return update_animal(db, farm_id, animal_id, AnimalUpdateIn(pen_id=target_pen_id))
+
+
+def remove_from_pen(db: Session, farm_id: int, animal_id: int) -> Animal:
+    """移出圈舍（缺口5）：旧圈舍存栏-1，pen_id 置空；耳标保留，重新入舍时自动重生"""
+    fid = get_effective_farm_id(db, farm_id)
+    a = get_animal(db, fid, animal_id)
+    if not a.pen_id:
+        raise BizException("该档案当前不在圈舍中", code=40033)
+    old_pen = db.query(Pen).filter(Pen.id == a.pen_id).first()
+    if old_pen and (old_pen.current_count or 0) > 0:
+        old_pen.current_count -= 1
+    a.pen_id = None
+    db.commit()
+    return a
+
+
 def individual_create(db: Session, farm_id: int, body: AnimalIndividualIn) -> Animal:
     fid = get_effective_farm_id(db, farm_id)
     """个体入栏"""

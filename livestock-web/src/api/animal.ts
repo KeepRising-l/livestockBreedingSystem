@@ -93,6 +93,16 @@ export function updateAnimalApi(id: number, params: any) {
   return http.put(`/animal/update/${id}`, params)
 }
 
+/** 转入其他圈舍（自动重生耳标，缺口5） */
+export function transferAnimalApi(id: number, target_pen_id: number) {
+  return http.post(`/animal/transfer/${id}`, { target_pen_id })
+}
+
+/** 移出圈舍（缺口5） */
+export function removeFromPenApi(id: number) {
+  return http.post(`/animal/remove-from-pen/${id}`)
+}
+
 export function generateEarTagApi(pen_id: number) {
   return http.get('/animal/ear-tag/generate', { params: { pen_id } })
 }

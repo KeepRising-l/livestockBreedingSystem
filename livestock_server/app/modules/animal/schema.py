@@ -110,6 +110,11 @@ class AnimalUpdateIn(BaseModel):
     remark: Optional[str] = Field(None, description="备注")
 
 
+class TransferIn(BaseModel):
+    """转入其他圈舍（缺口5）"""
+    target_pen_id: int = Field(..., description="目标圈舍ID")
+
+
 class AnimalHistoryOut(BaseModel):
     """档案历史记录返回"""
     id: int

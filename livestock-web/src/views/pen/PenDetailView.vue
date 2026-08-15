@@ -44,24 +44,51 @@
           </template>
         </el-table-column>
         <el-table-column prop="in_date" label="入栏日期" width="120" />
-        <el-table-column label="操作" width="100">
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="router.push(`/${species}/animal/${row.id}`)">详情</el-button>
+            <el-button link type="warning" size="small" @click="openTransfer(row as AnimalInfo)">转舍</el-button>
+            <el-popconfirm title="移出后该畜禽不再属于任何圈舍，重新入舍时耳标将自动更新，确定移出？"
+              @confirm="handleRemove(row as AnimalInfo)">
+              <template #reference>
+                <el-button link type="danger" size="small">移出</el-button>
+              </template>
+            </el-popconfirm>
           </template>
         </el-table-column>
       </el-table>
       <el-empty v-if="!animalLoading && animals.length === 0" description="暂无畜禽" />
     </el-card>
+
+    <!-- 转入其他圈舍弹窗 -->
+    <el-dialog v-model="transferVisible" :title="`转入其他圈舍 - ${transferAnimal?.ear_tag}`" width="480px">
+      <el-form label-width="90px">
+        <el-form-item label="目标圈舍">
+          <el-select v-model="targetPenId" placeholder="请选择目标圈舍" filterable style="width: 100%">
+            <el-option v-for="p in penOptions" :key="p.id" :value="p.id"
+              :label="`${p.pen_code}（${PEN_TYPE_MAP[p.pen_type] || p.pen_type} ${p.current_count}/${p.capacity}）`"
+              :disabled="p.current_count >= p.capacity" />
+          </el-select>
+        </el-form-item>
+        <el-alert type="info" :closable="false" show-icon
+          title="转入后耳标将按新圈舍重新生成（前两位=圈舍号，后两位=序号）" />
+      </el-form>
+      <template #footer>
+        <el-button @click="transferVisible = false">取消</el-button>
+        <el-button type="primary" :loading="transferSaving" @click="handleTransfer">确认转入</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getPenDetailApi, getPenAnimalsApi, type PenInfo } from '@/api/pen'
+import { getPenDetailApi, getPenAnimalsApi, getPenListApi, type PenInfo } from '@/api/pen'
+import { transferAnimalApi, removeFromPenApi, type AnimalInfo } from '@/api/animal'
 import { PEN_TYPE_MAP } from '@/utils/constants'
 import { useSpecies } from '@/composables/useSpecies'
-import type { AnimalInfo } from '@/api/animal'
+import { ElMessage } from 'element-plus'
 
 const route = useRoute()
 const router = useRouter()
@@ -71,6 +98,12 @@ const pen = ref<PenInfo | null>(null)
 const animals = ref<AnimalInfo[]>([])
 const loading = ref(false)
 const animalLoading = ref(false)
+
+const transferVisible = ref(false)
+const transferSaving = ref(false)
+const transferAnimal = ref<AnimalInfo | null>(null)
+const targetPenId = ref<number>()
+const penOptions = ref<PenInfo[]>([])
 
 async function loadPen() {
   loading.value = true
@@ -96,6 +129,53 @@ async function loadAnimals() {
     // handled
   } finally {
     animalLoading.value = false
+  }
+}
+
+async function loadPenOptions() {
+  try {
+    const res = await getPenListApi({ pageNum: 1, pageSize: 100 } as any)
+    const data = res.data as any
+    penOptions.value = (data.list || []).filter((p: PenInfo) => p.id !== pen.value?.id)
+  } catch {
+    // handled
+  }
+}
+
+function openTransfer(row: AnimalInfo) {
+  transferAnimal.value = row
+  targetPenId.value = undefined
+  transferVisible.value = true
+  loadPenOptions()
+}
+
+async function handleTransfer() {
+  if (!transferAnimal.value || !targetPenId.value) {
+    ElMessage.warning('请选择目标圈舍')
+    return
+  }
+  transferSaving.value = true
+  try {
+    await transferAnimalApi(transferAnimal.value.id, targetPenId.value)
+    ElMessage.success('转舍成功，耳标已更新')
+    transferVisible.value = false
+    loadPen()
+    loadAnimals()
+  } catch {
+    // handled
+  } finally {
+    transferSaving.value = false
+  }
+}
+
+async function handleRemove(row: AnimalInfo) {
+  try {
+    await removeFromPenApi(row.id)
+    ElMessage.success(`耳标 ${row.ear_tag} 已移出圈舍`)
+    loadPen()
+    loadAnimals()
+  } catch {
+    // handled
   }
 }
 
