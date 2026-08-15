@@ -409,3 +409,47 @@ def delete_notice(notice_id: int, db: Session = Depends(get_db),
     _require_admin(current_user)
     system_service.delete_notice(db, notice_id)
     return Result.ok(msg="删除成功")
+
+
+# ========== 站内消息（缺口6：审核结果通知，所有登录用户查自己的） ==========
+
+@router.get("/message/list", summary="我的站内消息（分页）")
+def list_messages(
+    is_read: int = Query(None, description="已读筛选：0未读 1已读"),
+    pageNum: int = Query(1, ge=1),
+    pageSize: int = Query(10, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = system_service.list_messages(db, current_user.id, is_read, pageNum, pageSize)
+    items = [
+        {
+            "id": m.id, "farm_id": m.farm_id, "receiver_user_id": m.receiver_user_id,
+            "message_type": m.message_type, "title": m.title, "content": m.content,
+            "related_module": m.related_module, "related_id": m.related_id,
+            "is_read": m.is_read, "read_time": m.read_time, "create_time": m.create_time,
+        } for m in result["list"]
+    ]
+    result["list"] = items
+    return Result.ok(data=result)
+
+
+@router.get("/message/unread-count", summary="未读消息数（顶栏角标）")
+def unread_message_count(db: Session = Depends(get_db),
+                         current_user: User = Depends(get_current_user)):
+    count = system_service.unread_message_count(db, current_user.id)
+    return Result.ok(data={"count": count})
+
+
+@router.put("/message/read/{message_id}", summary="标记单条消息已读")
+def mark_message_read(message_id: int, db: Session = Depends(get_db),
+                      current_user: User = Depends(get_current_user)):
+    msg = system_service.mark_message_read(db, current_user.id, message_id)
+    return Result.ok(msg="已标记已读")
+
+
+@router.put("/message/read-all", summary="全部标记已读")
+def mark_all_messages_read(db: Session = Depends(get_db),
+                           current_user: User = Depends(get_current_user)):
+    count = system_service.mark_all_messages_read(db, current_user.id)
+    return Result.ok(data={"count": count}, msg=f"已标记 {count} 条消息为已读")

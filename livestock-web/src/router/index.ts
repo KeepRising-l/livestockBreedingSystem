@@ -23,6 +23,8 @@ const routes: RouteRecordRaw[] = [
       { path: 'dashboard', name: 'Dashboard', component: () => import('@/views/dashboard/DashboardView.vue'), meta: { title: '数据大屏' } },
       // 个人中心（跨畜种，所有角色可访问，auth:false 跳过员工权限模块校验）
       { path: 'profile', name: 'Profile', component: () => import('@/views/profile/ProfileView.vue'), meta: { title: '个人中心', auth: false } },
+      // 我的消息（缺口6：审核结果通知，所有角色可访问）
+      { path: 'messages', name: 'Messages', component: () => import('@/views/system/MessageListView.vue'), meta: { title: '我的消息', auth: false } },
       // 养殖场（跨畜种）
       { path: 'farm/info', name: 'FarmInfo', component: () => import('@/views/farm/FarmInfoView.vue'), meta: { title: '养殖场信息' } },
       { path: 'farm/employees', name: 'FarmEmployees', component: () => import('@/views/farm/EmployeeListView.vue'), meta: { title: '员工管理' } },

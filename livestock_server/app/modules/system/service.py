@@ -12,7 +12,7 @@ from app.models.farm import Farm
 from app.models.user import User
 from app.modules.system.model import (
     DictType, DictData,
-    SysRole, SysMenu, SysUserRole, OperLog, LoginLog, SysNotice,
+    SysRole, SysMenu, SysUserRole, OperLog, LoginLog, SysNotice, SysMessage,
 )
 from app.modules.system.schema import (
     DictTypeIn, DictTypeUpdateIn, DictTypeQuery,
@@ -794,3 +794,75 @@ def get_user_menus(db: Session, user_id: int) -> list[dict]:
         else:
             roots.append(node)
     return [r for r in roots if not r["perms"] or r["perms"] in perms]
+
+
+# ============================================================
+# 站内消息（缺口6：审核结果通知闭环）
+# ============================================================
+
+def send_message(db: Session, farm_id: int, receiver_user_id: int, title: str,
+                 content: str = None, related_module: str = None, related_id: int = None,
+                 message_type: str = "审核结果") -> SysMessage:
+    """发送站内消息（不 commit，由调用方统一提交）"""
+    msg = SysMessage(
+        farm_id=farm_id, receiver_user_id=receiver_user_id,
+        message_type=message_type, title=title, content=content,
+        related_module=related_module, related_id=related_id, is_read=0,
+    )
+    db.add(msg)
+    return msg
+
+
+def list_messages(db: Session, user_id: int, is_read: int = None,
+                  page_num: int = 1, page_size: int = 10) -> dict:
+    """我的站内消息列表（仅本人，分页 + 已读筛选）"""
+    q = db.query(SysMessage).filter(
+        SysMessage.receiver_user_id == user_id, SysMessage.deleted == False
+    )
+    if is_read is not None:
+        q = q.filter(SysMessage.is_read == is_read)
+    total = q.count()
+    items = q.order_by(SysMessage.create_time.desc(), SysMessage.id.desc()).offset(
+        (page_num - 1) * page_size
+    ).limit(page_size).all()
+    return {"list": items, "total": total, "pageNum": page_num, "pageSize": page_size}
+
+
+def unread_message_count(db: Session, user_id: int) -> int:
+    """未读消息数（顶栏角标）"""
+    return db.query(SysMessage).filter(
+        SysMessage.receiver_user_id == user_id,
+        SysMessage.is_read == 0,
+        SysMessage.deleted == False,
+    ).count()
+
+
+def mark_message_read(db: Session, user_id: int, message_id: int) -> SysMessage:
+    """标记单条已读（只能操作自己的消息）"""
+    msg = db.query(SysMessage).filter(
+        SysMessage.id == message_id,
+        SysMessage.receiver_user_id == user_id,
+        SysMessage.deleted == False,
+    ).first()
+    if not msg:
+        raise BizException("消息不存在", code=40310)
+    if msg.is_read == 0:
+        msg.is_read = 1
+        msg.read_time = datetime.now()
+    db.commit()
+    return msg
+
+
+def mark_all_messages_read(db: Session, user_id: int) -> int:
+    """全部标记已读，返回更新条数"""
+    rows = db.query(SysMessage).filter(
+        SysMessage.receiver_user_id == user_id,
+        SysMessage.is_read == 0,
+        SysMessage.deleted == False,
+    ).all()
+    now = datetime.now()
+    for m in rows:
+        m.is_read = 1
+        m.read_time = now
+    db.commit()
+    return len(rows)

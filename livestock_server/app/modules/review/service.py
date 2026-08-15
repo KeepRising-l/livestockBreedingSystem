@@ -19,6 +19,7 @@ from app.modules.inventory.model import MaterialPurchase, MaterialConsume
 from app.modules.inventory import service as inventory_service
 from app.modules.health.model import VaccineRecord, MedicalRecord
 from app.modules.health import service as health_service
+from app.modules.system import service as system_service
 from app.modules.review.schema import ReviewItemOut, ReviewAuditIn
 
 # 业务类型配置：类型 → (中文名, 列表查询函数, 单条摘要函数, 操作人字段)
@@ -180,12 +181,50 @@ def counts(db: Session, farm_id: int) -> dict:
     return result
 
 
+def _get_submitter_id(db: Session, farm_id: int, business_type: str, business_id: int) -> Optional[int]:
+    """查询待审核记录的提交人（缺口6：审核后通知提交人）"""
+    if business_type == "feeding":
+        rec = db.query(FeedingRecord).filter(
+            FeedingRecord.id == business_id, FeedingRecord.farm_id == farm_id,
+            FeedingRecord.deleted == False,
+        ).first()
+        return rec.operator_user_id if rec else None
+    if business_type == "purchase":
+        rec = db.query(MaterialPurchase).filter(
+            MaterialPurchase.id == business_id, MaterialPurchase.farm_id == farm_id,
+            MaterialPurchase.deleted == False,
+        ).first()
+        return rec.operator_user_id if rec else None
+    if business_type == "consume":
+        rec = db.query(MaterialConsume).filter(
+            MaterialConsume.id == business_id, MaterialConsume.farm_id == farm_id,
+            MaterialConsume.deleted == False,
+        ).first()
+        return rec.consumer_user_id if rec else None
+    if business_type == "vaccine":
+        rec = db.query(VaccineRecord).filter(
+            VaccineRecord.id == business_id, VaccineRecord.farm_id == farm_id,
+            VaccineRecord.deleted == False,
+        ).first()
+        return rec.operator_user_id if rec else None
+    if business_type == "medical":
+        rec = db.query(MedicalRecord).filter(
+            MedicalRecord.id == business_id, MedicalRecord.farm_id == farm_id,
+            MedicalRecord.deleted == False,
+        ).first()
+        return rec.operator_user_id if rec else None
+    return None
+
+
 def audit(db: Session, farm_id: int, body: ReviewAuditIn, user_id: int) -> dict:
-    """统一审核：转发到各模块的审核逻辑"""
+    """统一审核：转发到各模块的审核逻辑 + 审核结果通知提交人（缺口6）"""
     if body.audit_status not in ("通过", "驳回"):
         raise BizException("审核状态只能填：通过 / 驳回", code=40202)
     if body.business_type not in BUSINESS_NAMES:
         raise BizException("不支持的业务类型", code=40201)
+
+    # 先取提交人（各模块 audit 会 commit，需在转发前查询）
+    submitter_id = _get_submitter_id(db, farm_id, body.business_type, body.business_id)
 
     remark = body.remark
     if body.business_type in ("feeding", "purchase", "consume"):
@@ -199,6 +238,22 @@ def audit(db: Session, farm_id: int, body: ReviewAuditIn, user_id: int) -> dict:
     else:
         record_type = body.business_type  # vaccine / medical
         health_service.audit_record(db, farm_id, record_type, body.business_id, body.audit_status)
+
+    # 审核结果通知（缺口6）：通知提交人（自己审核自己的记录不发给自己）
+    if submitter_id and submitter_id != user_id:
+        business_name = BUSINESS_NAMES.get(body.business_type, "业务")
+        result_word = "通过" if body.audit_status == "通过" else "被驳回"
+        content = f"您提交的{business_name}（ID:{body.business_id}）已{result_word}"
+        if remark:
+            content += f"，审核备注：{remark}"
+        system_service.send_message(
+            db, farm_id, submitter_id,
+            title=f"{business_name}审核{result_word}",
+            content=content,
+            related_module=body.business_type,
+            related_id=body.business_id,
+        )
+        db.commit()
 
     return {
         "business_type": body.business_type,

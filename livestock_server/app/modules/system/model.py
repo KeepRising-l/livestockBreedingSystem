@@ -105,3 +105,18 @@ class SysNotice(BasePO):
     notice_content = Column(Text, nullable=True, comment="公告内容")
     status = Column(Integer, nullable=False, default=1, comment="状态：1发布 0停用")
     create_by = Column(String(50), nullable=True, comment="创建人")
+
+
+class SysMessage(BasePO):
+    """站内消息表（缺口6：审核结果通知闭环，员工提交→审核通过/驳回→通知提交人）"""
+    __tablename__ = "sys_message"
+
+    farm_id = Column(Integer, nullable=False, index=True, comment="养殖场ID")
+    receiver_user_id = Column(Integer, nullable=False, index=True, comment="接收人用户ID")
+    message_type = Column(String(20), nullable=False, default="审核结果", comment="消息类型：审核结果/系统提醒")
+    title = Column(String(100), nullable=False, comment="消息标题")
+    content = Column(String(500), nullable=True, comment="消息内容")
+    related_module = Column(String(20), nullable=True, comment="关联业务模块：feeding/purchase/consume/vaccine/medical")
+    related_id = Column(Integer, nullable=True, comment="关联业务记录ID")
+    is_read = Column(Integer, nullable=False, default=0, comment="是否已读：0未读 1已读")
+    read_time = Column(DateTime, nullable=True, comment="已读时间")

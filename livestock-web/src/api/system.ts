@@ -253,3 +253,35 @@ export function updateNoticeApi(id: number, data: Partial<NoticeInfo>) {
 export function deleteNoticeApi(id: number) {
   return http.delete(`/system/notice/${id}`)
 }
+
+// ============ 站内消息（缺口6：审核结果通知） ============
+
+export interface SysMessage {
+  id: number
+  farm_id: number
+  receiver_user_id: number
+  message_type: string
+  title: string
+  content: string | null
+  related_module: string | null
+  related_id: number | null
+  is_read: number
+  read_time: string | null
+  create_time: string | null
+}
+
+export function getMessageListApi(params: { is_read?: number; pageNum?: number; pageSize?: number }) {
+  return http.get<any, { data: { list: SysMessage[]; total: number } }>('/system/message/list', { params })
+}
+
+export function getUnreadMessageCountApi() {
+  return http.get<any, { data: { count: number } }>('/system/message/unread-count')
+}
+
+export function markMessageReadApi(id: number) {
+  return http.put(`/system/message/read/${id}`)
+}
+
+export function markAllMessagesReadApi() {
+  return http.put('/system/message/read-all')
+}

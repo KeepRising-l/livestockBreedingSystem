@@ -27,6 +27,13 @@
         />
       </el-select>
 
+      <!-- 消息铃铛（缺口6：审核结果通知，未读角标） -->
+      <el-badge :value="unreadCount" :hidden="unreadCount === 0" :max="99" class="msg-badge">
+        <el-icon class="msg-bell" :size="20" @click="router.push('/messages')">
+          <Bell />
+        </el-icon>
+      </el-badge>
+
       <el-dropdown trigger="click" @command="handleCommand">
         <span class="user-info">
           <el-icon><UserFilled /></el-icon>
@@ -45,8 +52,10 @@
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { getUnreadMessageCountApi } from '@/api/system'
 import { ElMessage } from 'element-plus'
 
 defineProps<{ isCollapse: boolean }>()
@@ -55,6 +64,17 @@ const emit = defineEmits<{ toggle: [] }>()
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+
+const unreadCount = ref(0)
+
+async function loadUnread() {
+  try {
+    const res = await getUnreadMessageCountApi()
+    unreadCount.value = res.data.count || 0
+  } catch {
+    // 未登录或接口异常时忽略
+  }
+}
 
 function handleFarmSwitch(farmId: number) {
   const farmName = authStore.farmList.find(f => f.id === farmId)?.farm_name || ''
@@ -73,6 +93,10 @@ function handleCommand(cmd: string) {
     router.push('/profile')
   }
 }
+
+onMounted(loadUnread)
+// 路由变化时刷新未读数（如从消息页标记已读返回、审核操作后跳转）
+watch(() => route.fullPath, loadUnread)
 </script>
 
 <style scoped lang="scss">
@@ -94,6 +118,14 @@ function handleCommand(cmd: string) {
 .header-right {
   display: flex;
   align-items: center;
+}
+.msg-badge {
+  margin-right: 18px;
+}
+.msg-bell {
+  cursor: pointer;
+  color: #606266;
+  &:hover { color: var(--el-color-primary); }
 }
 .farm-selector {
   margin-right: 16px;
