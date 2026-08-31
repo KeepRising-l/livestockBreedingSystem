@@ -99,8 +99,9 @@ npm run dev
 
 ```bash
 cd livestock_server
-python seed_data.py        # 基础测试数据
-python init_sunshine_data.py  # 阳光牧场完整演示数据
+python seed_data.py            # 基础测试数据（会清空动物档案后重建）
+python init_sunshine_data.py   # 阳光牧场完整演示数据（清库重建）
+python seed_missing_tables.py  # 仅补齐空表：公畜档案/公告/站内消息/档案历史（不清库，可重复执行）
 ```
 
 ## 👤 默认账号
