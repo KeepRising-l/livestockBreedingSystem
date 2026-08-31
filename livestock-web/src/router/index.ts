@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { getToken } from '@/utils/token'
 import { useAuthStore } from '@/stores/auth'
 
@@ -99,6 +100,23 @@ const routes: RouteRecordRaw[] = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+})
+
+// 路由懒加载组件失败（dev server 重启/代码更新后，旧标签页点菜单会静默无反应）：
+// 给出可见提示并自动刷新一次，避免"点击没反应"的困惑；加时间戳防止刷新循环
+router.onError((error, to) => {
+  const msg = String((error as Error)?.message || error)
+  if (/import|fetch|chunk|dynamically|network/i.test(msg)) {
+    const KEY = 'route_reload_at'
+    const last = Number(sessionStorage.getItem(KEY) || 0)
+    if (Date.now() - last > 5000) {
+      sessionStorage.setItem(KEY, String(Date.now()))
+      ElMessage.error('页面资源已更新，正在刷新…')
+      setTimeout(() => window.location.assign(to?.fullPath || '/'), 600)
+    } else {
+      ElMessage.error('页面加载失败，请手动刷新（F5）；仍无效请重启 dev server')
+    }
+  }
 })
 
 router.beforeEach(async (to, _from, next) => {
