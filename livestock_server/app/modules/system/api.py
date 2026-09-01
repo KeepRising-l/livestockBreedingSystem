@@ -367,15 +367,15 @@ def list_notices(
     _require_admin(current_user)
     q = NoticeQuery(notice_title=notice_title, notice_type=notice_type,
                     status=status, pageNum=pageNum, pageSize=pageSize)
-    result = system_service.list_notices(db, q)
+    result = system_service.list_notices(db, q, current_user.farm_id)
     result["list"] = [NoticeOut.model_validate(n) for n in result["list"]]
     return Result.ok(data=result)
 
 
-@router.get("/notice/published", summary="已发布公告（所有登录用户）")
+@router.get("/notice/published", summary="已发布公告（所有登录用户，按当前养殖场隔离）")
 def list_published_notices(db: Session = Depends(get_db),
                            current_user: User = Depends(get_current_user)):
-    items = system_service.list_published_notices(db)
+    items = system_service.list_published_notices(db, current_user.farm_id)
     return Result.ok(data=[NoticeOut.model_validate(n) for n in items])
 
 
@@ -383,7 +383,7 @@ def list_published_notices(db: Session = Depends(get_db),
 def get_notice(notice_id: int, db: Session = Depends(get_db),
                current_user: User = Depends(get_current_user)):
     _require_admin(current_user)
-    n = system_service.get_notice(db, notice_id)
+    n = system_service.get_notice(db, notice_id, current_user.farm_id)
     return Result.ok(data=NoticeOut.model_validate(n))
 
 
@@ -391,7 +391,7 @@ def get_notice(notice_id: int, db: Session = Depends(get_db),
 def add_notice(body: NoticeIn, db: Session = Depends(get_db),
                current_user: User = Depends(get_current_user)):
     _require_admin(current_user)
-    n = system_service.add_notice(db, body, current_user.username)
+    n = system_service.add_notice(db, body, current_user.username, current_user.farm_id)
     return Result.ok(data=NoticeOut.model_validate(n), msg="发布成功")
 
 
@@ -399,7 +399,7 @@ def add_notice(body: NoticeIn, db: Session = Depends(get_db),
 def update_notice(notice_id: int, body: NoticeUpdateIn, db: Session = Depends(get_db),
                   current_user: User = Depends(get_current_user)):
     _require_admin(current_user)
-    n = system_service.update_notice(db, notice_id, body)
+    n = system_service.update_notice(db, notice_id, body, current_user.farm_id)
     return Result.ok(data=NoticeOut.model_validate(n), msg="修改成功")
 
 
@@ -407,7 +407,7 @@ def update_notice(notice_id: int, body: NoticeUpdateIn, db: Session = Depends(ge
 def delete_notice(notice_id: int, db: Session = Depends(get_db),
                   current_user: User = Depends(get_current_user)):
     _require_admin(current_user)
-    system_service.delete_notice(db, notice_id)
+    system_service.delete_notice(db, notice_id, current_user.farm_id)
     return Result.ok(msg="删除成功")
 
 

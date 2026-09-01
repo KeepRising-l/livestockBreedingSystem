@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { getToken, setToken, removeToken, setSelectedFarmId, removeSelectedFarmId, getSelectedFarmId } from '@/utils/token'
 import { loginApi, getPermissionsApi, type LoginParams } from '@/api/auth'
 import { getFarmInfoApi, getFarmListApi, type FarmInfo, type FarmListItem } from '@/api/farm'
+import { getUnreadMessageCountApi } from '@/api/system'
 import { SPECIES_ROUTE_MAP } from '@/utils/constants'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -19,6 +20,19 @@ export const useAuthStore = defineStore('auth', () => {
   const perms = ref<string[]>([])
   // 多畜种（P3-6 A）：当前选中的畜种（路由值 cattle/sheep/pig）
   const currentSpecies = ref<string>('cattle')
+
+  // 站内消息未读数（多页面共享，避免「标记已读后顶栏角标不刷新」）
+  const unreadCount = ref(0)
+
+  /** 拉取当前用户未读站内消息数（顶栏角标 / 列表页共用） */
+  async function refreshUnreadCount() {
+    try {
+      const res = await getUnreadMessageCountApi()
+      unreadCount.value = res.data.count || 0
+    } catch {
+      // 未登录或接口异常时忽略
+    }
+  }
 
   /** 养殖场可选畜种中文数组（来自 farm.livestock_types，逗号分隔） */
   const livestockTypes = computed<string[]>(() =>
@@ -73,6 +87,8 @@ export const useAuthStore = defineStore('auth', () => {
       selectedFarmId.value = farmId.value
     }
     await loadFarmInfo()
+    // 登录后刷新未读站内消息数（顶栏角标）
+    await refreshUnreadCount()
   }
 
   async function loadFarmInfo() {
@@ -121,6 +137,7 @@ export const useAuthStore = defineStore('auth', () => {
     roleKeys.value = []
     perms.value = []
     currentSpecies.value = 'cattle'
+    unreadCount.value = 0
     removeToken()
     removeSelectedFarmId()
   }
@@ -130,6 +147,7 @@ export const useAuthStore = defineStore('auth', () => {
   // 拉取当前用户 RBAC 权限（角色/权限模块）
   if (token.value) {
     loadPermissions()
+    refreshUnreadCount()
   }
   // 超管初始化：恢复 selectedFarmId + 加载农场列表
   if (userType.value === 1) {
@@ -156,6 +174,7 @@ export const useAuthStore = defineStore('auth', () => {
     token, userType, farmId, post, farmInfo,
     selectedFarmId, farmList, roleKeys, perms,
     currentSpecies, livestockTypes, speciesRouteList,
+    unreadCount, refreshUnreadCount,
     login, logout, loadFarmInfo, loadFarmList, switchFarm, parseToken,
     loadPermissions, hasPerm, setSpecies,
   }

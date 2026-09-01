@@ -52,10 +52,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { getUnreadMessageCountApi } from '@/api/system'
 import { ElMessage } from 'element-plus'
 
 defineProps<{ isCollapse: boolean }>()
@@ -65,16 +64,8 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
-const unreadCount = ref(0)
-
-async function loadUnread() {
-  try {
-    const res = await getUnreadMessageCountApi()
-    unreadCount.value = res.data.count || 0
-  } catch {
-    // 未登录或接口异常时忽略
-  }
-}
+// 未读数统一从 auth store 读取（标记已读后同步刷新角标，无需手动刷新页面）
+const unreadCount = computed(() => authStore.unreadCount)
 
 function handleFarmSwitch(farmId: number) {
   const farmName = authStore.farmList.find(f => f.id === farmId)?.farm_name || ''
@@ -94,9 +85,9 @@ function handleCommand(cmd: string) {
   }
 }
 
-onMounted(loadUnread)
+onMounted(authStore.refreshUnreadCount)
 // 路由变化时刷新未读数（如从消息页标记已读返回、审核操作后跳转）
-watch(() => route.fullPath, loadUnread)
+watch(() => route.fullPath, authStore.refreshUnreadCount)
 </script>
 
 <style scoped lang="scss">

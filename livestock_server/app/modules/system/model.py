@@ -100,6 +100,7 @@ class SysNotice(BasePO):
     """通知公告表"""
     __tablename__ = "sys_notice"
 
+    farm_id = Column(Integer, nullable=False, index=True, default=0, comment="所属养殖场ID（多租户隔离）")
     notice_title = Column(String(100), nullable=False, comment="公告标题")
     notice_type = Column(String(10), nullable=False, default="公告", comment="类型：公告/通知")
     notice_content = Column(Text, nullable=True, comment="公告内容")

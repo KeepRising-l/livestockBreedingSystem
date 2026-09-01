@@ -85,6 +85,32 @@ def _ensure_stock_unit_price(db):
         db.rollback()
 
 
+def _ensure_sys_notice_farm_id(db):
+    """
+    v1.30 通知公告多租户隔离：为老库 sys_notice 补充 farm_id 列（新库由 create_all 自动建列）。
+    存量公告归类到首个养殖场，避免成为孤儿数据不可见。
+    """
+    from sqlalchemy import text
+    try:
+        rows = db.execute(text(
+            "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
+            "WHERE TABLE_NAME='sys_notice' AND COLUMN_NAME='farm_id'"
+        )).fetchall()
+        if not rows:
+            db.execute(text("ALTER TABLE sys_notice ADD COLUMN farm_id INT"))
+            # 回填：把存量公告归到第一个养殖场
+            db.execute(text(
+                "UPDATE sys_notice SET farm_id = "
+                "(SELECT id FROM farm ORDER BY id LIMIT 1) WHERE farm_id IS NULL"
+            ))
+            db.execute(text("ALTER TABLE sys_notice MODIFY farm_id INT NOT NULL DEFAULT 0"))
+            db.commit()
+            print("[init] 已为 sys_notice 表补充 farm_id 列并回填存量公告")
+    except Exception as e:
+        print(f"[init] sys_notice.farm_id 迁移跳过（非 MySQL 或已迁移）：{e}")
+        db.rollback()
+
+
 def init_db():
     """
     初始化数据库：
@@ -100,6 +126,7 @@ def init_db():
     try:
         _ensure_sys_role_perms(db)
         _ensure_stock_unit_price(db)
+        _ensure_sys_notice_farm_id(db)
         admin = db.query(User).filter(User.username == settings.SUPER_ADMIN_USERNAME).first()
         if not admin:
             admin = User(
@@ -190,9 +217,22 @@ async def oper_log_middleware(request: Request, call_next):
                 if user_name is None:
                     u = db.query(User).filter(User.id == user_id).first()
                     user_name = u.username if u else None
+                # 中文操作名：遍历 app.routes 按 path+method 匹配到具体路由，取它的 OpenAPI summary
+                # （如「个体入栏」「审核疫苗记录」）；匹配不到则退回原始 URL，让日志可读且不丢信息。
+                # 写接口低频，逐条匹配 100+ 路由开销可忽略。
+                oper_title = path
+                try:
+                    from starlette.routing import Match
+                    scope = request.scope
+                    for rr in app.routes:
+                        if getattr(rr, "summary", None) and rr.matches(scope)[0] == Match.FULL:
+                            oper_title = rr.summary
+                            break
+                except Exception:
+                    pass
                 record_oper_log(
                     db,
-                    title=None,
+                    title=oper_title,
                     business_type={"POST": "add", "PUT": "update", "DELETE": "delete"}.get(method, "other"),
                     method=method,
                     oper_url=path,
@@ -209,9 +249,12 @@ async def oper_log_middleware(request: Request, call_next):
     return response
 
 # CORS 跨域配置
+# allow_origin_regex：开发期本机 Vite dev server 端口不固定（5173 被占用会自动递增到 5174 等），
+# 用正则放行 localhost/127.0.0.1 任意端口，避免第二实例（用户端）预检请求 400
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

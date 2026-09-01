@@ -273,6 +273,7 @@ class LogQuery(BaseModel):
 # ========== 通知公告 ==========
 class NoticeOut(BaseModel):
     id: int
+    farm_id: Optional[int] = None
     notice_title: str
     notice_type: str
     notice_content: Optional[str] = None

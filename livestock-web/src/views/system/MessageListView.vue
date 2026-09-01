@@ -69,6 +69,7 @@ import {
   getMessageListApi, getUnreadMessageCountApi,
   markMessageReadApi, markAllMessagesReadApi, type SysMessage,
 } from '@/api/system'
+import { useAuthStore } from '@/stores/auth'
 import { ElMessage } from 'element-plus'
 
 const list = ref<SysMessage[]>([])
@@ -77,6 +78,7 @@ const pageNum = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const unreadCount = ref(0)
+const authStore = useAuthStore()
 
 const query = reactive<{ is_read: number | undefined }>({ is_read: undefined })
 
@@ -114,6 +116,7 @@ async function loadUnread() {
   try {
     const res = await getUnreadMessageCountApi()
     unreadCount.value = res.data.count || 0
+    authStore.unreadCount = unreadCount.value
   } catch {
     // handled
   }

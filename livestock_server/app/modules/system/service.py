@@ -581,8 +581,8 @@ def clear_oper_log(db: Session) -> None:
 # 通知公告
 # ============================================================
 
-def list_notices(db: Session, query: NoticeQuery) -> dict:
-    q = db.query(SysNotice).filter(SysNotice.deleted == False)
+def list_notices(db: Session, query: NoticeQuery, farm_id: int) -> dict:
+    q = db.query(SysNotice).filter(SysNotice.deleted == False, SysNotice.farm_id == farm_id)
     if query.notice_title:
         q = q.filter(SysNotice.notice_title.like(f"%{query.notice_title}%"))
     if query.notice_type:
@@ -596,39 +596,39 @@ def list_notices(db: Session, query: NoticeQuery) -> dict:
     return {"list": items, "total": total, "pageNum": query.pageNum, "pageSize": query.pageSize}
 
 
-def list_published_notices(db: Session) -> list:
-    """已发布的公告列表（首页/登录后展示用）"""
+def list_published_notices(db: Session, farm_id: int) -> list:
+    """已发布的公告列表（首页/登录后展示用），按养殖场隔离"""
     return db.query(SysNotice).filter(
-        SysNotice.deleted == False, SysNotice.status == 1
+        SysNotice.deleted == False, SysNotice.status == 1, SysNotice.farm_id == farm_id
     ).order_by(SysNotice.id.desc()).limit(10).all()
 
 
-def get_notice(db: Session, notice_id: int) -> SysNotice:
+def get_notice(db: Session, notice_id: int, farm_id: int) -> SysNotice:
     notice = db.query(SysNotice).filter(
-        SysNotice.id == notice_id, SysNotice.deleted == False
+        SysNotice.id == notice_id, SysNotice.deleted == False, SysNotice.farm_id == farm_id
     ).first()
     if not notice:
         raise BizException("公告不存在", code=40049)
     return notice
 
 
-def _notify_announcement(db: Session, notice_id: int, title: str, content: str) -> None:
-    """公告发布 → 给所有启用的业务用户（场主+员工，非超管）推送一条站内消息。
+def _notify_announcement(db: Session, notice_id: int, farm_id: int, title: str, content: str) -> None:
+    """公告发布 → 给指定养殖场内所有启用的业务用户（场主+员工，非超管）推送一条站内消息。
 
     复用站内消息闭环（sys.message），让普通员工不必专门去查公告就能在铃铛里收到。
-    content 字段 VARCHAR(500)，超长截断。farm_id 为空者跳过（超级管理员已被排除）。
+    content 字段 VARCHAR(500)，超长截断。
     """
     receivers = db.query(User).filter(
         User.deleted == False,
         User.status == 1,
         User.user_type != 1,
-        User.farm_id != None,
+        User.farm_id == farm_id,
     ).all()
     clipped = content if content is None else content[:500]
     for u in receivers:
         send_message(
             db,
-            farm_id=u.farm_id,
+            farm_id=farm_id,
             receiver_user_id=u.id,
             title=f"【公告】{title}",
             content=clipped,
@@ -638,30 +638,30 @@ def _notify_announcement(db: Session, notice_id: int, title: str, content: str) 
         )
 
 
-def add_notice(db: Session, body: NoticeIn, create_by: str) -> SysNotice:
-    notice = SysNotice(**body.model_dump(), create_by=create_by)
+def add_notice(db: Session, body: NoticeIn, create_by: str, farm_id: int) -> SysNotice:
+    notice = SysNotice(**body.model_dump(), create_by=create_by, farm_id=farm_id)
     db.add(notice)
     db.flush()
     if notice.status == 1:
-        _notify_announcement(db, notice.id, notice.notice_title, notice.notice_content)
+        _notify_announcement(db, notice.id, farm_id, notice.notice_title, notice.notice_content)
     db.commit()
     return notice
 
 
-def update_notice(db: Session, notice_id: int, body: NoticeUpdateIn) -> SysNotice:
-    notice = get_notice(db, notice_id)
+def update_notice(db: Session, notice_id: int, body: NoticeUpdateIn, farm_id: int) -> SysNotice:
+    notice = get_notice(db, notice_id, farm_id)
     was_published = notice.status == 1
     for k, v in body.model_dump(exclude_unset=True).items():
         setattr(notice, k, v)
     # 由停用 → 发布时才再推一次，避免重复编辑同一条反复通知
     if not was_published and notice.status == 1:
-        _notify_announcement(db, notice.id, notice.notice_title, notice.notice_content)
+        _notify_announcement(db, notice.id, farm_id, notice.notice_title, notice.notice_content)
     db.commit()
     return notice
 
 
-def delete_notice(db: Session, notice_id: int) -> None:
-    notice = get_notice(db, notice_id)
+def delete_notice(db: Session, notice_id: int, farm_id: int) -> None:
+    notice = get_notice(db, notice_id, farm_id)
     notice.deleted = True
     db.commit()
 

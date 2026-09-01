@@ -33,8 +33,12 @@
                 <el-tag :type="row.method === 'DELETE' ? 'danger' : row.method === 'PUT' ? 'warning' : 'primary'" size="small">{{ row.method }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="oper_url" label="请求路径" min-width="220">
-              <template #default="{ row }">{{ row.oper_url || '-' }}</template>
+            <el-table-column label="操作功能" min-width="180">
+              <template #default="{ row }">
+                <el-tooltip :content="row.oper_url || ''" placement="top" :disabled="!row.oper_url">
+                  <span>{{ row.title || row.oper_url || '-' }}</span>
+                </el-tooltip>
+              </template>
             </el-table-column>
             <el-table-column prop="business_type" label="业务类型" width="90">
               <template #default="{ row }">{{ row.business_type || '-' }}</template>
@@ -55,7 +59,9 @@
                 <span v-else>-</span>
               </template>
             </el-table-column>
-            <el-table-column prop="oper_time" label="操作时间" min-width="160" />
+            <el-table-column label="操作时间" min-width="160">
+              <template #default="{ row }">{{ formatTime(row.oper_time) }}</template>
+            </el-table-column>
           </el-table>
           <div class="text-right mt-16">
             <el-pagination
@@ -106,7 +112,9 @@
             <el-table-column prop="msg" label="消息" min-width="160">
               <template #default="{ row }">{{ row.msg || '-' }}</template>
             </el-table-column>
-            <el-table-column prop="login_time" label="登录时间" min-width="160" />
+            <el-table-column label="登录时间" min-width="160">
+              <template #default="{ row }">{{ formatTime(row.login_time) }}</template>
+            </el-table-column>
           </el-table>
           <div class="text-right mt-16">
             <el-pagination
@@ -149,6 +157,12 @@ const loginPage = ref(1)
 const loginSize = ref(10)
 const loginTotal = ref(0)
 const loginQuery = reactive<Record<string, any>>({ username: '', status: undefined })
+
+/** 把 ISO 时间字符串（如 2026-09-01T21:42:28.123456）格式化成可读形式（2026-09-01 21:42:28） */
+function formatTime(t: string | null | undefined) {
+  if (!t) return '-'
+  return t.replace('T', ' ').slice(0, 19)
+}
 
 async function loadOperLogs() {
   operLoading.value = true
