@@ -74,9 +74,9 @@
         <el-table-column prop="create_time" label="创建时间" min-width="160" />
         <el-table-column label="操作" width="210" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="warning" size="small" @click="handleResetPwd(row)">重置密码</el-button>
-            <el-popconfirm title="确定删除该用户？" @confirm="handleDelete(row)">
+            <el-button link type="primary" size="small" @click="handleEdit(row as UserInfo)">编辑</el-button>
+            <el-button link type="warning" size="small" @click="handleResetPwd(row as UserInfo)">重置密码</el-button>
+            <el-popconfirm title="确定删除该用户？" @confirm="handleDelete(row as UserInfo)">
               <template #reference>
                 <el-button link type="danger" size="small" :disabled="row.user_type === 1">删除</el-button>
               </template>

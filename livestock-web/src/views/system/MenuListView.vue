@@ -50,8 +50,8 @@
         <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="handleAdd(row.id)">新增下级</el-button>
-            <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-popconfirm title="确定删除该菜单？" @confirm="handleDelete(row)">
+            <el-button link type="primary" size="small" @click="handleEdit(row as MenuInfo)">编辑</el-button>
+            <el-popconfirm title="确定删除该菜单？" @confirm="handleDelete(row as MenuInfo)">
               <template #reference>
                 <el-button link type="danger" size="small">删除</el-button>
               </template>
@@ -67,7 +67,8 @@
           <el-tree-select
             v-model="form.parent_id"
             :data="parentTree"
-            :props="{ label: 'menu_name', children: 'children', value: 'id' }"
+            node-key="id"
+            :props="{ label: 'menu_name', children: 'children' }"
             check-strictly
             :render-after-expand="false"
             style="width: 100%"

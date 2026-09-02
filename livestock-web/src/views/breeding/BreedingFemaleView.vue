@@ -53,7 +53,7 @@
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="copyTag(row.ear_tag)">复制耳标</el-button>
-            <el-button link type="warning" size="small" @click="openStatusDialog(row)">设置状态</el-button>
+            <el-button link type="warning" size="small" @click="openStatusDialog(row as BreedAnimal)">设置状态</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -95,7 +95,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { getBreedFemalesApi, setFemalePhysioStatusApi, type BreedAnimal } from '@/api/breeding'
 import { SPECIES_OPTIONS, PHYSIO_STATUS_OPTIONS } from '@/utils/constants'
 import { useSpecies } from '@/composables/useSpecies'
-import { ElMessage } from 'element-plus'
+import { type TagProps, ElMessage } from 'element-plus'
 
 const { species, speciesZh } = useSpecies()
 
@@ -148,8 +148,8 @@ async function loadData() {
   }
 }
 
-function physioTagType(status: string): string {
-  return { 发情: 'warning', 妊娠: 'success', 泌乳: 'info', 休情: 'primary', 淘汰: 'danger' }[status] || 'info'
+function physioTagType(status: string): TagProps['type'] {
+  return ({ 发情: 'warning', 妊娠: 'success', 泌乳: 'info', 休情: 'primary', 淘汰: 'danger' } as Record<string, TagProps['type']>)[status] || 'info'
 }
 
 function openStatusDialog(row: BreedAnimal) {

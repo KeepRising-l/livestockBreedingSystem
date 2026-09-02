@@ -112,7 +112,7 @@ import { getDashboardStatsApi, type DashboardStats } from '@/api/statistics'
 import { getPenListApi, type PenInfo } from '@/api/pen'
 import { getFarmInfoApi, type FarmInfo } from '@/api/farm'
 import { useAuthStore } from '@/stores/auth'
-import { exportToExcel, type ExportSheet } from '@/utils/excel'
+import { exportToExcelAsync, type ExportSheet } from '@/utils/excel'
 
 use([CanvasRenderer, BarChart, PieChart, GridComponent, TooltipComponent, LegendComponent])
 
@@ -303,7 +303,7 @@ function handleExport() {
     return
   }
   const today = new Date().toISOString().split('T')[0]
-  exportToExcel(`数据大屏报表_${today}.xlsx`, sheets)
+  exportToExcelAsync(`数据大屏报表_${today}.xlsx`, sheets, '正在生成大屏报表...')
 }
 
 onMounted(async () => {

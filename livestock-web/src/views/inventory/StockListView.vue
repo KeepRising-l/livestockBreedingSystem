@@ -84,7 +84,7 @@
         </el-table-column>
         <el-table-column label="操作" width="140" fixed="right">
           <template #default="{ row }">
-            <el-button link type="warning" size="small" @click.stop="handleEdit(row)" v-if="canEdit">编辑</el-button>
+            <el-button link type="warning" size="small" @click.stop="handleEdit(row as MaterialStock)" v-if="canEdit">编辑</el-button>
             <el-popconfirm title="确定删除该物资？库存数量需为0才能删除" @confirm="handleDelete(row.id)" v-if="canEdit">
               <template #reference>
                 <el-button link type="danger" size="small" @click.stop>删除</el-button>
@@ -160,7 +160,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { getStockListApi, addStockApi, updateStockApi, deleteStockApi, type MaterialStock } from '@/api/inventory'
 import { useAuthStore } from '@/stores/auth'
 import { MATERIAL_TYPE_OPTIONS, MATERIAL_UNIT_OPTIONS, STOCK_STATUS_MAP } from '@/utils/constants'
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { type TagProps, ElMessage, type FormInstance, type FormRules } from 'element-plus'
 
 const authStore = useAuthStore()
 const canEdit = computed(() => authStore.userType !== 3)
@@ -201,11 +201,11 @@ const formRules: FormRules = {
   unit: [{ required: true, message: '请选择单位', trigger: 'change' }],
 }
 
-function typeColor(t: string) {
-  return { '饲料': 'success', '疫苗': 'warning', '兽药': 'danger' }[t] || 'info'
+function typeColor(t: string): TagProps['type'] {
+  return ({ '饲料': 'success', '疫苗': 'warning', '兽药': 'danger' } as Record<string, TagProps['type']>)[t] || 'info'
 }
-function statusColor(s: string) {
-  return { '正常': 'success', '即将过期': 'warning', '已过期': 'danger' }[s] || 'info'
+function statusColor(s: string): TagProps['type'] {
+  return ({ '正常': 'success', '即将过期': 'warning', '已过期': 'danger' } as Record<string, TagProps['type']>)[s] || 'info'
 }
 
 function search() { pageNum.value = 1; loadData() }

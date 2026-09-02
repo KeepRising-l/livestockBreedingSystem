@@ -38,6 +38,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { type TagProps } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import { getAnimalDetailApi, type AnimalInfo } from '@/api/animal'
 
@@ -47,8 +48,8 @@ const router = useRouter()
 const animal = ref<AnimalInfo | null>(null)
 const loading = ref(false)
 
-function physioTagType(status: string): string {
-  return { 发情: 'warning', 妊娠: 'success', 泌乳: 'info', 休情: 'primary', 淘汰: 'danger' }[status] || 'info'
+function physioTagType(status: string): TagProps['type'] {
+  return ({ 发情: 'warning', 妊娠: 'success', 泌乳: 'info', 休情: 'primary', 淘汰: 'danger' } as Record<string, TagProps['type']>)[status] || 'info'
 }
 
 onMounted(async () => {

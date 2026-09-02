@@ -74,9 +74,9 @@
         <el-table-column prop="remark" label="备注" min-width="110" show-overflow-tooltip />
         <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
-            <el-button link type="warning" size="small" @click.stop="handleEdit(row)" v-if="row.audit_status === '待审核'">编辑</el-button>
-            <el-button link type="success" size="small" @click.stop="handleAudit(row, '通过')" v-if="canAudit && row.audit_status === '待审核'">通过</el-button>
-            <el-button link type="danger" size="small" @click.stop="handleAudit(row, '驳回')" v-if="canAudit && row.audit_status === '待审核'">驳回</el-button>
+            <el-button link type="warning" size="small" @click.stop="handleEdit(row as VaccineRecord)" v-if="row.audit_status === '待审核'">编辑</el-button>
+            <el-button link type="success" size="small" @click.stop="handleAudit(row as VaccineRecord, '通过')" v-if="canAudit && row.audit_status === '待审核'">通过</el-button>
+            <el-button link type="danger" size="small" @click.stop="handleAudit(row as VaccineRecord, '驳回')" v-if="canAudit && row.audit_status === '待审核'">驳回</el-button>
             <el-popconfirm title="确定删除该记录？" @confirm="handleDelete(row.id)" v-if="row.audit_status !== '通过'">
               <template #reference>
                 <el-button link type="danger" size="small" @click.stop>删除</el-button>
@@ -218,7 +218,7 @@ import { queryDictDataByTypeApi } from '@/api/system'
 import { useAuthStore } from '@/stores/auth'
 import { SPECIES_OPTIONS, AUDIT_STATUS_MAP } from '@/utils/constants'
 import { useSpecies } from '@/composables/useSpecies'
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { type TagProps, ElMessage, type FormInstance, type FormRules } from 'element-plus'
 
 const authStore = useAuthStore()
 const { species, speciesZh } = useSpecies()
@@ -326,8 +326,8 @@ function resetSearch() {
   search()
 }
 
-function auditStatusColor(s: string) {
-  const m: Record<string, string> = { '待审核': 'warning', '通过': 'success', '驳回': 'danger' }
+function auditStatusColor(s: string): TagProps['type'] {
+  const m: Record<string, TagProps['type']> = { '待审核': 'warning', '通过': 'success', '驳回': 'danger' }
   return m[s] || 'info'
 }
 

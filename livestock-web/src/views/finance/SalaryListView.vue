@@ -54,7 +54,7 @@
         </el-table-column>
         <el-table-column label="操作" width="90" fixed="right">
           <template #default="{ row }">
-            <el-button v-if="row.status === '待发放'" link type="success" size="small" @click="handlePay(row)">
+            <el-button v-if="row.status === '待发放'" link type="success" size="small" @click="handlePay(row as SalaryRecord)">
               发放
             </el-button>
           </template>

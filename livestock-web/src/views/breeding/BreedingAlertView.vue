@@ -69,7 +69,7 @@
         </el-table-column>
         <el-table-column label="操作" width="110" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" size="small" @click.stop="handleAlert(row)" v-if="row.status === '待处理'">处理</el-button>
+            <el-button link type="primary" size="small" @click.stop="handleAlert(row as BreedingAlert)" v-if="row.status === '待处理'">处理</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -138,7 +138,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { getAlertListApi, addAlertApi, handleAlertApi, type BreedingAlert } from '@/api/breeding'
 import { ALERT_TYPE_MAP, ALERT_STATUS_MAP } from '@/utils/constants'
 import { useSpecies } from '@/composables/useSpecies'
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { type TagProps, ElMessage, type FormInstance, type FormRules } from 'element-plus'
 
 const { species, speciesZh } = useSpecies()
 
@@ -177,13 +177,13 @@ const handleSaving = ref(false)
 const handleAlertId = ref(0)
 const handleForm = reactive({ status: '已处理', handle_remark: '' })
 
-function typeColor(t: string) {
-  const m: Record<string, string> = { '孕检': 'primary', '临产': 'danger', '未发情': 'warning' }
+function typeColor(t: string): TagProps['type'] {
+  const m: Record<string, TagProps['type']> = { '孕检': 'primary', '临产': 'danger', '未发情': 'warning' }
   return m[t] || 'info'
 }
 
-function statusColor(s: string) {
-  const m: Record<string, string> = { '待处理': 'warning', '已处理': 'success', '已忽略': 'info' }
+function statusColor(s: string): TagProps['type'] {
+  const m: Record<string, TagProps['type']> = { '待处理': 'warning', '已处理': 'success', '已忽略': 'info' }
   return m[s] || 'info'
 }
 

@@ -42,8 +42,8 @@
         </el-table-column>
         <el-table-column label="操作" width="150" fixed="right" v-if="canAudit">
           <template #default="{ row }">
-            <el-button link type="success" size="small" @click.stop="handleAudit(row, '通过')">通过</el-button>
-            <el-button link type="danger" size="small" @click.stop="handleAudit(row, '驳回')">驳回</el-button>
+            <el-button link type="success" size="small" @click.stop="handleAudit(row as ReviewItem, '通过')">通过</el-button>
+            <el-button link type="danger" size="small" @click.stop="handleAudit(row as ReviewItem, '驳回')">驳回</el-button>
           </template>
         </el-table-column>
       </el-table>

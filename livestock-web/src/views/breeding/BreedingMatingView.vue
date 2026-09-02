@@ -74,8 +74,8 @@
         <el-table-column prop="remark" label="备注" min-width="100" show-overflow-tooltip />
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
-            <el-button link type="success" size="small" @click.stop="handleCheck(row)" v-if="!row.pregnancy_check_result && row.status !== '配种失败'">孕检</el-button>
-            <el-button link type="primary" size="small" @click.stop="handleEdit(row)" v-if="!row.pregnancy_check_result">编辑</el-button>
+            <el-button link type="success" size="small" @click.stop="handleCheck(row as MatingRecord)" v-if="!row.pregnancy_check_result && row.status !== '配种失败'">孕检</el-button>
+            <el-button link type="primary" size="small" @click.stop="handleEdit(row as MatingRecord)" v-if="!row.pregnancy_check_result">编辑</el-button>
             <el-popconfirm title="确定删除该配种记录？" @confirm="handleDelete(row.id)">
               <template #reference>
                 <el-button link type="danger" size="small" @click.stop>删除</el-button>
@@ -168,7 +168,7 @@ import {
 } from '@/api/breeding'
 import { SPECIES_OPTIONS, MATING_TYPE_OPTIONS, MATING_STATUS_MAP, PREGNANCY_RESULT_OPTIONS } from '@/utils/constants'
 import { useSpecies } from '@/composables/useSpecies'
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { type TagProps, ElMessage, type FormInstance, type FormRules } from 'element-plus'
 
 const { species, speciesZh } = useSpecies()
 
@@ -222,8 +222,8 @@ const checkRules: FormRules = {
   pregnancy_check_result: [{ required: true, message: '请选择孕检结果', trigger: 'change' }],
 }
 
-function statusColor(s: string) {
-  const m: Record<string, string> = { '待孕检': 'warning', '成功怀孕': 'success', '配种失败': 'danger' }
+function statusColor(s: string): TagProps['type'] {
+  const m: Record<string, TagProps['type']> = { '待孕检': 'warning', '成功怀孕': 'success', '配种失败': 'danger' }
   return m[s] || 'info'
 }
 

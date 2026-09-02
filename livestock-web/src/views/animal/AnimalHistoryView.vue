@@ -116,7 +116,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { getAnimalHistoryListApi, restoreAnimalApi, type AnimalHistoryInfo } from '@/api/animal'
 import { SPECIES_OPTIONS, GENDER_OPTIONS, ANIMAL_STATUS_MAP } from '@/utils/constants'
 import { useSpecies } from '@/composables/useSpecies'
-import { ElMessage } from 'element-plus'
+import { type TagProps, ElMessage } from 'element-plus'
 
 const { species, speciesZh } = useSpecies()
 
@@ -130,8 +130,8 @@ const query = reactive({
   ear_tag: '', species: speciesZh.value, breed: '', gender: '', status: '',
 })
 
-function statusColor(s: string) {
-  return { '在栏': 'success', '种用': 'warning', '隔离': 'danger', '待出栏': 'info', '已出栏': 'info', '死亡': 'danger' }[s] || 'info'
+function statusColor(s: string): TagProps['type'] {
+  return ({ '在栏': 'success', '种用': 'warning', '隔离': 'danger', '待出栏': 'info', '已出栏': 'info', '死亡': 'danger' } as Record<string, TagProps['type']>)[s] || 'info'
 }
 
 function search() { pageNum.value = 1; loadData() }

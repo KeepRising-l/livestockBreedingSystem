@@ -67,8 +67,8 @@
         </el-table-column>
         <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
-            <el-button link type="warning" size="small" @click.stop="handleEdit(row)" v-if="canEdit">编辑</el-button>
-            <el-popconfirm :title="row.status === 1 ? '确定停用该方案？' : '确定启用该方案？'" @confirm="handleToggleStatus(row)" v-if="canEdit">
+            <el-button link type="warning" size="small" @click.stop="handleEdit(row as FeedingPlan)" v-if="canEdit">编辑</el-button>
+            <el-popconfirm :title="row.status === 1 ? '确定停用该方案？' : '确定启用该方案？'" @confirm="handleToggleStatus(row as FeedingPlan)" v-if="canEdit">
               <template #reference>
                 <el-button link :type="row.status === 1 ? 'info' : 'success'" size="small" @click.stop>
                   {{ row.status === 1 ? '停用' : '启用' }}

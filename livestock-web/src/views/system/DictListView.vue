@@ -44,7 +44,7 @@
             </el-table-column>
             <el-table-column label="操作" width="120" v-if="isAdmin">
               <template #default="{ row }">
-                <el-button link type="warning" size="small" @click.stop="handleEditType(row)">编</el-button>
+                <el-button link type="warning" size="small" @click.stop="handleEditType(row as DictTypeInfo)">编</el-button>
                 <el-popconfirm title="删除类型？其下有数据时无法删除" @confirm="handleDeleteType(row.id)" v-if="isAdmin">
                   <template #reference>
                     <el-button link type="danger" size="small" @click.stop>删</el-button>
@@ -119,7 +119,7 @@
               </el-table-column>
               <el-table-column label="操作" width="120" v-if="isAdmin">
                 <template #default="{ row }">
-                  <el-button link type="warning" size="small" @click="handleEditData(row)">编</el-button>
+                  <el-button link type="warning" size="small" @click="handleEditData(row as DictDataInfo)">编</el-button>
                   <el-popconfirm title="确定删除该字典数据？" @confirm="handleDeleteData(row.id)" v-if="isAdmin">
                     <template #reference>
                       <el-button link type="danger" size="small" @click.stop>删</el-button>

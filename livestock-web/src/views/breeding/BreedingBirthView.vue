@@ -56,7 +56,7 @@
         <el-table-column prop="remark" label="备注" min-width="100" show-overflow-tooltip />
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" size="small" @click.stop="handleEdit(row)">编辑</el-button>
+            <el-button link type="primary" size="small" @click.stop="handleEdit(row as BirthRecord)">编辑</el-button>
             <el-popconfirm title="确定删除该产犊记录？" @confirm="handleDelete(row.id)">
               <template #reference>
                 <el-button link type="danger" size="small" @click.stop>删除</el-button>

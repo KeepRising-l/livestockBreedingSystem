@@ -48,7 +48,7 @@
         <el-table-column label="操作" width="130" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="showDetail(row.id)">详情</el-button>
-            <el-button v-if="row.settle_status === '未结算'" link type="success" size="small" @click="handleSettle(row)">
+            <el-button v-if="row.settle_status === '未结算'" link type="success" size="small" @click="handleSettle(row as SaleOrder)">
               结算
             </el-button>
           </template>

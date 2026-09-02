@@ -50,7 +50,7 @@
         <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click.stop="router.push(`/${species}/pen/${row.id}`)">详情</el-button>
-            <el-button link type="warning" size="small" @click.stop="handleEdit(row)" v-if="canEdit">编辑</el-button>
+            <el-button link type="warning" size="small" @click.stop="handleEdit(row as PenInfo)" v-if="canEdit">编辑</el-button>
             <el-popconfirm title="确定删除该圈舍？" @confirm="handleDelete(row.id)" v-if="canEdit">
               <template #reference>
                 <el-button link type="danger" size="small" @click.stop>删除</el-button>
@@ -105,7 +105,7 @@ import { getPenListApi, addPenApi, updatePenApi, deletePenApi, type PenInfo } fr
 import { useAuthStore } from '@/stores/auth'
 import { PEN_TYPE_MAP } from '@/utils/constants'
 import { useSpecies } from '@/composables/useSpecies'
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { type TagProps, ElMessage, type FormInstance, type FormRules } from 'element-plus'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -150,8 +150,8 @@ function resetSearch() {
   search()
 }
 
-function penTypeColor(type: string) {
-  const colors: Record<string, string> = { A: 'success', B: '', C: 'warning', D: 'danger' }
+function penTypeColor(type: string): TagProps['type'] {
+  const colors: Record<string, TagProps['type']> = { A: 'success', B: 'info', C: 'warning', D: 'danger' }
   return colors[type] || 'info'
 }
 

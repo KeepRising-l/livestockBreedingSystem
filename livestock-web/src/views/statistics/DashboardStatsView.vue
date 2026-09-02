@@ -17,14 +17,16 @@
       <el-col :span="16">
         <el-card>
           <template #header>近 12 月入栏 / 出栏趋势</template>
-          <v-chart v-if="trendOption" :option="trendOption" style="height: 320px" autoresize />
+          <el-skeleton v-if="loading" :rows="6" animated />
+          <v-chart v-else-if="trendOption" :option="trendOption" style="height: 320px" autoresize />
           <el-empty v-else description="暂无数据" />
         </el-card>
       </el-col>
       <el-col :span="8">
         <el-card>
           <template #header>畜种分布</template>
-          <v-chart v-if="speciesOption" :option="speciesOption" style="height: 320px" autoresize />
+          <el-skeleton v-if="loading" :rows="6" animated />
+          <v-chart v-else-if="speciesOption" :option="speciesOption" style="height: 320px" autoresize />
           <el-empty v-else description="暂无数据" />
         </el-card>
       </el-col>
@@ -35,7 +37,8 @@
       <el-col :span="12">
         <el-card>
           <template #header>生长阶段分布</template>
-          <v-chart v-if="stageOption" :option="stageOption" style="height: 300px" autoresize />
+          <el-skeleton v-if="loading" :rows="6" animated />
+          <v-chart v-else-if="stageOption" :option="stageOption" style="height: 300px" autoresize />
           <el-empty v-else description="暂无数据" />
         </el-card>
       </el-col>
@@ -68,6 +71,7 @@ import { getDashboardStatsApi, type DashboardStats } from '@/api/statistics'
 use([CanvasRenderer, BarChart, PieChart, GridComponent, TooltipComponent, LegendComponent])
 
 const stats = ref<DashboardStats | null>(null)
+const loading = ref(false)
 
 const kpiCards = computed(() => {
   const k = stats.value?.kpi
@@ -131,10 +135,13 @@ const stageOption = computed(() => {
 })
 
 onMounted(async () => {
+  loading.value = true
   try {
     const res = await getDashboardStatsApi()
     stats.value = res.data
-  } catch { /* */ }
+  } catch { /* */ } finally {
+    loading.value = false
+  }
 })
 </script>
 

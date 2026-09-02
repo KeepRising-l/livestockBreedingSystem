@@ -44,8 +44,8 @@
         <el-table-column prop="create_time" label="创建时间" min-width="160" />
         <el-table-column label="操作" width="140" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-popconfirm title="确定删除该角色？" @confirm="handleDelete(row)">
+            <el-button link type="primary" size="small" @click="handleEdit(row as RoleInfo)">编辑</el-button>
+            <el-popconfirm title="确定删除该角色？" @confirm="handleDelete(row as RoleInfo)">
               <template #reference>
                 <el-button link type="danger" size="small">删除</el-button>
               </template>

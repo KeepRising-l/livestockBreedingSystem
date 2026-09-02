@@ -27,9 +27,9 @@
         <el-table-column prop="create_time" label="发布时间" min-width="160" />
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="handleView(row)">详情</el-button>
-            <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-popconfirm title="确定删除该公告？" @confirm="handleDelete(row)">
+            <el-button link type="primary" size="small" @click="handleView(row as NoticeInfo)">详情</el-button>
+            <el-button link type="primary" size="small" @click="handleEdit(row as NoticeInfo)">编辑</el-button>
+            <el-popconfirm title="确定删除该公告？" @confirm="handleDelete(row as NoticeInfo)">
               <template #reference>
                 <el-button link type="danger" size="small">删除</el-button>
               </template>

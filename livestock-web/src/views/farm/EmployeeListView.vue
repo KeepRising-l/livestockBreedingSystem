@@ -26,7 +26,7 @@
         <el-table-column prop="create_time" label="创建时间" min-width="160" />
         <el-table-column label="操作" width="160" fixed="right" v-if="canManage">
           <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
+            <el-button link type="primary" size="small" @click="handleEdit(row as Employee)">编辑</el-button>
             <el-popconfirm title="确定删除该员工？" @confirm="handleDelete(row.id)">
               <template #reference>
                 <el-button link type="danger" size="small">删除</el-button>

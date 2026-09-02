@@ -114,7 +114,7 @@ import { useRouter } from 'vue-router'
 import { getAnimalListApi, batchDeleteAnimalApi, type AnimalInfo } from '@/api/animal'
 import { GENDER_OPTIONS, ANIMAL_STATUS_MAP, PHYSIO_STATUS_OPTIONS } from '@/utils/constants'
 import { useSpecies } from '@/composables/useSpecies'
-import { ElMessage } from 'element-plus'
+import { type TagProps, ElMessage } from 'element-plus'
 
 const router = useRouter()
 const { species, speciesZh } = useSpecies()
@@ -148,8 +148,8 @@ function resetSearch() {
   search()
 }
 
-function physioTagType(status: string): string {
-  return { 发情: 'warning', 妊娠: 'success', 泌乳: 'info', 休情: 'primary', 淘汰: 'danger' }[status] || 'info'
+function physioTagType(status: string): TagProps['type'] {
+  return ({ 发情: 'warning', 妊娠: 'success', 泌乳: 'info', 休情: 'primary', 淘汰: 'danger' } as Record<string, TagProps['type']>)[status] || 'info'
 }
 
 async function loadData() {

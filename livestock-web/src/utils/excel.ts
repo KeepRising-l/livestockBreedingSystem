@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx'
+import { ElLoading } from 'element-plus'
 
 /** 读取 Excel 第一个 sheet，转为二维数组（首行为表头；日期单元格保留为 Date 对象） */
 export async function readExcel(file: File): Promise<{ headers: string[]; rows: any[][] }> {
@@ -46,4 +47,32 @@ export function exportToExcel(filename: string, sheets: ExportSheet[]) {
     XLSX.utils.book_append_sheet(wb, ws, s.name.slice(0, 31))
   }
   XLSX.writeFile(wb, filename)
+}
+
+/**
+ * 异步导出 Excel：构建期间显示全屏 loading，并把同步的大 JSON 构建让出主线程分片处理，
+ * 避免大数据量导出时界面冻结假死。构建完成自动关闭 loading 并下载。
+ * @returns Promise<void>，导出过程（含 loading 展示）在 resolve 时结束
+ */
+export async function exportToExcelAsync(filename: string, sheets: ExportSheet[], loadingText = '正在生成 Excel...') {
+  const loading = ElLoading.service({ lock: true, text: loadingText, background: 'rgba(0,0,0,0.45)' })
+  try {
+    // 先渲染一个空闲帧，让 loading 能画出来（避免直接同步阻塞 UI 看不到反馈）
+    await new Promise((r) => setTimeout(r, 0))
+    // 分片让出主线程：sheet 数多时避免一次大循环卡死交互
+    const fns = sheets.map((s) => ({ headers: s.headers, rows: s.rows, name: s.name }))
+    // 主线程内构造 workbook（xlsx 写文件本身同步），逐 sheet 分片执行
+    const wb = XLSX.utils.book_new()
+    for (let i = 0; i < fns.length; i++) {
+      const s = fns[i]
+      const ws = XLSX.utils.aoa_to_sheet([s.headers, ...s.rows])
+      ws['!cols'] = s.headers.map((h) => ({ wch: Math.max(10, h.length * 2) }))
+      XLSX.utils.book_append_sheet(wb, ws, s.name.slice(0, 31))
+      // 每处理一个 sheet 让出主线程，防止 loading 期间交互冻结
+      await new Promise((r) => setTimeout(r, 0))
+    }
+    XLSX.writeFile(wb, filename)
+  } finally {
+    loading.close()
+  }
 }
