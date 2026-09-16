@@ -42,11 +42,54 @@ DEFAULT_CAPACITY = {
 # 合法畜种
 SPECIES_ALLOWED = ("牛", "羊", "猪")
 
+# 耳标里的畜种位：牛=1 / 羊=2 / 猪=3（耳标共 5 位：畜种位 + 圈舍编号数字2位 + 序号2位）
+SPECIES_TAG_DIGIT = {"牛": "1", "羊": "2", "猪": "3"}
+
 
 def validate_species(species: str, code: int = 40016):
     """校验畜种取值；None / 空串表示"待归属"，放行"""
     if species and species not in SPECIES_ALLOWED:
         raise BizException(f"畜种只能是：{'/'.join(SPECIES_ALLOWED)}", code=code)
+
+
+def pen_tag_number(pen_code: str) -> str:
+    """
+    取圈舍编号里的数字部分，作为耳标中的「圈舍号」（2 位）
+    A02 -> 02、A2 -> 02、D10 -> 10
+    没有数字则返回空串（由调用方决定报错）
+    """
+    if not pen_code:
+        return ""
+    digits = "".join(c for c in pen_code if c.isdigit())
+    if not digits:
+        return ""
+    return digits.zfill(2)[-2:]
+
+
+def ensure_pen_tag_number_unique(db: Session, farm_id: int, pen_code: str, species: str,
+                                 exclude_id: int = None):
+    """
+    耳标前 3 位 = 畜种位 + 圈舍编号数字，所以「同一畜种内编号的数字部分不能重复」，
+    否则两个圈舍会发出同样的耳标（例如牛/A01 与牛/B01 数字都是 01）。
+    """
+    num = pen_tag_number(pen_code)
+    if not num:
+        raise BizException(
+            f"圈舍编号 {pen_code} 里没有数字，无法生成耳标（耳标需要编号中的 2 位数字）",
+            code=40021,
+        )
+    query = db.query(Pen).filter(
+        Pen.farm_id == farm_id, Pen.deleted == False
+    ).filter(_pen_code_scope_filter(species))
+    if exclude_id:
+        query = query.filter(Pen.id != exclude_id)
+    for other in query.all():
+        if pen_tag_number(other.pen_code) == num:
+            raise BizException(
+                f"{_pen_code_scope_label(species)}圈舍编号 {pen_code} 的数字部分是 {num}，"
+                f"与已有圈舍 {other.pen_code} 重复 —— 两者会发出相同耳标，请换一个编号",
+                code=40022,
+            )
 
 
 def ensure_pen_species_match(pen: Pen, species: str):
@@ -127,6 +170,8 @@ def add_pen(db: Session, farm_id: int, body: PenAddIn) -> Pen:
         raise BizException(
             f"{_pen_code_scope_label(species)}圈舍编号 {code} 已存在", code=40012
         )
+    # 耳标前 3 位 = 畜种位 + 编号数字 → 同畜种内编号的数字部分必须唯一
+    ensure_pen_tag_number_unique(db, fid, code, species)
     pen = Pen(
         farm_id=fid,
         pen_code=code,
@@ -144,6 +189,7 @@ def add_pen(db: Session, farm_id: int, body: PenAddIn) -> Pen:
 
 def update_pen(db: Session, farm_id: int, pen_id: int, body: PenUpdateIn) -> Pen:
     pen = get_pen(db, farm_id, pen_id)
+    original_code, original_species = pen.pen_code, pen.species
 
     # 先定下改后的畜种归属——编号查重要按改后的畜种算（换了畜种就等于换了编号命名空间）
     new_species = pen.species
@@ -195,6 +241,11 @@ def update_pen(db: Session, farm_id: int, pen_id: int, body: PenUpdateIn) -> Pen
         pen.status = body.status
     if body.remark is not None:
         pen.remark = body.remark
+
+    # 编号或畜种变了才校验耳标号唯一，避免"只要碰这个圈舍就被历史冲突卡住"
+    if pen.pen_code != original_code or pen.species != original_species:
+        ensure_pen_tag_number_unique(db, pen.farm_id, pen.pen_code, pen.species, exclude_id=pen.id)
+
     db.commit()
     return pen
 

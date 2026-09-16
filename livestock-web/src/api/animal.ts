@@ -103,8 +103,8 @@ export function removeFromPenApi(id: number) {
   return http.post(`/animal/remove-from-pen/${id}`)
 }
 
-export function generateEarTagApi(pen_id: number) {
-  return http.get('/animal/ear-tag/generate', { params: { pen_id } })
+export function generateEarTagApi(pen_id: number, species?: string) {
+  return http.get('/animal/ear-tag/generate', { params: { pen_id, species } })
 }
 
 export function getAnimalHistoryListApi(params: AnimalHistoryQuery) {

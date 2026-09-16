@@ -81,6 +81,9 @@
             <el-form-item label="耳标预览">
               <el-input v-model="earTagPreview" disabled placeholder="选择圈舍后自动生成" />
               <el-button class="ml-8" @click="previewEarTag" :disabled="!form.pen_id">生成预览</el-button>
+              <div class="tip">
+                耳标 5 位 = 畜种位（牛1/羊2/猪3）+ 圈舍编号数字 + 入栏序号，如牛 A02 圈舍第 7 头 → 10207
+              </div>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -175,7 +178,8 @@ const rules: FormRules = {
 async function previewEarTag() {
   if (!form.pen_id) return
   try {
-    const res = await generateEarTagApi(form.pen_id)
+    // 传畜种：圈舍若尚未归属畜种，仍能按当前页面的畜种预览耳标
+    const res = await generateEarTagApi(form.pen_id, form.species)
     const data = res.data as any
     earTagPreview.value = data.ear_tag || ''
   } catch {

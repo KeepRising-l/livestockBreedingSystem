@@ -178,6 +178,7 @@ def batch_delete(
 @router.get("/ear-tag/generate", summary="预览耳标（指定圈舍）")
 def preview_ear_tag(
     pen_id: int = Query(..., description="圈舍ID"),
+    species: str = Query(None, description="畜种：牛/羊/猪（圈舍尚未分配畜种时用它预览）"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     x_farm_id: int | None = Header(None, alias="X-Farm-Id"),
@@ -187,5 +188,5 @@ def preview_ear_tag(
     from app.modules.animal.service import generate_ear_tag
     farm_id = resolve_farm_id(current_user, x_farm_id)
     pen = get_pen(db, farm_id, pen_id)
-    ear_tag = generate_ear_tag(db, farm_id, pen)
-    return Result.ok(data={"ear_tag": ear_tag, "pen_code": pen.pen_code})
+    ear_tag = generate_ear_tag(db, farm_id, pen, species_override=species)
+    return Result.ok(data={"ear_tag": ear_tag, "pen_code": pen.pen_code, "species": pen.species or species})

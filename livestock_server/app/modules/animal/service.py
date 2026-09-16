@@ -20,11 +20,13 @@ from app.modules.animal.schema import (
 )
 from app.modules.pen.model import Pen
 from app.modules.pen.service import (
+    SPECIES_TAG_DIGIT,
     STAGE_TO_PEN_TYPE,
     claim_pen_species,
     ensure_pen_species_match,
     find_available_pen,
     list_available_pens,
+    pen_tag_number,
 )
 
 
@@ -83,41 +85,50 @@ def determine_growth_stage(species: str, age_days: int) -> str:
     return "繁育期"
 
 
-def parse_pen_number(pen_code: str) -> str:
+def parse_ear_tag_prefix(pen: Pen, species_override: str = None) -> str:
     """
-    【已废弃，保留兼容】从圈舍编号提取2位数字部分作为耳标前缀
-    例如：A10 -> 10，B03 -> 03
-    注意：A01/B01/C01 这种字母不同数字相同的编号会冲突，推荐用 parse_pen_prefix
+    生成耳标前缀（3 位）= 畜种位 + 圈舍编号数字（2 位）
+
+    例：牛/A02 -> 1 + 02 = "102"，该圈舍第 7 头入栏 -> 耳标 "10207"
+
+    为什么带畜种位：圈舍编号只在畜种内唯一（牛和羊都可以有 A02），
+    只用编号数字的话跨畜种会撞号。
+    编号数字在同一畜种内由 pen.service.ensure_pen_tag_number_unique 保证唯一，
+    因此这个前缀在养殖场内全局唯一。
+
+    species_override：圈舍尚未分配畜种时，用调用方传入的畜种来预览
     """
-    digits = "".join(c for c in pen_code if c.isdigit())
-    if not digits:
-        raise BizException(f"圈舍编号格式错误：{pen_code}", code=40021)
-    return digits.zfill(2)[-2:]  # 取后2位，不足补0
+    species = species_override or pen.species
+    if not species:
+        raise BizException(
+            f"圈舍 {pen.pen_code} 尚未分配畜种，无法生成耳标（请先在圈舍管理里指定畜种）",
+            code=40021,
+        )
+    digit = SPECIES_TAG_DIGIT.get(species)
+    if not digit:
+        raise BizException(f"未知畜种：{species}", code=40021)
+    number = pen_tag_number(pen.pen_code)
+    if not number:
+        raise BizException(
+            f"圈舍编号 {pen.pen_code} 里没有数字，无法生成耳标", code=40021
+        )
+    return digit + number
 
 
-def parse_pen_prefix(pen: Pen) -> str:
-    """
-    生成耳标前缀：用圈舍 ID 取后 2 位
-    - 保证全局唯一（圈舍 ID 自增，不会重复）
-    - 可容纳 99 个圈舍（小型养殖场足够）
-    - A01(ID=1)->01  B01(ID=3)->03  C01(ID=6)->06  不再冲突
-    """
-    return str(pen.id).zfill(2)[-2:]
-
-
-def generate_ear_tag(db: Session, farm_id: int, pen: Pen) -> str:
+def generate_ear_tag(db: Session, farm_id: int, pen: Pen, species_override: str = None) -> str:
     fid = get_effective_farm_id(db, farm_id)
     """
-    生成耳标：前2位=圈舍ID后2位，后2位=顺序号（自动复用空出的耳标）
+    生成耳标（5 位）：前3位=畜种位+圈舍编号数字，后2位=入栏序号（自动复用空出的号）
 
     算法：
-    1. 找出该圈舍所有已用耳标号
+    1. 找出该圈舍所有已用耳标的后 2 位
     2. 从 01 开始找第一个未使用的号
     3. 同时考虑已删除档案释放的耳标号
     """
-    prefix = parse_pen_prefix(pen)
+    prefix = parse_ear_tag_prefix(pen, species_override)
 
-    # 查询该圈舍当前在用的耳标后2位
+    # 统计该圈舍当前在用的序号：按耳标后 2 位算，
+    # 这样即使圈里还留着旧规则（4 位）的耳标，序号也不会被重复发出
     used_suffixes = set()
     animals = db.query(Animal).filter(
         Animal.farm_id == fid,
@@ -126,8 +137,8 @@ def generate_ear_tag(db: Session, farm_id: int, pen: Pen) -> str:
         Animal.status.in_(["在栏", "种用", "隔离", "待出栏"]),
     ).all()
     for a in animals:
-        if len(a.ear_tag) == 4:
-            used_suffixes.add(a.ear_tag[2:])
+        if a.ear_tag and len(a.ear_tag) >= 4:
+            used_suffixes.add(a.ear_tag[-2:])
 
     # 从 01 到 capacity 找第一个空号
     for i in range(1, 100):

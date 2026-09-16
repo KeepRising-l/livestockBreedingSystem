@@ -71,7 +71,7 @@
           </el-select>
         </el-form-item>
         <el-alert type="info" :closable="false" show-icon
-          title="转入后耳标将按新圈舍重新生成（前两位=圈舍号，后两位=序号）" />
+          title="转入后耳标将按新圈舍重新生成（前3位=畜种位+圈舍编号数字，后2位=入栏序号，共5位）" />
       </el-form>
       <template #footer>
         <el-button @click="transferVisible = false">取消</el-button>
