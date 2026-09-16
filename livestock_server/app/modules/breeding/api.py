@@ -46,7 +46,7 @@ def _require_farm(current_user: User) -> int:
 def list_females(
     species: str = Query(None),
     keyword: str = Query(None),
-    physio_status: str = Query(None, description="生理状态筛选：发情/妊娠/泌乳/休情/淘汰"),
+    physio_status: str = Query(None, description="生理状态筛选：正常/发情/妊娠/泌乳/休情/淘汰"),
     pageNum: int = Query(1, ge=1),
     pageSize: int = Query(10, ge=1, le=100),
     db: Session = Depends(get_db),

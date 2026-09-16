@@ -8,6 +8,7 @@
 4. 删除转历史：删除档案时转入 history 表，半年后自动清除
 """
 from datetime import date, datetime, timedelta
+from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -16,7 +17,7 @@ from app.core.utils import get_effective_farm_id
 from app.modules.animal.model import Animal, AnimalHistory
 from app.modules.animal.schema import (
     AnimalIndividualIn, AnimalBatchIn, AnimalImportIn, AnimalQuery,
-    AnimalHistoryQuery, AnimalUpdateIn,
+    AnimalHistoryQuery, AnimalUpdateIn, AnimalOut,
 )
 from app.modules.pen.model import Pen
 from app.modules.pen.service import (
@@ -57,8 +58,8 @@ GROWTH_STAGE_CONFIG = {
 BREEDABLE_AGE = {"牛": 365, "羊": 300, "猪": 220}
 # 妊娠期天数
 GESTATION_DAYS = {"牛": 280, "羊": 150, "猪": 114}
-# 母畜生理状态（发情/妊娠/泌乳/休情/淘汰）
-PHYSIO_STATUSES = ("发情", "妊娠", "泌乳", "休情", "淘汰")
+# 母畜生理状态（正常/发情/妊娠/泌乳/休情/淘汰），默认"正常"
+PHYSIO_STATUSES = ("正常", "发情", "妊娠", "泌乳", "休情", "淘汰")
 
 
 def calc_age_days(birth_date: date, ref_date: date = None) -> int:
@@ -73,16 +74,35 @@ def determine_growth_stage(species: str, age_days: int) -> str:
     """
     根据畜种和日龄判定生长阶段
     优先级：妊娠期 > 其它阶段（妊娠期由配种记录单独标记，这里只算基础阶段）
+
+    边界：日龄 < 1（今天出生或数据异常）按第一个阶段算，不再落到"繁育期"——
+    旧实现区间从 1 开始，age=0 会穿透所有区间被误判为繁育期。
     """
     stages = GROWTH_STAGE_CONFIG.get(species)
     if not stages:
         raise BizException(f"不支持的畜种：{species}", code=40020)
 
+    if age_days < stages[0][1]:
+        return stages[0][0]
     for name, start, end in stages:
         if start <= age_days <= end:
             return name
     # 超过育肥期，按繁育期处理
     return "繁育期"
+
+
+def default_physio_status(species: str, gender: str, age_days: int) -> Optional[str]:
+    """
+    入栏时母畜的默认生理状态：
+    - 默认"正常"（旧实现全部默认"发情"，与实际生理不符）
+    - 仅当母羊进入适配繁育周期（日龄 >= 可繁育起始日龄）时才默认"发情"
+    - 公畜不跟踪生理状态，返回 None
+    """
+    if gender != "母":
+        return None
+    if species == "羊" and age_days >= BREEDABLE_AGE["羊"]:
+        return "发情"
+    return "正常"
 
 
 def parse_ear_tag_prefix(pen: Pen, species_override: str = None) -> str:
@@ -149,6 +169,22 @@ def generate_ear_tag(db: Session, farm_id: int, pen: Pen, species_override: str 
     raise BizException(f"圈舍 {pen.pen_code} 耳标号已用尽", code=40022)
 
 
+def to_animal_out(a: Animal) -> AnimalOut:
+    """
+    ORM -> DTO，同时按出生日期实时回填日龄和生长阶段：
+    - age_days = 今天 - 出生日期（无出生日期为 None）
+    - growth_stage 实时按日龄重算（存储值由每日 00:05 调度任务兜底刷新，
+      breeding 模块依赖存储值做繁育期筛选，因此 DB 字段保留）；
+      例外：存储值为"妊娠"时保留——妊娠期由配种记录标记，不能按日龄覆盖
+    """
+    out = AnimalOut.model_validate(a)
+    if not a.birth_date:
+        return out
+    age_days = calc_age_days(a.birth_date)
+    stage = a.growth_stage if a.growth_stage == "妊娠" else determine_growth_stage(a.species, age_days)
+    return out.model_copy(update={"age_days": age_days, "growth_stage": stage})
+
+
 def list_animals(db: Session, farm_id: int, query: AnimalQuery) -> dict:
     """档案列表，支持多条件筛选"""
     fid = get_effective_farm_id(db, farm_id)
@@ -173,6 +209,98 @@ def list_animals(db: Session, farm_id: int, query: AnimalQuery) -> dict:
         (query.pageNum - 1) * query.pageSize
     ).limit(query.pageSize).all()
     return {"list": items, "total": total, "pageNum": query.pageNum, "pageSize": query.pageSize}
+
+
+def list_animals_grouped(
+    db: Session, farm_id: int, query: AnimalQuery, pageNum: int = 1, pageSize: int = 10,
+) -> dict:
+    """
+    档案分级展示：按圈舍分组，每组带汇总（存栏数/公母/品种构成/平均日龄），
+    组内为该圈舍全部个体明细（已应用搜索筛选）。
+
+    分页以圈舍为单位；"无圈舍"（pen_id 为 NULL 的个体）单独成组排在最后。
+    """
+    fid = get_effective_farm_id(db, farm_id)
+    q = db.query(Animal).filter(Animal.farm_id == fid, Animal.deleted == False)
+    if query.ear_tag:
+        q = q.filter(Animal.ear_tag.like(f"%{query.ear_tag}%"))
+    if query.species:
+        q = q.filter(Animal.species == query.species)
+    if query.breed:
+        q = q.filter(Animal.breed == query.breed)
+    if query.gender:
+        q = q.filter(Animal.gender == query.gender)
+    if query.status:
+        q = q.filter(Animal.status == query.status)
+    if query.physio_status:
+        q = q.filter(Animal.physio_status == query.physio_status)
+    animals = q.order_by(Animal.ear_tag).all()
+
+    # 查涉及的圈舍
+    pen_ids = {a.pen_id for a in animals if a.pen_id}
+    pens = {
+        p.id: p for p in db.query(Pen).filter(Pen.id.in_(pen_ids)).all()
+    } if pen_ids else {}
+
+    # 分组汇总
+    groups: dict[int | None, dict] = {}
+    for a in animals:
+        g = groups.setdefault(a.pen_id, {
+            "pen_id": a.pen_id,
+            "pen_code": None,
+            "pen_type": None,
+            "capacity": None,
+            "current_count": None,
+            "count": 0,
+            "male_count": 0,
+            "female_count": 0,
+            "breed_map": {},
+            "age_sum": 0,
+            "age_known": 0,
+            "animals": [],
+        })
+        g["count"] += 1
+        if a.gender == "公":
+            g["male_count"] += 1
+        elif a.gender == "母":
+            g["female_count"] += 1
+        g["breed_map"][a.breed] = g["breed_map"].get(a.breed, 0) + 1
+        if a.birth_date:
+            g["age_sum"] += calc_age_days(a.birth_date)
+            g["age_known"] += 1
+        g["animals"].append(a)
+
+    # 组排序：有圈舍的按编号排，无圈舍的排最后
+    def sort_key(item):
+        pen_id, g = item
+        if pen_id is None or pen_id not in pens:
+            return (1, "")
+        return (0, pens[pen_id].pen_code or "")
+
+    ordered = [g for _, g in sorted(groups.items(), key=sort_key)]
+
+    total = len(ordered)
+    page_items = ordered[(pageNum - 1) * pageSize: pageNum * pageSize]
+
+    result = []
+    for g in page_items:
+        pen = pens.get(g["pen_id"])
+        if pen:
+            g["pen_code"] = pen.pen_code
+            g["pen_type"] = pen.pen_type
+            g["capacity"] = pen.capacity
+            g["current_count"] = pen.current_count
+        g["breeds"] = [
+            {"breed": b, "count": c}
+            for b, c in sorted(g["breed_map"].items(), key=lambda x: -x[1])
+        ]
+        g["avg_age_days"] = round(g["age_sum"] / g["age_known"]) if g["age_known"] else None
+        g["animals"] = [to_animal_out(a) for a in g["animals"]]
+        del g["breed_map"], g["age_sum"], g["age_known"]
+        result.append(g)
+
+    return {"list": result, "total": total, "pageNum": pageNum, "pageSize": pageSize,
+            "animal_total": len(animals)}
 
 
 def get_animal(db: Session, farm_id: int, animal_id: int) -> Animal:
@@ -335,7 +463,7 @@ def individual_create(db: Session, farm_id: int, body: AnimalIndividualIn) -> An
         birth_date=body.birth_date,
         in_date=body.in_date or date.today(),
         growth_stage=stage,
-        physio_status="发情" if body.gender == "母" else None,
+        physio_status=default_physio_status(body.species, body.gender, age_days),
         status=body.status,
         source=body.source,
         sire_tag=body.sire_tag,
@@ -396,7 +524,7 @@ def batch_create(db: Session, farm_id: int, body: AnimalBatchIn) -> dict:
                 birth_date=body.birth_date,
                 in_date=body.in_date or date.today(),
                 growth_stage=stage,
-                physio_status="发情" if body.gender == "母" else None,
+                physio_status=default_physio_status(body.species, body.gender, age_days),
                 status=body.status,
                 source=body.source,
                 remark=body.remark,
@@ -436,6 +564,13 @@ def import_create(db: Session, farm_id: int, body: AnimalImportIn) -> dict:
             continue
         if row.gender not in ("公", "母"):
             results.append({"row": i, "ok": False, "ear_tag": None, "breed": row.breed, "gender": row.gender, "error": "性别须为 公/母"})
+            continue
+        # 出生日期必填：禁止留空/跳过，系统据此自动推算日龄和生长阶段
+        if not row.birth_date:
+            results.append({"row": i, "ok": False, "ear_tag": None, "breed": row.breed, "gender": row.gender, "error": "出生日期必填（用于自动计算日龄和生长阶段）"})
+            continue
+        if row.birth_date > date.today():
+            results.append({"row": i, "ok": False, "ear_tag": None, "breed": row.breed, "gender": row.gender, "error": "出生日期不能晚于今天"})
             continue
         try:
             a = individual_create(db, fid, AnimalIndividualIn(

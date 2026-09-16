@@ -54,6 +54,7 @@ export const ANIMAL_STATUS_MAP: Record<string, string> = {
 
 /** 母畜生理状态 */
 export const PHYSIO_STATUS_MAP: Record<string, string> = {
+  '正常': '正常',
   '发情': '发情',
   '妊娠': '妊娠',
   '泌乳': '泌乳',
@@ -62,6 +63,56 @@ export const PHYSIO_STATUS_MAP: Record<string, string> = {
 }
 
 export const PHYSIO_STATUS_OPTIONS = Object.keys(PHYSIO_STATUS_MAP).map(v => ({ label: v, value: v }))
+
+/**
+ * 各畜种生长阶段日龄区间（与后端 GROWTH_STAGE_CONFIG 保持一致，
+ * 用于入栏/批量入栏时按出生日期实时预览日龄和生长阶段）
+ * 格式：[阶段名, 起始日龄, 结束日龄]
+ */
+export const GROWTH_STAGE_RANGES: Record<string, [string, number, number][]> = {
+  '牛': [
+    ['犊牛期', 1, 60],
+    ['保育期', 61, 180],
+    ['生长期', 181, 365],
+    ['育肥期', 366, 540],
+  ],
+  '羊': [
+    ['羔羊期', 1, 45],
+    ['保育期', 46, 90],
+    ['生长期', 91, 180],
+    ['育肥期', 181, 270],
+  ],
+  '猪': [
+    ['仔猪期', 1, 28],
+    ['保育期', 29, 70],
+    ['生长期', 71, 120],
+    ['育肥期', 121, 180],
+  ],
+}
+
+/** 可繁育起始日龄（母羊进入适配繁育周期才显示"发情"） */
+export const BREEDABLE_AGE: Record<string, number> = { '牛': 365, '羊': 300, '猪': 220 }
+
+/** 由出生日期计算日龄（无日期返回 null） */
+export function calcAgeDays(birthDate: string | null | undefined, refDate?: Date): number | null {
+  if (!birthDate) return null
+  const birth = new Date(birthDate + 'T00:00:00')
+  if (isNaN(birth.getTime())) return null
+  const ref = refDate || new Date()
+  const days = Math.floor((ref.getTime() - birth.getTime()) / 86400000)
+  return days < 0 ? null : days
+}
+
+/** 按畜种 + 日龄判定生长阶段（日龄 < 1 按第一阶段算，超过最后区间按繁育期算） */
+export function determineGrowthStage(species: string, ageDays: number | null): string {
+  const stages = GROWTH_STAGE_RANGES[species]
+  if (!stages || ageDays === null) return ''
+  if (ageDays < stages[0][1]) return stages[0][0]
+  for (const [name, start, end] of stages) {
+    if (ageDays >= start && ageDays <= end) return name
+  }
+  return '繁育期'
+}
 
 /** 来源 */
 export const SOURCE_OPTIONS = [

@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 
 class PhysioStatusIn(BaseModel):
     """设置母畜生理状态"""
-    physio_status: str = Field(..., max_length=20, description="生理状态：发情/妊娠/泌乳/休情/淘汰")
+    physio_status: str = Field(..., max_length=20, description="生理状态：正常/发情/妊娠/泌乳/休情/淘汰")
 
 
 # ============ 公畜健康档案 ============

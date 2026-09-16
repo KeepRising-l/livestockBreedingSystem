@@ -50,7 +50,7 @@ def restore_animal(
 ):
     farm_id = resolve_farm_id(current_user, x_farm_id)
     a = animal_service.restore_animal(db, farm_id, history_id)
-    return Result.ok(data=AnimalOut.model_validate(a), msg="恢复成功")
+    return Result.ok(data=animal_service.to_animal_out(a), msg="恢复成功")
 
 
 @router.get("/list", summary="档案列表（多条件筛选）")
@@ -73,7 +73,31 @@ def list_animals(
         gender=gender, status=status, pageNum=pageNum, pageSize=pageSize,
     )
     result = animal_service.list_animals(db, farm_id, query)
-    result["list"] = [AnimalOut.model_validate(a) for a in result["list"]]
+    result["list"] = [animal_service.to_animal_out(a) for a in result["list"]]
+    return Result.ok(data=result)
+
+
+@router.get("/grouped", summary="档案分级列表（按圈舍分组 + 汇总 + 组内个体明细）")
+def list_animals_grouped(
+    ear_tag: str = Query(None),
+    species: str = Query(None),
+    breed: str = Query(None),
+    gender: str = Query(None),
+    status: str = Query(None),
+    physio_status: str = Query(None),
+    pageNum: int = Query(1, ge=1),
+    pageSize: int = Query(5, ge=1, le=50),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    x_farm_id: int | None = Header(None, alias="X-Farm-Id"),
+):
+    """按圈舍分组展示：组头为汇总（存栏/公母/品种构成/平均日龄），组内为个体明细；分页以圈舍为单位"""
+    farm_id = resolve_farm_id(current_user, x_farm_id)
+    query = AnimalQuery(
+        ear_tag=ear_tag, species=species, breed=breed,
+        gender=gender, status=status, physio_status=physio_status,
+    )
+    result = animal_service.list_animals_grouped(db, farm_id, query, pageNum, pageSize)
     return Result.ok(data=result)
 
 
@@ -86,7 +110,7 @@ def get_animal(
 ):
     farm_id = resolve_farm_id(current_user, x_farm_id)
     a = animal_service.get_animal(db, farm_id, animal_id)
-    return Result.ok(data=AnimalOut.model_validate(a))
+    return Result.ok(data=animal_service.to_animal_out(a))
 
 
 @router.put("/update/{animal_id}", summary="修改档案")
@@ -99,7 +123,7 @@ def update_animal(
 ):
     farm_id = resolve_farm_id(current_user, x_farm_id)
     a = animal_service.update_animal(db, farm_id, animal_id, body)
-    return Result.ok(data=AnimalOut.model_validate(a), msg="修改成功")
+    return Result.ok(data=animal_service.to_animal_out(a), msg="修改成功")
 
 
 @router.post("/transfer/{animal_id}", summary="转入其他圈舍（自动重生耳标，缺口5）")
@@ -112,7 +136,7 @@ def transfer_animal(
 ):
     farm_id = resolve_farm_id(current_user, x_farm_id)
     a = animal_service.transfer_animal(db, farm_id, animal_id, body.target_pen_id)
-    return Result.ok(data=AnimalOut.model_validate(a), msg="转舍成功，耳标已更新")
+    return Result.ok(data=animal_service.to_animal_out(a), msg="转舍成功，耳标已更新")
 
 
 @router.post("/remove-from-pen/{animal_id}", summary="移出圈舍（缺口5）")
@@ -124,7 +148,7 @@ def remove_from_pen(
 ):
     farm_id = resolve_farm_id(current_user, x_farm_id)
     a = animal_service.remove_from_pen(db, farm_id, animal_id)
-    return Result.ok(data=AnimalOut.model_validate(a), msg="已移出圈舍")
+    return Result.ok(data=animal_service.to_animal_out(a), msg="已移出圈舍")
 
 
 @router.post("/individual", summary="个体入栏")
@@ -136,7 +160,7 @@ def individual_create(
 ):
     farm_id = resolve_farm_id(current_user, x_farm_id)
     a = animal_service.individual_create(db, farm_id, body)
-    return Result.ok(data=AnimalOut.model_validate(a), msg="入栏成功")
+    return Result.ok(data=animal_service.to_animal_out(a), msg="入栏成功")
 
 
 @router.post("/import", summary="Excel 批量导入（逐头，跳过坏行）")

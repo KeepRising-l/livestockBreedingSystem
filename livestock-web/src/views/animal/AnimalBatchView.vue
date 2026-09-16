@@ -47,7 +47,18 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="出生日期" prop="birth_date">
-              <el-date-picker v-model="form.birth_date" type="date" placeholder="选择日期" style="width: 100%" value-format="YYYY-MM-DD" />
+              <el-date-picker
+                v-model="form.birth_date"
+                type="date"
+                placeholder="选择日期（必填）"
+                style="width: 100%"
+                value-format="YYYY-MM-DD"
+                :disabled-date="(d: Date) => d.getTime() > Date.now()"
+              />
+              <div v-if="agePreview" class="tip">
+                当前日龄约 {{ agePreview.age }} 天，整批生长阶段：{{ agePreview.stage }}
+                （由系统按日龄自动匹配）
+              </div>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -95,7 +106,7 @@
     <el-dialog v-model="importVisible" title="从 Excel 导入" width="720px" :close-on-click-modal="false">
       <el-alert type="info" :closable="false" show-icon>
         <p>模板列：品种 / 性别 / 出生日期 / 入栏日期 / 来源 / 备注，每行代表 1 头，逐头自动分配圈舍并生成耳标。</p>
-        <p>出生日期与入栏日期格式：YYYY-MM-DD。有问题的行会自动跳过，不影响其它行。</p>
+        <p>出生日期必填（格式 YYYY-MM-DD）：系统据此自动推算日龄和生长阶段，留空的行将被拒绝导入；入栏日期格式同上，可留空。有问题的行会自动跳过，不影响其它行。</p>
       </el-alert>
       <div class="mt-16 flex-gap">
         <el-button @click="downloadTemplate">
@@ -164,7 +175,7 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { batchCreateAnimalApi, importAnimalsApi } from '@/api/animal'
-import { GENDER_OPTIONS, SOURCE_OPTIONS } from '@/utils/constants'
+import { GENDER_OPTIONS, SOURCE_OPTIONS, calcAgeDays, determineGrowthStage } from '@/utils/constants'
 import { useSpecies } from '@/composables/useSpecies'
 import { readExcel, downloadImportTemplate, fmtDateCell } from '@/utils/excel'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
@@ -203,8 +214,16 @@ const rules: FormRules = {
   breed: [{ required: true, message: '请输入品种', trigger: 'blur' }],
   gender: [{ required: true, message: '请选择性别', trigger: 'change' }],
   count: [{ required: true, message: '请输入数量', trigger: 'blur' }],
+  birth_date: [{ required: true, message: '请选择出生日期（必填，用于自动计算日龄和生长阶段）', trigger: 'change' }],
   in_date: [{ required: true, message: '请选择入栏日期', trigger: 'change' }],
 }
+
+/** 出生日期联动：实时显示日龄 + 自动匹配的生长阶段（整批同一出生日期） */
+const agePreview = computed(() => {
+  const age = calcAgeDays(form.birth_date)
+  if (age === null) return null
+  return { age, stage: determineGrowthStage(form.species, age) }
+})
 
 async function handleSubmit() {
   const valid = await formRef.value?.validate().catch(() => false)
@@ -242,7 +261,8 @@ async function handleFileChange(uploadFile: any) {
   parseErrors.value = []
   try {
     const { headers, rows } = await readExcel(file)
-    const col = (name: string) => headers.indexOf(name)
+    // 表头容错：如"出生日期（必填）"也能匹配到"出生日期"列
+    const col = (name: string) => headers.findIndex((h) => h === name || h.startsWith(name))
     const iBreed = col('品种')
     const iGender = col('性别')
     const iBirth = col('出生日期')
@@ -265,9 +285,13 @@ async function handleFileChange(uploadFile: any) {
       const remark = iRemark === -1 ? '' : String(r[iRemark] ?? '').trim()
       if (!breed) errs.push(`第 ${rowNum} 行：品种为空`)
       if (!['公', '母'].includes(gender)) errs.push(`第 ${rowNum} 行：性别须为 公/母`)
-      if (birth && !dateRe.test(birth)) errs.push(`第 ${rowNum} 行：出生日期格式应为 YYYY-MM-DD`)
+      // 出生日期必填：留空/格式错误/晚于今天的行都拒绝导入
+      if (!birth) errs.push(`第 ${rowNum} 行：出生日期必填（用于自动计算日龄和生长阶段）`)
+      else if (!dateRe.test(birth)) errs.push(`第 ${rowNum} 行：出生日期格式应为 YYYY-MM-DD`)
+      else if (birth > new Date().toISOString().split('T')[0]) errs.push(`第 ${rowNum} 行：出生日期不能晚于今天`)
       if (inDate && !dateRe.test(inDate)) errs.push(`第 ${rowNum} 行：入栏日期格式应为 YYYY-MM-DD`)
       const valid = !!breed && ['公', '母'].includes(gender)
+        && !!birth && dateRe.test(birth) && birth <= new Date().toISOString().split('T')[0]
       return { row: rowNum, breed, gender, birth_date: birth, in_date: inDate, source, remark, valid }
     })
     parseErrors.value = errs
@@ -330,4 +354,5 @@ watch(species, () => {
 .flex-gap { display: flex; align-items: center; gap: 12px; }
 .form-card { max-width: 900px; }
 .result-info { line-height: 2; }
+.tip { color: #8fa9bf; font-size: 12px; margin-top: 4px; line-height: 1.6; }
 </style>

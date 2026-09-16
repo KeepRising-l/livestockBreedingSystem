@@ -37,7 +37,18 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="出生日期" prop="birth_date">
-              <el-date-picker v-model="form.birth_date" type="date" placeholder="选择日期" style="width: 100%" value-format="YYYY-MM-DD" />
+              <el-date-picker
+                v-model="form.birth_date"
+                type="date"
+                placeholder="选择日期（必填）"
+                style="width: 100%"
+                value-format="YYYY-MM-DD"
+                :disabled-date="(d: Date) => d.getTime() > Date.now()"
+              />
+              <div v-if="agePreview" class="tip">
+                当前日龄约 {{ agePreview.age }} 天，对应生长阶段：{{ agePreview.stage }}
+                （阶段由系统按日龄自动匹配，无需填写）
+              </div>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -116,7 +127,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { createAnimalApi, generateEarTagApi } from '@/api/animal'
 import { getPenListApi, type PenInfo } from '@/api/pen'
-import { GENDER_OPTIONS, SOURCE_OPTIONS, PEN_TYPE_MAP } from '@/utils/constants'
+import { GENDER_OPTIONS, SOURCE_OPTIONS, PEN_TYPE_MAP, calcAgeDays, determineGrowthStage } from '@/utils/constants'
 import { useSpecies } from '@/composables/useSpecies'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 
@@ -126,6 +137,13 @@ const { species, speciesZh, breedOptions, loadBreedOptions } = useSpecies()
 const formRef = ref<FormInstance>()
 const saving = ref(false)
 const earTagPreview = ref('')
+
+/** 出生日期联动：实时显示日龄 + 自动匹配的生长阶段 */
+const agePreview = computed(() => {
+  const age = calcAgeDays(form.birth_date)
+  if (age === null) return null
+  return { age, stage: determineGrowthStage(form.species, age) }
+})
 
 /** 当前畜种的可选圈舍（后端按 species 过滤，只回本畜种 + 待归属的空圈舍） */
 const penOptions = ref<PenInfo[]>([])
@@ -172,6 +190,7 @@ const rules: FormRules = {
   species: [{ required: true, message: '请选择畜种', trigger: 'change' }],
   breed: [{ required: true, message: '请输入品种', trigger: 'blur' }],
   gender: [{ required: true, message: '请选择性别', trigger: 'change' }],
+  birth_date: [{ required: true, message: '请选择出生日期（必填，用于自动计算日龄和生长阶段）', trigger: 'change' }],
   in_date: [{ required: true, message: '请选择入栏日期', trigger: 'change' }],
 }
 

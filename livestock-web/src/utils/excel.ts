@@ -23,7 +23,7 @@ export function fmtDateCell(v: unknown): string {
 
 /** 生成并下载批量入栏导入模板 */
 export function downloadImportTemplate() {
-  const headers = ['品种', '性别', '出生日期', '入栏日期', '来源', '备注']
+  const headers = ['品种', '性别', '出生日期（必填）', '入栏日期', '来源', '备注']
   const example = ['西门塔尔', '母', '2026-03-01', '2026-08-14', '外购', '示例行，导入前可删除']
   const ws = XLSX.utils.aoa_to_sheet([headers, example])
   ws['!cols'] = [{ wch: 14 }, { wch: 8 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 30 }]

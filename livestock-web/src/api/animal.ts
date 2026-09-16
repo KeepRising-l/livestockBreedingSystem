@@ -9,6 +9,7 @@ export interface AnimalInfo {
   pen_id: number | null
   gender: string
   birth_date: string | null
+  age_days: number | null
   in_date: string | null
   out_date: string | null
   growth_stage: string | null
@@ -19,6 +20,32 @@ export interface AnimalInfo {
   dam_tag: string | null
   remark: string | null
   create_time: string | null
+}
+
+/** 档案分级展示：一个圈舍一组，组头汇总 + 组内个体明细 */
+export interface AnimalGroupInfo {
+  pen_id: number | null
+  pen_code: string | null
+  pen_type: string | null
+  capacity: number | null
+  current_count: number | null
+  count: number
+  male_count: number
+  female_count: number
+  breeds: { breed: string; count: number }[]
+  avg_age_days: number | null
+  animals: AnimalInfo[]
+}
+
+export interface AnimalGroupQuery {
+  ear_tag?: string
+  species?: string
+  breed?: string
+  gender?: string
+  status?: string
+  physio_status?: string
+  pageNum?: number
+  pageSize?: number
 }
 
 export interface AnimalQuery {
@@ -67,6 +94,11 @@ export interface AnimalHistoryQuery {
 
 export function getAnimalListApi(params: AnimalQuery) {
   return http.get('/animal/list', { params })
+}
+
+/** 档案分级列表：按圈舍分组（组头汇总 + 组内个体明细） */
+export function getAnimalGroupedApi(params: AnimalGroupQuery) {
+  return http.get('/animal/grouped', { params })
 }
 
 export function getAnimalDetailApi(id: number) {
