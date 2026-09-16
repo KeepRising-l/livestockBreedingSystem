@@ -158,9 +158,9 @@ onMounted(() => loadBreedOptions())
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; color: #333; }
+.page-title { font-size: 20px; font-weight: 600; color: #eaf6ff; }
 .mt-16 { margin-top: 16px; }
 .ml-8 { margin-left: 8px; }
 .form-card { max-width: 900px; }
-.tip { color: #999; font-size: 12px; margin-top: 4px; }
+.tip { color: #8fa9bf; font-size: 12px; margin-top: 4px; }
 </style>

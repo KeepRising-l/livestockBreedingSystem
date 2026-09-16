@@ -1,8 +1,8 @@
 <template>
   <div class="sidebar-container">
     <div class="logo">
-      <span v-if="!isCollapse">🐄 智能养殖</span>
-      <span v-else>🐄</span>
+      <span class="logo-mark">🐄</span>
+      <span v-if="!isCollapse" class="logo-text">智能养殖</span>
     </div>
     <el-scrollbar class="menu-scrollbar">
       <el-menu
@@ -11,9 +11,6 @@
         :default-active="activeMenu"
         :default-openeds="defaultOpeneds"
         :collapse="isCollapse"
-        background-color="#001529"
-        text-color="#ffffffa6"
-        active-text-color="#fff"
         router
         class="side-menu"
       >
@@ -100,10 +97,14 @@ const activeMenu = computed(() => route.path)
 /** 首次渲染默认展开：「我的养殖场」+ 当前畜种 + 当前模块（配合 unique-opened 手风琴） */
 const defaultOpeneds = computed(() => buildOpeneds())
 
-/** 从当前路由推导要展开的目录链：我的养殖场 → 畜种 → 模块 */
+/** 从当前路由推导要展开的目录链：我的养殖场 → 畜种 → 模块
+ *  仅畜种业务路由（/cattle|sheep|pig/...）联动展开；
+ *  /farm、/system、/dashboard 等顶层页面不自动展开畜种目录，
+ *  避免 unique-opened 手风琴把用户正在浏览的顶层目录（如养殖场管理）收起 */
 function buildOpeneds(): string[] {
   const segs = route.path.replace(/^\//, '').split('/')
-  const sp = ['cattle', 'sheep', 'pig'].includes(segs[0]) ? segs[0] : (authStore.currentSpecies || 'cattle')
+  if (!['cattle', 'sheep', 'pig'].includes(segs[0])) return []
+  const sp = segs[0]
   const mod = segs[1]
   const opened = ['livestock', `/${sp}`]
   if (mod && mod !== 'workbench') opened.push(`/${sp}/${mod}`)
@@ -111,11 +112,23 @@ function buildOpeneds(): string[] {
 }
 
 // 路由切换（含跨畜种）时，侧边栏动态展开对应目录，其它自动收起
+// 修改：只 open 真实存在的子菜单索引 + try/catch 兜底，防止 Vue 调度器死锁
 watch(
   () => route.path,
   () => {
-    const opened = buildOpeneds()
-    opened.forEach((idx) => menuRef.value?.open(idx))
+    const opened = buildOpeneds().filter((idx) => {
+      if (idx === 'livestock') return true
+      const segs = idx.split('/').filter(Boolean) // 如 ['cattle', 'feeding']
+      if (segs.length === 1) return true // '/cattle' 畜种子菜单必定存在
+      return MODULES.some((mod) => mod.key === segs[1])
+    })
+    opened.forEach((idx) => {
+      try {
+        menuRef.value?.open(idx)
+      } catch {
+        // 子菜单因 v-if/时序尚未注册时忽略，避免异常毒化调度器
+      }
+    })
   },
   { flush: 'post' },
 )
@@ -227,25 +240,68 @@ function modulesOf(sp: string): ModuleDef[] {
 
 <style scoped lang="scss">
 .sidebar-container {
+  position: relative;
+  z-index: 1;
   height: 100%;
   display: flex;
   flex-direction: column;
 }
+
+/* 品牌区：HUD 徽标 + 全息渐变文字 */
 .logo {
-  height: 56px;
+  height: 58px;
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  font-size: 18px;
-  font-weight: bold;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 9px;
+  padding: 0 12px;
+  border-bottom: 1px solid rgba(34, 211, 238, 0.16);
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.1), transparent 70%);
+  overflow: hidden;
 }
+
+.logo-mark {
+  font-size: 19px;
+  line-height: 1;
+  filter: drop-shadow(0 0 10px rgba(34, 211, 238, 0.7));
+}
+
+.logo-text {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  white-space: nowrap;
+  background: linear-gradient(92deg, #eaf6ff 10%, #7fe6f7 55%, #4a95ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 .menu-scrollbar {
   flex: 1;
   min-height: 0;
 }
+
 .side-menu {
   border-right: none;
+}
+
+/* 菜单内图标在激活态下发光 */
+.side-menu :deep(.el-menu-item.is-active .el-icon),
+.side-menu :deep(.el-sub-menu.is-active > .el-sub-menu__title .el-icon) {
+  color: #7fe6f7;
+  filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.85));
+}
+
+.side-menu :deep(.el-sub-menu .el-menu-item) {
+  min-width: auto;
+}
+
+/* 三级菜单文字略小，层级更清爽 */
+.side-menu :deep(.el-menu--inline .el-menu-item) {
+  font-size: 13px;
+  height: 38px;
+  line-height: 38px;
 }
 </style>

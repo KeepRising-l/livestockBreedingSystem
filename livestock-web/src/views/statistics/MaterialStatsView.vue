@@ -45,7 +45,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import VChart from 'vue-echarts'
+import VChart from '@/components/TechChart.vue'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { BarChart, PieChart } from 'echarts/charts'
@@ -60,12 +60,12 @@ const kpiCards = computed(() => {
   const s = stats.value
   if (!s) return []
   return [
-    { label: '库存种类', value: s.stock_count, color: '#1976D2' },
-    { label: '缺货物资', value: s.shortage_count, color: '#D32F2F' },
-    { label: '已过期', value: s.expired_count, color: '#C62828' },
-    { label: '即将过期', value: s.expiring_count, color: '#F57F17' },
-    { label: '本月进货金额(元)', value: s.month_purchase_amount.toLocaleString(), color: '#2E7D32' },
-    { label: '本月领用量', value: s.month_consume.toLocaleString(), color: '#6A1B9A' },
+    { label: '库存种类', value: s.stock_count, color: '#4a95ff' },
+    { label: '缺货物资', value: s.shortage_count, color: '#ff4d6d' },
+    { label: '已过期', value: s.expired_count, color: '#ff6b85' },
+    { label: '即将过期', value: s.expiring_count, color: '#ffd166' },
+    { label: '本月进货金额(元)', value: s.month_purchase_amount.toLocaleString(), color: '#00e6a8' },
+    { label: '本月领用量', value: s.month_consume.toLocaleString(), color: '#a78bfa' },
   ]
 })
 
@@ -88,7 +88,7 @@ const consumeTrendOption = computed(() => {
     tooltip: { trigger: 'axis' },
     xAxis: { type: 'category', data: t.months },
     yAxis: { type: 'value' },
-    series: [{ name: '领用量', type: 'bar', data: t.values, itemStyle: { color: '#6A1B9A' }, barMaxWidth: 36 }],
+    series: [{ name: '领用量', type: 'bar', data: t.values, itemStyle: { color: '#a78bfa' }, barMaxWidth: 36 }],
   }
 })
 
@@ -101,9 +101,9 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #333; }
+.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #eaf6ff; }
 .mb-16 { margin-bottom: 16px; }
 .stat-card { text-align: center; padding: 8px; }
 .stat-value { font-size: 26px; font-weight: 700; }
-.stat-label { font-size: 13px; color: #999; margin-top: 4px; }
+.stat-label { font-size: 13px; color: #8fa9bf; margin-top: 4px; }
 </style>

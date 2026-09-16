@@ -4,6 +4,10 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import { registerIcons } from './utils/icons'
+
+// Element Plus 暗色变量基线（配合 index.html 的 <html class="dark">），
+// 必须早于 styles/index.scss 引入，主题覆盖才能后置生效
+import 'element-plus/theme-chalk/dark/css-vars.css'
 import './styles/index.scss'
 
 // Element Plus 按需引入后，ElMessage/ElMessageBox 等命令式组件的样式需手动引入

@@ -183,10 +183,10 @@ const purchases = ref<any[]>([])
 const kpiCards = computed(() => {
   const k = stats.value?.kpi
   return [
-    { label: '今日存栏', value: k?.today_stock ?? '-', color: '#2E7D32' },
-    { label: '待处理预警', value: k?.pending_alert ?? '-', color: '#D32F2F' },
-    { label: '待审核记录', value: k?.pending_audit ?? '-', color: '#F57F17' },
-    { label: '我的岗位', value: post.value || '-', color: '#455A64' },
+    { label: '今日存栏', value: k?.today_stock ?? '-', color: '#00e6a8' },
+    { label: '待处理预警', value: k?.pending_alert ?? '-', color: '#ff4d6d' },
+    { label: '待审核记录', value: k?.pending_audit ?? '-', color: '#ffd166' },
+    { label: '我的岗位', value: post.value || '-', color: '#7fa8c9' },
   ]
 })
 
@@ -250,10 +250,10 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #333; }
+.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #eaf6ff; }
 .mb-16 { margin-bottom: 16px; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
 .kpi-card { text-align: center; padding: 8px; }
 .kpi-value { font-size: 26px; font-weight: 700; }
-.kpi-label { font-size: 13px; color: #999; margin-top: 4px; }
+.kpi-label { font-size: 13px; color: #8fa9bf; margin-top: 4px; }
 </style>

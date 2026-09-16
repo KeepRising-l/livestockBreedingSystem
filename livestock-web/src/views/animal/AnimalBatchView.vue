@@ -318,7 +318,7 @@ onMounted(() => loadBreedOptions())
 
 <style scoped>
 .page-header { display: flex; justify-content: space-between; align-items: center; }
-.page-title { font-size: 20px; font-weight: 600; color: #333; }
+.page-title { font-size: 20px; font-weight: 600; color: #eaf6ff; }
 .mt-16 { margin-top: 16px; }
 .mr-8 { margin-right: 8px; }
 .flex-gap { display: flex; align-items: center; gap: 12px; }

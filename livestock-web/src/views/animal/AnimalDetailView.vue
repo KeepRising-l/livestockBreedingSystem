@@ -67,6 +67,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; color: #333; }
+.page-title { font-size: 20px; font-weight: 600; color: #eaf6ff; }
 .mt-16 { margin-top: 16px; }
 </style>

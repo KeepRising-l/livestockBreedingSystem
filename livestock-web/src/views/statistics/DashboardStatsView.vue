@@ -61,7 +61,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import VChart from 'vue-echarts'
+import VChart from '@/components/TechChart.vue'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { BarChart, PieChart } from 'echarts/charts'
@@ -77,14 +77,14 @@ const kpiCards = computed(() => {
   const k = stats.value?.kpi
   if (!k) return []
   return [
-    { label: '今日存栏', value: k.today_stock, color: '#2E7D32' },
-    { label: '本月入栏', value: k.month_in, color: '#1976D2' },
-    { label: '本月出栏', value: k.month_out, color: '#E65100' },
-    { label: '累计销售额(元)', value: k.total_sale.toLocaleString(), color: '#6A1B9A' },
-    { label: '累计利润(元)', value: k.total_profit.toLocaleString(), color: '#C62828' },
-    { label: '待审核记录', value: k.pending_audit, color: '#F57F17' },
-    { label: '待处理预警', value: k.pending_alert, color: '#D32F2F' },
-    { label: '员工数', value: k.staff_count, color: '#455A64' },
+    { label: '今日存栏', value: k.today_stock, color: '#00e6a8' },
+    { label: '本月入栏', value: k.month_in, color: '#4a95ff' },
+    { label: '本月出栏', value: k.month_out, color: '#ffb020' },
+    { label: '累计销售额(元)', value: k.total_sale.toLocaleString(), color: '#a78bfa' },
+    { label: '累计利润(元)', value: k.total_profit.toLocaleString(), color: '#ff6b85' },
+    { label: '待审核记录', value: k.pending_audit, color: '#ffd166' },
+    { label: '待处理预警', value: k.pending_alert, color: '#ff4d6d' },
+    { label: '员工数', value: k.staff_count, color: '#7fa8c9' },
   ]
 })
 
@@ -107,8 +107,8 @@ const trendOption = computed(() => {
     xAxis: { type: 'category', data: t.months },
     yAxis: { type: 'value', minInterval: 1 },
     series: [
-      { name: '入栏', type: 'bar', data: t.in_values, itemStyle: { color: '#1976D2' }, barMaxWidth: 24 },
-      { name: '出栏', type: 'bar', data: t.out_values, itemStyle: { color: '#E65100' }, barMaxWidth: 24 },
+      { name: '入栏', type: 'bar', data: t.in_values, itemStyle: { color: '#4a95ff' }, barMaxWidth: 24 },
+      { name: '出栏', type: 'bar', data: t.out_values, itemStyle: { color: '#ffb020' }, barMaxWidth: 24 },
     ],
   }
 })
@@ -130,7 +130,7 @@ const stageOption = computed(() => {
     tooltip: { trigger: 'axis' },
     xAxis: { type: 'category', data: d.map(i => i.name) },
     yAxis: { type: 'value', minInterval: 1 },
-    series: [{ type: 'bar', data: d.map(i => i.value), itemStyle: { color: '#2E7D32' }, barMaxWidth: 40 }],
+    series: [{ type: 'bar', data: d.map(i => i.value), itemStyle: { color: '#00e6a8' }, barMaxWidth: 40 }],
   }
 })
 
@@ -146,13 +146,13 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #333; }
+.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #eaf6ff; }
 .mb-16 { margin-bottom: 16px; }
 .stat-card { text-align: center; padding: 8px; }
 .stat-value { font-size: 26px; font-weight: 700; }
-.stat-label { font-size: 13px; color: #999; margin-top: 4px; }
+.stat-label { font-size: 13px; color: #8fa9bf; margin-top: 4px; }
 .summary-row { margin-top: 8px; }
 .summary-item { text-align: center; padding: 20px 0; border: 1px solid #eef2f6; border-radius: 8px; background: #fafbfc; }
-.summary-value { font-size: 24px; font-weight: 700; color: #2E7D32; }
-.summary-label { font-size: 13px; color: #999; margin-top: 6px; }
+.summary-value { font-size: 24px; font-weight: 700; color: #00e6a8; }
+.summary-label { font-size: 13px; color: #8fa9bf; margin-top: 6px; }
 </style>

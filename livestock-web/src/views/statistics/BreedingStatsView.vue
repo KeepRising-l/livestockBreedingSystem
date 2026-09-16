@@ -72,7 +72,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import VChart from 'vue-echarts'
+import VChart from '@/components/TechChart.vue'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { BarChart, PieChart, LineChart } from 'echarts/charts'
@@ -87,14 +87,14 @@ const kpiCards = computed(() => {
   const s = stats.value
   if (!s) return []
   return [
-    { label: '当前存栏', value: s.current_stock, color: '#2E7D32' },
-    { label: '本月配种', value: s.month_mating, color: '#1976D2' },
-    { label: '本月产犊', value: s.month_birth, color: '#E65100' },
-    { label: '妊娠母畜', value: s.pregnant_count, color: '#6A1B9A' },
+    { label: '当前存栏', value: s.current_stock, color: '#00e6a8' },
+    { label: '本月配种', value: s.month_mating, color: '#4a95ff' },
+    { label: '本月产犊', value: s.month_birth, color: '#ffb020' },
+    { label: '妊娠母畜', value: s.pregnant_count, color: '#a78bfa' },
     { label: '受孕率', value: s.pregnancy_rate, suffix: '%', color: '#00897B' },
-    { label: '生产率', value: s.reproduction_rate, suffix: '%', color: '#F57F17' },
+    { label: '生产率', value: s.reproduction_rate, suffix: '%', color: '#ffd166' },
     { label: '平均成活率', value: s.avg_survival_rate, suffix: '%', color: '#43A047' },
-    { label: '待处理预警', value: s.pending_alert_count, color: '#C62828' },
+    { label: '待处理预警', value: s.pending_alert_count, color: '#ff6b85' },
   ]
 })
 
@@ -119,7 +119,7 @@ const penOption = computed(() => {
     tooltip: { trigger: 'axis' },
     xAxis: { type: 'category', data: d.map(i => i.name) },
     yAxis: { type: 'value', minInterval: 1 },
-    series: [{ type: 'bar', data: d.map(i => i.value), itemStyle: { color: '#1976D2' }, barMaxWidth: 36 }],
+    series: [{ type: 'bar', data: d.map(i => i.value), itemStyle: { color: '#4a95ff' }, barMaxWidth: 36 }],
   }
 })
 
@@ -130,7 +130,7 @@ const birthTrendOption = computed(() => {
     tooltip: { trigger: 'axis' },
     xAxis: { type: 'category', data: t.months },
     yAxis: { type: 'value', minInterval: 1 },
-    series: [{ name: '产犊数', type: 'line', smooth: true, data: t.values, areaStyle: { opacity: 0.15 }, itemStyle: { color: '#E65100' } }],
+    series: [{ name: '产犊数', type: 'line', smooth: true, data: t.values, areaStyle: { opacity: 0.15 }, itemStyle: { color: '#ffb020' } }],
   }
 })
 
@@ -143,9 +143,9 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #333; }
+.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #eaf6ff; }
 .mb-16 { margin-bottom: 16px; }
 .stat-card { text-align: center; padding: 8px; }
 .stat-value { font-size: 26px; font-weight: 700; }
-.stat-label { font-size: 13px; color: #999; margin-top: 4px; }
+.stat-label { font-size: 13px; color: #8fa9bf; margin-top: 4px; }
 </style>

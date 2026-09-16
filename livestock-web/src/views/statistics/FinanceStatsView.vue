@@ -42,7 +42,7 @@
             <el-descriptions-item label="利润率(%)">{{ monthSummary.profit_rate }}%</el-descriptions-item>
             <el-descriptions-item label="成本支出(元)">{{ monthSummary.expense_amount.toLocaleString() }}</el-descriptions-item>
             <el-descriptions-item label="净利润(元)">
-              <span :style="{ color: (monthSummary.net_profit ?? 0) >= 0 ? '#2E7D32' : '#C62828', fontWeight: 700 }">
+              <span :style="{ color: (monthSummary.net_profit ?? 0) >= 0 ? '#00e6a8' : '#ff6b85', fontWeight: 700 }">
                 {{ (monthSummary.net_profit ?? 0).toLocaleString() }}
               </span>
             </el-descriptions-item>
@@ -56,7 +56,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import VChart from 'vue-echarts'
+import VChart from '@/components/TechChart.vue'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { BarChart, PieChart, LineChart } from 'echarts/charts'
@@ -72,14 +72,14 @@ const kpiCards = computed(() => {
   if (!s) return []
   const t = s.total
   return [
-    { label: '累计销售额(元)', value: t.total_amount.toLocaleString(), color: '#1976D2' },
-    { label: '累计销售成本(元)', value: t.total_cost.toLocaleString(), color: '#6A1B9A' },
-    { label: '累计销售利润(元)', value: t.total_profit.toLocaleString(), color: '#2E7D32' },
-    { label: '累计净利润(元)', value: (t.net_profit ?? 0).toLocaleString(), color: (t.net_profit ?? 0) >= 0 ? '#2E7D32' : '#C62828' },
-    { label: '累计订单数', value: t.order_count, color: '#455A64' },
-    { label: '累计出栏数', value: t.animal_count, color: '#E65100' },
-    { label: '本月净利润(元)', value: (s.month.net_profit ?? 0).toLocaleString(), color: (s.month.net_profit ?? 0) >= 0 ? '#2E7D32' : '#C62828' },
-    { label: '成本支出(元)', value: t.expense_amount.toLocaleString(), color: '#F57F17' },
+    { label: '累计销售额(元)', value: t.total_amount.toLocaleString(), color: '#4a95ff' },
+    { label: '累计销售成本(元)', value: t.total_cost.toLocaleString(), color: '#a78bfa' },
+    { label: '累计销售利润(元)', value: t.total_profit.toLocaleString(), color: '#00e6a8' },
+    { label: '累计净利润(元)', value: (t.net_profit ?? 0).toLocaleString(), color: (t.net_profit ?? 0) >= 0 ? '#00e6a8' : '#ff6b85' },
+    { label: '累计订单数', value: t.order_count, color: '#7fa8c9' },
+    { label: '累计出栏数', value: t.animal_count, color: '#ffb020' },
+    { label: '本月净利润(元)', value: (s.month.net_profit ?? 0).toLocaleString(), color: (s.month.net_profit ?? 0) >= 0 ? '#00e6a8' : '#ff6b85' },
+    { label: '成本支出(元)', value: t.expense_amount.toLocaleString(), color: '#ffd166' },
   ]
 })
 
@@ -94,8 +94,8 @@ const profitTrendOption = computed(() => {
     xAxis: { type: 'category', data: t.months },
     yAxis: { type: 'value' },
     series: [
-      { name: '销售额', type: 'bar', data: t.sale_values, itemStyle: { color: '#1976D2' }, barMaxWidth: 24 },
-      { name: '利润', type: 'line', smooth: true, data: t.profit_values, itemStyle: { color: '#2E7D32' } },
+      { name: '销售额', type: 'bar', data: t.sale_values, itemStyle: { color: '#4a95ff' }, barMaxWidth: 24 },
+      { name: '利润', type: 'line', smooth: true, data: t.profit_values, itemStyle: { color: '#00e6a8' } },
     ],
   }
 })
@@ -119,9 +119,9 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #333; }
+.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #eaf6ff; }
 .mb-16 { margin-bottom: 16px; }
 .stat-card { text-align: center; padding: 8px; }
 .stat-value { font-size: 26px; font-weight: 700; }
-.stat-label { font-size: 13px; color: #999; margin-top: 4px; }
+.stat-label { font-size: 13px; color: #8fa9bf; margin-top: 4px; }
 </style>

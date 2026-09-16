@@ -8,8 +8,8 @@ import type { App, Component } from 'vue'
 const ICON_NAMES = [
   'ArrowDown', 'ArrowLeft', 'Bell', 'Box', 'Connection', 'DataAnalysis', 'Delete',
   'Download', 'Expand', 'Files', 'FirstAidKit', 'Fold', 'Food', 'Grid', 'House',
-  'InfoFilled', 'Money', 'Notebook', 'OfficeBuilding', 'Plus', 'Refresh',
-  'Sell', 'Setting', 'Stamp', 'Suitcase', 'TrendCharts', 'Upload', 'UserFilled',
+  'InfoFilled', 'Lock', 'Money', 'Notebook', 'OfficeBuilding', 'Plus', 'Refresh',
+  'Sell', 'Setting', 'Stamp', 'Suitcase', 'TrendCharts', 'Upload', 'User', 'UserFilled',
 ]
 
 export function registerIcons(app: App) {

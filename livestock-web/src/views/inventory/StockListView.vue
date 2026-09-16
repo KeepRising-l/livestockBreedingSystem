@@ -122,7 +122,7 @@
         </el-form-item>
         <el-form-item label="初始库存" prop="quantity" v-if="!isEdit">
           <el-input-number v-model="form.quantity" :min="0" :precision="2" style="width: 100%" />
-          <div style="color:#999;font-size:12px;">首次入库可填0，后续通过进货记录增加</div>
+          <div style="color:#8fa9bf;font-size:12px;">首次入库可填0，后续通过进货记录增加</div>
         </el-form-item>
         <el-form-item label="单位" prop="unit">
           <el-select v-model="form.unit" placeholder="请选择" filterable allow-create style="width: 100%">
@@ -131,11 +131,11 @@
         </el-form-item>
         <el-form-item label="单价">
           <el-input-number v-model="form.unit_price" :min="0" :precision="2" style="width: 100%" />
-          <div style="color:#999;font-size:12px;">元/单位；进货审核通过后按移动加权平均自动更新，用于出栏药品成本核算</div>
+          <div style="color:#8fa9bf;font-size:12px;">元/单位；进货审核通过后按移动加权平均自动更新，用于出栏药品成本核算</div>
         </el-form-item>
         <el-form-item label="预警阈值">
           <el-input-number v-model="form.warning_threshold" :min="0" :precision="2" style="width: 100%" />
-          <div style="color:#999;font-size:12px;">库存低于此值时标记为缺货</div>
+          <div style="color:#8fa9bf;font-size:12px;">库存低于此值时标记为缺货</div>
         </el-form-item>
         <el-form-item label="生产日期">
           <el-date-picker v-model="form.production_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
@@ -293,7 +293,7 @@ onMounted(loadData)
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; color: #333; }
+.page-title { font-size: 20px; font-weight: 600; color: #eaf6ff; }
 .mb-16 { margin-bottom: 16px; }
 .mt-16 { margin-top: 16px; }
 .text-right { text-align: right; }

@@ -10,7 +10,14 @@
         <el-breadcrumb-item v-if="route.meta.title">{{ route.meta.title }}</el-breadcrumb-item>
       </el-breadcrumb>
     </div>
+
     <div class="header-right">
+      <!-- 系统状态 + 实时时钟（数据化读数） -->
+      <div class="sys-clock" title="系统运行状态">
+        <span class="tech-pulse"></span>
+        <span class="clock-text tech-metric">{{ clock }}</span>
+      </div>
+
       <!-- 超管农场选择器 -->
       <el-select
         v-if="authStore.userType === 1 && authStore.farmList.length > 1"
@@ -52,8 +59,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import dayjs from 'dayjs'
 import { useAuthStore } from '@/stores/auth'
 import { ElMessage } from 'element-plus'
 
@@ -66,6 +74,14 @@ const authStore = useAuthStore()
 
 // 未读数统一从 auth store 读取（标记已读后同步刷新角标，无需手动刷新页面）
 const unreadCount = computed(() => authStore.unreadCount)
+
+/** 顶栏实时时钟：仅展示当前时间，不做业务数据呈现 */
+const clock = ref('')
+let clockTimer: ReturnType<typeof setInterval> | undefined
+
+function tick() {
+  clock.value = dayjs().format('YYYY-MM-DD HH:mm:ss')
+}
 
 function handleFarmSwitch(farmId: number) {
   const farmName = authStore.farmList.find(f => f.id === farmId)?.farm_name || ''
@@ -85,7 +101,16 @@ function handleCommand(cmd: string) {
   }
 }
 
-onMounted(authStore.refreshUnreadCount)
+onMounted(() => {
+  tick()
+  clockTimer = setInterval(tick, 1000)
+  authStore.refreshUnreadCount()
+})
+
+onBeforeUnmount(() => {
+  if (clockTimer) clearInterval(clockTimer)
+})
+
 // 路由变化时刷新未读数（如从消息页标记已读返回、审核操作后跳转）
 watch(() => route.fullPath, authStore.refreshUnreadCount)
 </script>
@@ -97,39 +122,98 @@ watch(() => route.fullPath, authStore.refreshUnreadCount)
   align-items: center;
   justify-content: space-between;
 }
+
 .header-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
+  min-width: 0;
 }
+
 .collapse-btn {
   cursor: pointer;
-  &:hover { color: var(--el-color-primary); }
+  color: #9fc2dd;
+  padding: 5px;
+  border-radius: 7px;
+  transition: color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    color: #7fe6f7;
+    background: rgba(34, 211, 238, 0.12);
+    box-shadow: 0 0 14px rgba(34, 211, 238, 0.28);
+  }
 }
+
 .header-right {
   display: flex;
   align-items: center;
+  gap: 4px;
 }
+
+/* 系统状态 + 时钟 */
+.sys-clock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 13px;
+  margin-right: 16px;
+  border: 1px solid rgba(34, 211, 238, 0.24);
+  border-radius: 999px;
+  background: rgba(6, 24, 48, 0.5);
+  backdrop-filter: blur(8px);
+
+  .clock-text {
+    font-size: 12.5px;
+    letter-spacing: 0.8px;
+    color: #8fe9f8;
+    white-space: nowrap;
+  }
+}
+
 .msg-badge {
-  margin-right: 18px;
+  margin-right: 16px;
 }
+
 .msg-bell {
   cursor: pointer;
-  color: #606266;
-  &:hover { color: var(--el-color-primary); }
+  color: #9fc2dd;
+  transition: color 0.2s ease, filter 0.2s ease;
+
+  &:hover {
+    color: #7fe6f7;
+    filter: drop-shadow(0 0 10px rgba(34, 211, 238, 0.8));
+  }
 }
+
 .farm-selector {
   margin-right: 16px;
   width: 180px;
 }
+
 .user-info {
   display: flex;
   align-items: center;
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  &:hover { background: #f0f2f5; }
+  padding: 5px 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  color: #cfe4f5;
+  font-size: 13.5px;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+
+  &:hover {
+    background: rgba(34, 211, 238, 0.12);
+    border-color: rgba(34, 211, 238, 0.32);
+    color: #eaf6ff;
+  }
 }
+
 .ml-1 { margin-left: 4px; }
 .ml-2 { margin-left: 8px; }
+
+@media (max-width: 900px) {
+  .sys-clock { display: none; }
+  .farm-selector { width: 132px; }
+}
 </style>

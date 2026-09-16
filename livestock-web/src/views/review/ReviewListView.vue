@@ -201,12 +201,12 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; color: #333; }
+.page-title { font-size: 20px; font-weight: 600; color: #eaf6ff; }
 .mb-16 { margin-bottom: 16px; }
 .mt-16 { margin-top: 16px; }
 .text-right { text-align: right; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
 .tab-badge { margin-left: 4px; }
-.detail-icon { margin-left: 6px; cursor: help; color: #909399; vertical-align: -2px; }
-.c-gray { color: #666; }
+.detail-icon { margin-left: 6px; cursor: help; color: #8fa9bf; vertical-align: -2px; }
+.c-gray { color: #a8c6e0; }
 </style>

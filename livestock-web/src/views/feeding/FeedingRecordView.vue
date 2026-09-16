@@ -443,12 +443,12 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; color: #333; }
+.page-title { font-size: 20px; font-weight: 600; color: #eaf6ff; }
 .mb-16 { margin-bottom: 16px; }
 .mt-16 { margin-top: 16px; }
 .text-right { text-align: right; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
 
 .feed-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 18px; }
-.feed-field-label { font-size: 13px; color: #606266; padding-left: 2px; }
+.feed-field-label { font-size: 13px; color: #a8c6e0; padding-left: 2px; }
 </style>

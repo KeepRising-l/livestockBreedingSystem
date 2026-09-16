@@ -54,7 +54,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import VChart from 'vue-echarts'
+import VChart from '@/components/TechChart.vue'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { BarChart, PieChart, LineChart } from 'echarts/charts'
@@ -69,14 +69,14 @@ const kpiCards = computed(() => {
   const s = stats.value
   if (!s) return []
   return [
-    { label: '本月防疫记录', value: s.month_vaccine, color: '#1976D2' },
-    { label: '本月已免疫牛只', value: s.month_immunized_animals, color: '#2E7D32' },
-    { label: '免疫覆盖率', value: s.immunization_coverage, suffix: '%', color: '#6A1B9A' },
-    { label: '本月诊疗记录', value: s.month_medical, color: '#E65100' },
-    { label: '发病率', value: s.morbidity_rate, suffix: '%', color: '#F57F17' },
-    { label: '死亡率', value: s.mortality_rate, suffix: '%', color: '#C62828' },
+    { label: '本月防疫记录', value: s.month_vaccine, color: '#4a95ff' },
+    { label: '本月已免疫牛只', value: s.month_immunized_animals, color: '#00e6a8' },
+    { label: '免疫覆盖率', value: s.immunization_coverage, suffix: '%', color: '#a78bfa' },
+    { label: '本月诊疗记录', value: s.month_medical, color: '#ffb020' },
+    { label: '发病率', value: s.morbidity_rate, suffix: '%', color: '#ffd166' },
+    { label: '死亡率', value: s.mortality_rate, suffix: '%', color: '#ff6b85' },
     { label: '死亡数量', value: s.death_count, color: '#B71C1C' },
-    { label: '治疗中', value: (s.treatment_dist.find(i => i.name === '治疗中')?.value ?? 0), color: '#455A64' },
+    { label: '治疗中', value: (s.treatment_dist.find(i => i.name === '治疗中')?.value ?? 0), color: '#7fa8c9' },
   ]
 })
 
@@ -90,8 +90,8 @@ function barOption(data: { name: string; value: number }[] | undefined, color: s
   }
 }
 
-const vaccineOption = computed(() => barOption(stats.value?.vaccine_dist, '#1976D2'))
-const diseaseOption = computed(() => barOption(stats.value?.disease_dist, '#E65100'))
+const vaccineOption = computed(() => barOption(stats.value?.vaccine_dist, '#4a95ff'))
+const diseaseOption = computed(() => barOption(stats.value?.disease_dist, '#ffb020'))
 
 const treatmentOption = computed(() => {
   const d = stats.value?.treatment_dist
@@ -112,8 +112,8 @@ const healthTrendOption = computed(() => {
     xAxis: { type: 'category', data: t.months },
     yAxis: { type: 'value', minInterval: 1 },
     series: [
-      { name: '防疫', type: 'line', smooth: true, data: t.vaccine_values, itemStyle: { color: '#1976D2' } },
-      { name: '诊疗', type: 'line', smooth: true, data: t.medical_values, itemStyle: { color: '#E65100' } },
+      { name: '防疫', type: 'line', smooth: true, data: t.vaccine_values, itemStyle: { color: '#4a95ff' } },
+      { name: '诊疗', type: 'line', smooth: true, data: t.medical_values, itemStyle: { color: '#ffb020' } },
     ],
   }
 })
@@ -127,9 +127,9 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #333; }
+.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #eaf6ff; }
 .mb-16 { margin-bottom: 16px; }
 .stat-card { text-align: center; padding: 8px; }
 .stat-value { font-size: 26px; font-weight: 700; }
-.stat-label { font-size: 13px; color: #999; margin-top: 4px; }
+.stat-label { font-size: 13px; color: #8fa9bf; margin-top: 4px; }
 </style>
