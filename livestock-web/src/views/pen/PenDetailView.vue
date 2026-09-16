@@ -66,7 +66,7 @@
         <el-form-item label="目标圈舍">
           <el-select v-model="targetPenId" placeholder="请选择目标圈舍" filterable style="width: 100%">
             <el-option v-for="p in penOptions" :key="p.id" :value="p.id"
-              :label="`${p.pen_code}（${PEN_TYPE_MAP[p.pen_type] || p.pen_type} ${p.current_count}/${p.capacity}）`"
+              :label="`${p.pen_code}（${PEN_TYPE_MAP[p.pen_type] || p.pen_type} ${p.current_count}/${p.capacity}${p.species ? '' : ' · 待归属'}）`"
               :disabled="p.current_count >= p.capacity" />
           </el-select>
         </el-form-item>
@@ -132,9 +132,12 @@ async function loadAnimals() {
   }
 }
 
-async function loadPenOptions() {
+/** 转舍目标圈舍：按该畜禽的畜种过滤，避免下拉里混入别的畜种的圈舍（后端也会拒绝） */
+async function loadPenOptions(animalSpecies?: string) {
   try {
-    const res = await getPenListApi({ pageNum: 1, pageSize: 100 } as any)
+    const params: any = { pageNum: 1, pageSize: 100 }
+    if (animalSpecies) params.species = animalSpecies
+    const res = await getPenListApi(params)
     const data = res.data as any
     penOptions.value = (data.list || []).filter((p: PenInfo) => p.id !== pen.value?.id)
   } catch {
@@ -146,7 +149,7 @@ function openTransfer(row: AnimalInfo) {
   transferAnimal.value = row
   targetPenId.value = undefined
   transferVisible.value = true
-  loadPenOptions()
+  loadPenOptions(row.species)
 }
 
 async function handleTransfer() {

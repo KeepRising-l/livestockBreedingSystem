@@ -46,9 +46,35 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="圈舍ID" prop="pen_id">
-              <el-input-number v-model="form.pen_id" :min="0" placeholder="留空自动分配" style="width: 100%" />
-              <div class="tip">留空则系统自动分配圈舍</div>
+            <el-form-item label="圈舍" prop="pen_id">
+              <el-select
+                v-model="form.pen_id"
+                placeholder="留空则由系统自动分配"
+                clearable
+                filterable
+                :loading="penLoading"
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="p in penOptions"
+                  :key="p.id"
+                  :value="p.id"
+                  :label="penLabel(p)"
+                  :disabled="p.current_count >= p.capacity"
+                >
+                  <span>{{ p.pen_code }}</span>
+                  <span class="pen-opt-meta">
+                    {{ PEN_TYPE_MAP[p.pen_type] || p.pen_type }} · {{ p.current_count }}/{{ p.capacity }}
+                    <template v-if="p.current_count >= p.capacity"> · 已满</template>
+                    <template v-else> · 空位 {{ p.capacity - p.current_count }}</template>
+                    <template v-if="!p.species"> · 待归属</template>
+                  </span>
+                </el-option>
+              </el-select>
+              <div class="tip">
+                仅显示「{{ speciesZh }}」的圈舍，共 {{ penOptions.length }} 个（有空位 {{ availablePenCount }} 个）；
+                留空则按生长阶段自动分配
+              </div>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -83,10 +109,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { createAnimalApi, generateEarTagApi } from '@/api/animal'
-import { GENDER_OPTIONS, SOURCE_OPTIONS } from '@/utils/constants'
+import { getPenListApi, type PenInfo } from '@/api/pen'
+import { GENDER_OPTIONS, SOURCE_OPTIONS, PEN_TYPE_MAP } from '@/utils/constants'
 import { useSpecies } from '@/composables/useSpecies'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 
@@ -96,6 +123,34 @@ const { species, speciesZh, breedOptions, loadBreedOptions } = useSpecies()
 const formRef = ref<FormInstance>()
 const saving = ref(false)
 const earTagPreview = ref('')
+
+/** 当前畜种的可选圈舍（后端按 species 过滤，只回本畜种 + 待归属的空圈舍） */
+const penOptions = ref<PenInfo[]>([])
+const penLoading = ref(false)
+
+const availablePenCount = computed(
+  () => penOptions.value.filter((p) => p.current_count < p.capacity).length,
+)
+
+/** 下拉项文案：编号（类型 已用/容量 · 空位/已满 · 是否待归属） */
+function penLabel(p: PenInfo) {
+  const type = PEN_TYPE_MAP[p.pen_type] || p.pen_type
+  const state = p.current_count >= p.capacity ? '已满' : `空位 ${p.capacity - p.current_count}`
+  const owner = p.species ? '' : ' · 待归属'
+  return `${p.pen_code}（${type} ${p.current_count}/${p.capacity} · ${state}${owner}）`
+}
+
+async function loadPenOptions() {
+  penLoading.value = true
+  try {
+    const res = await getPenListApi({ species: speciesZh.value, pageNum: 1, pageSize: 100 })
+    penOptions.value = ((res.data as any)?.list || []) as PenInfo[]
+  } catch {
+    penOptions.value = []
+  } finally {
+    penLoading.value = false
+  }
+}
 
 const form = reactive({
   species: speciesZh.value,
@@ -154,12 +209,21 @@ async function handleSubmit() {
   }
 }
 
-onMounted(() => loadBreedOptions())
+onMounted(() => {
+  loadBreedOptions()
+  loadPenOptions()
+})
 
 // 切换畜种时同一条路由记录不会重建组件，必须主动重新加载，
 // 否则页面会一直停留在上一个畜种的数据上
 watch(species, () => {
+  // 畜种字段是 disabled 的展示项，也要跟着路由更新
+  form.species = speciesZh.value
+  // 已选圈舍属于上一个畜种，必须清掉，否则会提交到错误的圈舍（后端也会拒绝）
+  form.pen_id = undefined
+  earTagPreview.value = ''
   loadBreedOptions()
+  loadPenOptions()
 })
 </script>
 
@@ -168,5 +232,7 @@ watch(species, () => {
 .mt-16 { margin-top: 16px; }
 .ml-8 { margin-left: 8px; }
 .form-card { max-width: 900px; }
-.tip { color: #8fa9bf; font-size: 12px; margin-top: 4px; }
+.tip { color: #8fa9bf; font-size: 12px; margin-top: 4px; line-height: 1.6; }
+/* 下拉项右侧的规格说明，靠右淡显，避免与编号抢视线 */
+.pen-opt-meta { float: right; color: #8fa9bf; font-size: 12px; padding-left: 16px; }
 </style>
