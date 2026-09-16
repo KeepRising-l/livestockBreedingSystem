@@ -101,6 +101,7 @@ const TABS: Record<string, string> = {
   consume: '领用记录',
   vaccine: '防疫记录',
   medical: '诊疗记录',
+  mating: '配种记录',
 }
 
 const activeTab = ref('all')
@@ -109,7 +110,7 @@ const loading = ref(false)
 const pageNum = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
-const counts = reactive<ReviewCounts>({ feeding: 0, purchase: 0, consume: 0, vaccine: 0, medical: 0, total: 0 })
+const counts = reactive<ReviewCounts>({ feeding: 0, purchase: 0, consume: 0, vaccine: 0, medical: 0, mating: 0, total: 0 })
 
 const auditDialogVisible = ref(false)
 const auditAction = ref<'通过' | '驳回'>('通过')
@@ -201,12 +202,12 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; color: #eaf6ff; }
+.page-title { font-size: 20px; font-weight: 600; color: #0e2f47; }
 .mb-16 { margin-bottom: 16px; }
 .mt-16 { margin-top: 16px; }
 .text-right { text-align: right; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
 .tab-badge { margin-left: 4px; }
-.detail-icon { margin-left: 6px; cursor: help; color: #8fa9bf; vertical-align: -2px; }
-.c-gray { color: #a8c6e0; }
+.detail-icon { margin-left: 6px; cursor: help; color: #6b8ba4; vertical-align: -2px; }
+.c-gray { color: #5b7d95; }
 </style>

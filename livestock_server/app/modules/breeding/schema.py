@@ -31,7 +31,7 @@ class MaleHealthIn(BaseModel):
 # ============ 配种记录 ============
 
 class MatingIn(BaseModel):
-    """新增配种记录"""
+    """新增配种记录（提交后进待审核，审核通过才置母畜为妊娠）"""
     female_tag: str = Field(..., max_length=10, description="母畜耳标")
     male_tag: Optional[str] = Field(None, max_length=10, description="公畜耳标")
     species: str = Field(..., max_length=10, description="养殖种类：牛/羊/猪")
@@ -39,6 +39,12 @@ class MatingIn(BaseModel):
     mating_type: str = Field("本交", max_length=10, description="配种方式：本交/人工受精")
     semen_source: Optional[str] = Field(None, max_length=100, description="精液来源")
     remark: Optional[str] = Field(None, max_length=255)
+
+
+class MatingAuditIn(BaseModel):
+    """审核配种记录（场主/超管）"""
+    audit_status: str = Field(..., description="目标审核状态：通过/驳回")
+    remark: Optional[str] = Field(None, max_length=255, description="审核备注")
 
 
 class MatingUpdateIn(BaseModel):
@@ -68,6 +74,7 @@ class MatingOut(BaseModel):
     mating_type: str
     semen_source: Optional[str] = None
     status: str
+    audit_status: str
     pregnancy_check_date: Optional[date] = None
     pregnancy_check_result: Optional[str] = None
     expected_birth_date: Optional[date] = None
@@ -86,6 +93,7 @@ class MatingQuery(BaseModel):
     male_tag: Optional[str] = None
     species: Optional[str] = None
     status: Optional[str] = None
+    audit_status: Optional[str] = None
     mating_date_start: Optional[date] = None
     mating_date_end: Optional[date] = None
     pageNum: int = 1

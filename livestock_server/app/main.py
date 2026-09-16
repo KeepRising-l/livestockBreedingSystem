@@ -111,6 +111,38 @@ def _ensure_sys_notice_farm_id(db):
         db.rollback()
 
 
+def _ensure_mating_audit_status(db):
+    """
+    配种记录审核：为老库 mating_record 补充 audit_status 列。
+
+    背景：配种记录原先"提交即生效"（提交即把母畜置为妊娠），现在改为
+    "提交 → 待审核 → 场主审核通过才置妊娠"（与饲喂记录一致）。
+    存量记录都是已生效的数据，统一回填"通过"，避免历史记录涌进审核中心。
+    """
+    from sqlalchemy import text
+    try:
+        rows = db.execute(text(
+            "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
+            "WHERE TABLE_NAME='mating_record' AND COLUMN_NAME='audit_status'"
+        )).fetchall()
+        if not rows:
+            db.execute(text(
+                "ALTER TABLE mating_record ADD COLUMN audit_status VARCHAR(10) "
+                "NOT NULL DEFAULT '待审核' COMMENT '审核状态：待审核/通过/驳回'"
+            ))
+            db.commit()
+            print("[init] 已为 mating_record 表补充 audit_status 列")
+            # 存量记录视为已生效，回填"通过"
+            result = db.execute(text(
+                "UPDATE mating_record SET audit_status='通过' WHERE audit_status='待审核'"
+            ))
+            db.commit()
+            if result.rowcount:
+                print(f"[init] mating_record.audit_status 存量回填为「通过」，共 {result.rowcount} 条")
+    except Exception as e:
+        print(f"[init] mating_record.audit_status 迁移跳过（非 MySQL 或已迁移）：{e}")
+
+
 def _ensure_pen_species(db):
     """
     圈舍畜种归属：为老库 pen_info 补充 species 列并回填存量圈舍。
@@ -176,6 +208,7 @@ def init_db():
         _ensure_stock_unit_price(db)
         _ensure_sys_notice_farm_id(db)
         _ensure_pen_species(db)
+        _ensure_mating_audit_status(db)
         admin = db.query(User).filter(User.username == settings.SUPER_ADMIN_USERNAME).first()
         if not admin:
             admin = User(

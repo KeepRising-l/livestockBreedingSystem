@@ -89,6 +89,7 @@ def scan_breeding_alerts():
         check_line = today - timedelta(days=PREGNANCY_CHECK_DAYS)
         matings = db.query(MatingRecord).filter(
             MatingRecord.deleted == False,
+            MatingRecord.audit_status == "通过",  # 未审核/驳回的记录不算数
             MatingRecord.status == "待孕检",
             MatingRecord.mating_date <= check_line,
         ).all()
@@ -110,6 +111,7 @@ def scan_breeding_alerts():
         remind_line = today + timedelta(days=BIRTH_REMIND_DAYS)
         pregnant = db.query(MatingRecord).filter(
             MatingRecord.deleted == False,
+            MatingRecord.audit_status == "通过",
             MatingRecord.status == "成功怀孕",
             MatingRecord.expected_birth_date.isnot(None),
             MatingRecord.expected_birth_date >= today,
@@ -141,6 +143,7 @@ def scan_breeding_alerts():
                 MatingRecord.farm_id == b.farm_id,
                 MatingRecord.female_tag == b.female_tag,
                 MatingRecord.deleted == False,
+                MatingRecord.audit_status == "通过",
                 MatingRecord.mating_date >= b.birth_date,
             ).first()
             if later_mating:

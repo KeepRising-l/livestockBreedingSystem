@@ -35,6 +35,11 @@
             <el-option v-for="(label, key) in MATING_STATUS_MAP" :key="key" :label="label" :value="key" />
           </el-select>
         </el-form-item>
+        <el-form-item label="审核状态">
+          <el-select v-model="query.audit_status" placeholder="全部" clearable style="width: 110px" @change="search">
+            <el-option v-for="(label, key) in AUDIT_STATUS_MAP" :key="key" :label="label" :value="key" />
+          </el-select>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="search">查询</el-button>
           <el-button @click="resetSearch">重置</el-button>
@@ -53,6 +58,11 @@
         </el-table-column>
         <el-table-column prop="species" label="畜种" width="70" />
         <el-table-column prop="mating_type" label="配种方式" width="100" />
+        <el-table-column label="审核状态" width="90">
+          <template #default="{ row }">
+            <el-tag :type="auditColor(row.audit_status)" size="small">{{ row.audit_status }}</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="状态" width="90">
           <template #default="{ row }">
             <el-tag :type="statusColor(row.status)" size="small">{{ row.status }}</el-tag>
@@ -72,11 +82,15 @@
           <template #default="{ row }">{{ row.pregnancy_check_result || '-' }}</template>
         </el-table-column>
         <el-table-column prop="remark" label="备注" min-width="100" show-overflow-tooltip />
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="230" fixed="right">
           <template #default="{ row }">
-            <el-button link type="success" size="small" @click.stop="handleCheck(row as MatingRecord)" v-if="!row.pregnancy_check_result && row.status !== '配种失败'">孕检</el-button>
+            <template v-if="canAudit && row.audit_status === '待审核'">
+              <el-button link type="success" size="small" @click.stop="handleAudit(row as MatingRecord, '通过')">通过</el-button>
+              <el-button link type="danger" size="small" @click.stop="handleAudit(row as MatingRecord, '驳回')">驳回</el-button>
+            </template>
+            <el-button link type="success" size="small" @click.stop="handleCheck(row as MatingRecord)" v-if="row.audit_status === '通过' && !row.pregnancy_check_result && row.status !== '配种失败'">孕检</el-button>
             <el-button link type="primary" size="small" @click.stop="handleEdit(row as MatingRecord)" v-if="!row.pregnancy_check_result">编辑</el-button>
-            <el-popconfirm title="确定删除该配种记录？" @confirm="handleDelete(row.id)">
+            <el-popconfirm title="确定删除该配种记录？" @confirm="handleDelete(row.id)" v-if="row.audit_status !== '通过'">
               <template #reference>
                 <el-button link type="danger" size="small" @click.stop>删除</el-button>
               </template>
@@ -97,8 +111,30 @@
       </div>
     </el-card>
 
+    <!-- 审核弹窗 -->
+    <el-dialog v-model="auditDialogVisible" :title="`审核配种记录 - ${auditAction}`" width="420px">
+      <el-form :model="auditForm" label-width="80px">
+        <el-form-item label="备注">
+          <el-input v-model="auditForm.remark" type="textarea" :rows="3" placeholder="审核备注（可选）" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="auditDialogVisible = false">取消</el-button>
+        <el-button :type="auditAction === '通过' ? 'success' : 'danger'" :loading="auditSaving" @click="confirmAudit">确认{{ auditAction }}</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 新增/编辑弹窗 -->
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑配种记录' : '新增配种记录'" width="540px">
+      <el-alert
+        type="info"
+        :closable="false"
+        show-icon
+        class="mb-16"
+        :title="isEdit
+          ? '保存后记录将退回「待审核」，需场主重新审核通过才生效（母畜妊娠状态一并回退）'
+          : '提交后进入「待审核」，场主审核通过才会把母畜登记为妊娠'"
+      />
       <el-form :model="form" :rules="formRules" ref="formRef" label-width="100px">
         <el-form-item label="母畜耳标" prop="female_tag">
           <el-select v-model="form.female_tag" filterable placeholder="选择可繁育母畜" style="width: 100%" :disabled="isEdit">
@@ -160,15 +196,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import {
-  getMatingListApi, addMatingApi, updateMatingApi, deleteMatingApi,
+  getMatingListApi, addMatingApi, updateMatingApi, deleteMatingApi, auditMatingApi,
   pregnancyCheckApi, getBreedFemalesApi, getBreedMalesApi,
   type MatingRecord, type BreedAnimal,
 } from '@/api/breeding'
-import { SPECIES_OPTIONS, MATING_TYPE_OPTIONS, MATING_STATUS_MAP, PREGNANCY_RESULT_OPTIONS } from '@/utils/constants'
+import { useAuthStore } from '@/stores/auth'
+import { SPECIES_OPTIONS, MATING_TYPE_OPTIONS, MATING_STATUS_MAP, PREGNANCY_RESULT_OPTIONS, AUDIT_STATUS_MAP } from '@/utils/constants'
 import { useSpecies } from '@/composables/useSpecies'
 import { type TagProps, ElMessage, type FormInstance, type FormRules } from 'element-plus'
+
+const authStore = useAuthStore()
+// 场主/超管才能审核（与饲喂记录一致）
+const canAudit = computed(() => authStore.userType !== 3)
 
 const { species, speciesZh } = useSpecies()
 
@@ -182,10 +223,11 @@ const femaleOptions = ref<BreedAnimal[]>([])
 const maleOptions = ref<BreedAnimal[]>([])
 
 const dateRange = ref<string[]>([])
-const query = reactive<{ female_tag: string; species: string; status: string; mating_date_start: string; mating_date_end: string }>({
+const query = reactive<{ female_tag: string; species: string; status: string; audit_status: string; mating_date_start: string; mating_date_end: string }>({
   female_tag: '',
   species: speciesZh.value,
   status: '',
+  audit_status: '',
   mating_date_start: '',
   mating_date_end: '',
 })
@@ -227,6 +269,42 @@ function statusColor(s: string): TagProps['type'] {
   return m[s] || 'info'
 }
 
+function auditColor(s: string): TagProps['type'] {
+  const m: Record<string, TagProps['type']> = { '待审核': 'warning', '通过': 'success', '驳回': 'danger' }
+  return m[s] || 'info'
+}
+
+// ========== 审核 ==========
+const auditDialogVisible = ref(false)
+const auditSaving = ref(false)
+const auditRecordId = ref(0)
+const auditAction = ref('通过')
+const auditForm = reactive({ remark: '' })
+
+function handleAudit(row: MatingRecord, action: string) {
+  auditRecordId.value = row.id
+  auditAction.value = action
+  auditForm.remark = ''
+  auditDialogVisible.value = true
+}
+
+async function confirmAudit() {
+  auditSaving.value = true
+  try {
+    await auditMatingApi(auditRecordId.value, {
+      audit_status: auditAction.value,
+      remark: auditForm.remark,
+    })
+    ElMessage.success(`已${auditAction.value}`)
+    auditDialogVisible.value = false
+    loadData()
+  } catch {
+    // handled by interceptor
+  } finally {
+    auditSaving.value = false
+  }
+}
+
 function onDateChange(val: string[] | null) {
   if (val && val.length === 2) {
     query.mating_date_start = val[0]
@@ -248,6 +326,7 @@ function resetSearch() {
   query.female_tag = ''
   query.species = speciesZh.value
   query.status = ''
+  query.audit_status = ''
   query.mating_date_start = ''
   query.mating_date_end = ''
   search()
@@ -260,6 +339,7 @@ async function loadData() {
     if (query.female_tag) params.female_tag = query.female_tag
     if (query.species) params.species = query.species
     if (query.status) params.status = query.status
+    if (query.audit_status) params.audit_status = query.audit_status
     if (query.mating_date_start) params.mating_date_start = query.mating_date_start
     if (query.mating_date_end) params.mating_date_end = query.mating_date_end
     const res = await getMatingListApi(params)
@@ -327,10 +407,11 @@ async function handleSave() {
     if (!payload.remark) delete payload.remark
     if (isEdit.value) {
       await updateMatingApi(editId.value, payload)
-      ElMessage.success('修改成功')
+      // 已通过的记录改动会退回待审核（后端同步回退母畜妊娠标记）
+      ElMessage.success('已保存，需场主重新审核通过才生效')
     } else {
       await addMatingApi(payload)
-      ElMessage.success('配种记录已登记')
+      ElMessage.success('已提交，等待场主审核')
     }
     dialogVisible.value = false
     loadData()
@@ -388,7 +469,7 @@ watch(species, () => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; color: #eaf6ff; }
+.page-title { font-size: 20px; font-weight: 600; color: #0e2f47; }
 .mb-16 { margin-bottom: 16px; }
 .mt-16 { margin-top: 16px; }
 .text-right { text-align: right; }

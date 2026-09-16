@@ -1,13 +1,14 @@
 """
 繁育路由
 
-- 母畜/公畜列表：从档案按「性别 + 可繁育阶段」筛选，供配种时选畜
-- 配种记录：新增（自动算预产期）、列表、详情、修改、删除、孕检登记
+- 母畜/公畜列表：从档案按「性别 + 可繁育日龄」筛选，供配种时选畜
+- 配种记录：新增（自动算预产期，提交进待审核）、列表、详情、修改、删除、孕检登记、
+  审核（场主/超管，通过后才把母畜置为妊娠 —— 与饲喂记录同一套审核口径）
 - 产犊记录：新增（存活率自动算）、列表、详情、修改、删除
 - 繁育预警：列表、详情、手动新增、处理（已处理/已忽略）
 
-说明：繁育记录为日常生产记录（DBD 无审核字段），所有登录用户可操作，
-      归属校验统一在 service 层按 farm_id 过滤。
+说明：繁育日常记录（配种/产犊/预警）所有登录用户可提交，归属校验统一在 service 层按 farm_id 过滤；
+      审核类动作（配种记录审核）限场主/超管。
 """
 from datetime import date
 
@@ -23,7 +24,7 @@ from app.models.user import User
 from app.modules.animal.schema import AnimalOut
 from app.modules.breeding import service as breeding_service
 from app.modules.breeding.schema import (
-    MatingIn, MatingUpdateIn, PregnancyCheckIn, MatingOut, MatingQuery,
+    MatingIn, MatingUpdateIn, PregnancyCheckIn, MatingOut, MatingQuery, MatingAuditIn,
     BirthIn, BirthUpdateIn, BirthOut, BirthQuery,
     AlertIn, AlertHandleIn, AlertOut, AlertQuery,
     PhysioStatusIn, MaleHealthIn,
@@ -36,6 +37,12 @@ def _require_farm(current_user: User) -> int:
     if not current_user.farm_id:
         raise BizException("当前用户未关联养殖场", code=40300)
     return current_user.farm_id
+
+
+def _check_owner(current_user: User):
+    """养殖场主或超管能操作（user_type=1 或 2），与饲喂记录审核口径一致"""
+    if current_user.user_type not in (1, 2):
+        raise BizException("无权限操作，需养殖场主权限", code=40301)
 
 
 # ============================================================
@@ -110,6 +117,7 @@ def list_matings(
     male_tag: str = Query(None),
     species: str = Query(None),
     status: str = Query(None),
+    audit_status: str = Query(None, description="审核状态：待审核/通过/驳回"),
     mating_date_start: date = Query(None),
     mating_date_end: date = Query(None),
     pageNum: int = Query(1, ge=1),
@@ -120,6 +128,7 @@ def list_matings(
     farm_id = _require_farm(current_user)
     query = MatingQuery(
         female_tag=female_tag, male_tag=male_tag, species=species, status=status,
+        audit_status=audit_status,
         mating_date_start=mating_date_start, mating_date_end=mating_date_end,
         pageNum=pageNum, pageSize=pageSize,
     )
@@ -136,12 +145,22 @@ def get_mating(record_id: int, db: Session = Depends(get_db),
     return Result.ok(data=MatingOut.model_validate(rec))
 
 
-@router.post("/mating/add", summary="新增配种记录（自动算预产期）")
+@router.post("/mating/add", summary="新增配种记录（自动算预产期，提交后进待审核）")
 def add_mating(body: MatingIn, db: Session = Depends(get_db),
                current_user: User = Depends(get_current_user)):
     farm_id = _require_farm(current_user)
     rec = breeding_service.add_mating(db, farm_id, body, current_user.id)
-    return Result.ok(data=MatingOut.model_validate(rec), msg="配种记录已登记")
+    return Result.ok(data=MatingOut.model_validate(rec), msg="配种记录已提交，等待场主审核")
+
+
+@router.post("/mating/audit/{record_id}", summary="审核配种记录（场主/超管，通过后才置母畜妊娠）")
+def audit_mating(record_id: int, body: MatingAuditIn, db: Session = Depends(get_db),
+                 current_user: User = Depends(get_current_user)):
+    _check_owner(current_user)
+    rec = breeding_service.audit_mating(
+        db, current_user.farm_id, record_id, body.audit_status, body.remark
+    )
+    return Result.ok(data=MatingOut.model_validate(rec), msg=f"已{body.audit_status}")
 
 
 @router.put("/mating/update/{record_id}", summary="修改配种记录（已孕检不可改）")

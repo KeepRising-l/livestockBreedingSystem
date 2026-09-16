@@ -2,7 +2,7 @@
 审核业务逻辑
 
 统一审核入口：聚合查询五类业务的待审核记录 + 转发审核到各模块。
-- 待审核来源：feeding_record / material_purchase / material_consume / vaccine_record / medical_record
+- 待审核来源：feeding_record / material_purchase / material_consume / vaccine_record / medical_record / mating_record
 - 不新增业务表，审核状态直接落各业务表的 audit_status
 """
 from datetime import datetime
@@ -19,6 +19,8 @@ from app.modules.inventory.model import MaterialPurchase, MaterialConsume
 from app.modules.inventory import service as inventory_service
 from app.modules.health.model import VaccineRecord, MedicalRecord
 from app.modules.health import service as health_service
+from app.modules.breeding.model import MatingRecord
+from app.modules.breeding import service as breeding_service
 from app.modules.system import service as system_service
 from app.modules.review.schema import ReviewItemOut, ReviewAuditIn
 
@@ -29,6 +31,7 @@ BUSINESS_NAMES = {
     "consume": "领用记录",
     "vaccine": "防疫记录",
     "medical": "诊疗记录",
+    "mating": "配种记录",
 }
 
 
@@ -96,6 +99,21 @@ def _medical_item(rec: MedicalRecord) -> ReviewItemOut:
     )
 
 
+def _mating_item(rec: MatingRecord) -> ReviewItemOut:
+    male = rec.male_tag or "人工受精"
+    summary = f"配种 {rec.female_tag} × {male} · {rec.mating_date} · {rec.species}"
+    return ReviewItemOut(
+        business_type="mating", business_name=BUSINESS_NAMES["mating"],
+        id=rec.id, create_time=rec.create_time, operator_user_id=rec.operator_user_id,
+        summary=summary,
+        detail={"mating_date": str(rec.mating_date), "female_tag": rec.female_tag,
+                "male_tag": rec.male_tag, "species": rec.species,
+                "mating_type": rec.mating_type, "semen_source": rec.semen_source,
+                "expected_birth_date": str(rec.expected_birth_date) if rec.expected_birth_date else None,
+                "remark": rec.remark},
+    )
+
+
 def _query_pending(db: Session, farm_id: int, business_type: str, page_num: int = 1, page_size: int = 10) -> List:
     """查某类型的待审核记录，返回映射好的 ReviewItemOut 列表"""
     if business_type == "feeding":
@@ -138,6 +156,14 @@ def _query_pending(db: Session, farm_id: int, business_type: str, page_num: int 
         total = q.count()
         rows = q.order_by(MedicalRecord.create_time.desc()).offset((page_num - 1) * page_size).limit(page_size).all()
         return [_medical_item(r) for r in rows], total
+    if business_type == "mating":
+        q = db.query(MatingRecord).filter(
+            MatingRecord.farm_id == farm_id, MatingRecord.audit_status == "待审核",
+            MatingRecord.deleted == False,
+        )
+        total = q.count()
+        rows = q.order_by(MatingRecord.create_time.desc()).offset((page_num - 1) * page_size).limit(page_size).all()
+        return [_mating_item(r) for r in rows], total
     raise BizException("不支持的业务类型", code=40201)
 
 
@@ -213,6 +239,12 @@ def _get_submitter_id(db: Session, farm_id: int, business_type: str, business_id
             MedicalRecord.deleted == False,
         ).first()
         return rec.operator_user_id if rec else None
+    if business_type == "mating":
+        rec = db.query(MatingRecord).filter(
+            MatingRecord.id == business_id, MatingRecord.farm_id == farm_id,
+            MatingRecord.deleted == False,
+        ).first()
+        return rec.operator_user_id if rec else None
     return None
 
 
@@ -227,7 +259,10 @@ def audit(db: Session, farm_id: int, body: ReviewAuditIn, user_id: int) -> dict:
     submitter_id = _get_submitter_id(db, farm_id, body.business_type, body.business_id)
 
     remark = body.remark
-    if body.business_type in ("feeding", "purchase", "consume"):
+    if body.business_type == "mating":
+        # 配种：通过才把母畜置为妊娠，驳回不改母畜档案（service 内部校验只允许待审核的记录）
+        breeding_service.audit_mating(db, farm_id, body.business_id, body.audit_status, remark)
+    elif body.business_type in ("feeding", "purchase", "consume"):
         audit_body = FeedingAuditIn(audit_status=body.audit_status, remark=remark)
         if body.business_type == "feeding":
             feeding_service.audit_record(db, farm_id, body.business_id, audit_body)

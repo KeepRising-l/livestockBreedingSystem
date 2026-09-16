@@ -38,6 +38,7 @@ export interface MatingRecord {
   mating_type: string
   semen_source: string | null
   status: string
+  audit_status: string
   pregnancy_check_date: string | null
   pregnancy_check_result: string | null
   expected_birth_date: string | null
@@ -110,6 +111,7 @@ export function getMatingListApi(params: {
   male_tag?: string
   species?: string
   status?: string
+  audit_status?: string
   mating_date_start?: string
   mating_date_end?: string
   pageNum?: number
@@ -128,6 +130,11 @@ export function addMatingApi(params: Partial<MatingRecord>) {
 
 export function updateMatingApi(id: number, params: Partial<MatingRecord>) {
   return http.put(`/breeding/mating/update/${id}`, params)
+}
+
+/** 审核配种记录（场主/超管）：通过后才把母畜置为妊娠 */
+export function auditMatingApi(id: number, params: { audit_status: string; remark?: string }) {
+  return http.post(`/breeding/mating/audit/${id}`, params)
 }
 
 export function deleteMatingApi(id: number) {

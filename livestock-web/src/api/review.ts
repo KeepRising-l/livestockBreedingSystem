@@ -2,7 +2,7 @@ import http from './request'
 
 // ============ 类型定义 ============
 
-export type BusinessType = 'feeding' | 'purchase' | 'consume' | 'vaccine' | 'medical'
+export type BusinessType = 'feeding' | 'purchase' | 'consume' | 'vaccine' | 'medical' | 'mating'
 
 export interface ReviewItem {
   business_type: BusinessType
@@ -21,6 +21,7 @@ export interface ReviewCounts {
   consume: number
   vaccine: number
   medical: number
+  mating: number
   total: number
 }
 

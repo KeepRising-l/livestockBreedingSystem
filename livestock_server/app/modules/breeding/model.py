@@ -3,6 +3,7 @@
 
 四张表：
 - MatingRecord：配种记录（母畜 + 公畜，expected_birth_date = 配种日期 + 妊娠期）
+  审核：员工/场主提交后进"待审核"，场主或超管审核通过才把母畜置为妊娠（驳回不改变母畜档案）
 - BirthRecord：产犊记录（关联配种记录，记录产仔数与仔畜耳标）
 - BreedingAlert：繁育预警（孕检/临产/未发情，P2 定时任务自动生成，此处仅存储与处理）
 - BreedingMale：公畜健康档案（缺口4：健康状态/启用日期/精液质量，配种次数动态统计）
@@ -30,6 +31,7 @@ class MatingRecord(BasePO):
     pregnancy_check_result = Column(String(10), nullable=True, comment="孕检结果：阳性/阴性")
     expected_birth_date = Column(Date, nullable=True, index=True, comment="预计生产日期")
     gestation_days = Column(Integer, nullable=True, comment="妊娠期天数（牛280/羊150/猪114）")
+    audit_status = Column(String(10), nullable=False, default="待审核", comment="审核状态：待审核/通过/驳回")
     operator_user_id = Column(Integer, nullable=True, comment="操作人ID")
     remark = Column(String(255), nullable=True, comment="备注")
 

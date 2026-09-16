@@ -2,21 +2,23 @@
 繁育业务逻辑
 
 核心业务规则：
-1. 母畜/公畜列表：从档案按「性别 + 可繁育阶段（繁育期/妊娠）」筛选
-2. 配种：expected_birth_date = mating_date + 妊娠期（牛280/羊150/猪114），配种后母畜生长阶段自动置"妊娠"
+1. 母畜/公畜列表：从档案按「性别 + 可繁育日龄（按出生日期实时判定，牛365/羊300/猪220）」筛选
+2. 配种：expected_birth_date = mating_date + 妊娠期（牛280/羊150/猪114）；
+   提交后进「待审核」，场主/超管审核通过才把母畜置为「妊娠」（与饲喂记录同一套审核口径）
 3. 孕检：阳性→成功怀孕；阴性→配种失败，母畜恢复"繁育期"
 4. 产犊：存活率自动计算，母畜生长阶段恢复"繁育期"
-5. 预警：P2 定时任务自动生成，此处仅提供列表/详情/处理（已处理/已忽略）与手动补录
+5. 预警：P2 定时任务自动生成，此处仅提供列表/详情/处理（已处理/已忽略）与手动补录；
+   配种相关预警只统计「已审核通过」的记录
 """
 from datetime import date, datetime, timedelta
 from typing import Optional
 
-from sqlalchemy import or_
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import BizException
 from app.modules.animal.model import Animal
-from app.modules.animal.service import GESTATION_DAYS, PHYSIO_STATUSES
+from app.modules.animal.service import BREEDABLE_AGE, GESTATION_DAYS, PHYSIO_STATUSES
 from app.modules.breeding.model import MatingRecord, BirthRecord, BreedingAlert, BreedingMale
 from app.modules.breeding.schema import (
     MatingIn, MatingUpdateIn, PregnancyCheckIn, MatingQuery,
@@ -28,8 +30,8 @@ from app.modules.breeding.schema import (
 SPECIES = {"牛", "羊", "猪"}
 MATING_TYPES = {"本交", "人工受精"}
 PREGNANCY_RESULTS = {"阳性", "阴性"}
-# 可繁育的生长阶段（"繁育期及以上"）
-BREEDING_STAGES = ("繁育期", "妊娠")
+# 注：可繁育筛选已改为按出生日期实时判定（见 list_breed_animals），
+# 不再依赖 animal_archive.growth_stage 的「繁育期/妊娠」取值。
 ALERT_TYPES = {"孕检", "临产", "未发情"}
 ALERT_HANDLE_STATUSES = {"已处理", "已忽略"}
 MALE_HEALTH_STATUSES = {"健康", "亚健康", "淘汰"}
@@ -45,11 +47,25 @@ def list_breed_animals(
     physio_status: Optional[str] = None,
     page_num: int = 1, page_size: int = 10,
 ) -> dict:
-    """可繁育畜禽列表：按性别 + 繁育期及以上阶段筛选，排除已出栏/死亡/已淘汰"""
+    """
+    可繁育畜禽列表：排除已出栏/死亡/已淘汰。
+
+    「可繁育」= 按出生日期算出的日龄达到该畜种的可繁育起始日龄（牛365/羊300/猪220），
+    实时判定而不是读 animal_archive.growth_stage —— 那一列只在入栏时写一次 + 每日 00:05
+    调度刷新，长期会陈旧错乱（实测有 16 天龄的犊牛被存成"繁育期"、350 天龄的母羊还是"保育期"），
+    直接拿来筛会出现"页面上一个可繁育的都选不到"。
+    保留 growth_stage='妊娠' 的条件，兼容出生日期缺失但已确认妊娠的存量数据。
+    """
+    today = date.today()
+    age_conds = [
+        and_(Animal.species == sp, Animal.birth_date.isnot(None),
+             Animal.birth_date <= today - timedelta(days=days))
+        for sp, days in BREEDABLE_AGE.items()
+    ]
     q = db.query(Animal).filter(
         Animal.farm_id == farm_id,
         Animal.gender == gender,
-        Animal.growth_stage.in_(BREEDING_STAGES),
+        or_(or_(*age_conds), Animal.growth_stage == "妊娠"),
         Animal.status.in_(("在栏", "种用")),
         Animal.deleted == False,
         # 已淘汰的母畜不参与繁育选畜（or_ 兼容历史 NULL 数据）
@@ -195,6 +211,8 @@ def list_matings(db: Session, farm_id: int, query: MatingQuery) -> dict:
         q = q.filter(MatingRecord.species == query.species)
     if query.status:
         q = q.filter(MatingRecord.status == query.status)
+    if query.audit_status:
+        q = q.filter(MatingRecord.audit_status == query.audit_status)
     if query.mating_date_start:
         q = q.filter(MatingRecord.mating_date >= query.mating_date_start)
     if query.mating_date_end:
@@ -218,7 +236,12 @@ def get_mating(db: Session, farm_id: int, record_id: int) -> MatingRecord:
 
 
 def add_mating(db: Session, farm_id: int, body: MatingIn, user_id: int) -> MatingRecord:
-    """新增配种记录：自动算预产期，母畜生长阶段置"妊娠" """
+    """
+    新增配种记录：自动算预产期，进「待审核」。
+
+    注意：这里**不再**动母畜档案 —— 审核通过（audit_mating）才把母畜置为"妊娠"。
+    待审核/驳回的记录只是申请，母畜状态保持不变。
+    """
     if body.species not in SPECIES:
         raise BizException(f"养殖种类只能是：{'/'.join(sorted(SPECIES))}", code=40111)
     if body.mating_type not in MATING_TYPES:
@@ -231,6 +254,18 @@ def add_mating(db: Session, farm_id: int, body: MatingIn, user_id: int) -> Matin
         raise BizException(f"母畜 {body.female_tag} 正处于妊娠状态，不能重复配种", code=40114)
     if female.physio_status == "淘汰":
         raise BizException(f"母畜 {body.female_tag} 已淘汰，不能配种", code=40135)
+    # 同一母畜已有待审核的配种记录时不允许重复提交（避免审核通过后重复置妊娠）
+    pending = db.query(MatingRecord).filter(
+        MatingRecord.farm_id == farm_id,
+        MatingRecord.female_tag == body.female_tag,
+        MatingRecord.deleted == False,
+        MatingRecord.audit_status == "待审核",
+    ).first()
+    if pending:
+        raise BizException(
+            f"母畜 {body.female_tag} 已有一条待审核的配种记录（ID:{pending.id}），请先等场主审核",
+            code=40138,
+        )
 
     if body.male_tag:
         male = _get_animal(db, farm_id, body.male_tag)
@@ -249,20 +284,57 @@ def add_mating(db: Session, farm_id: int, body: MatingIn, user_id: int) -> Matin
         mating_type=body.mating_type,
         semen_source=body.semen_source,
         status="待孕检",
+        audit_status="待审核",  # 提交固定进待审核，审核通过才生效
         expected_birth_date=expected_birth_date,
         gestation_days=gestation_days,
         operator_user_id=user_id,
         remark=body.remark,
     )
     db.add(rec)
-    female.growth_stage = "妊娠"
-    female.physio_status = "妊娠"
+    db.commit()
+    return rec
+
+
+def audit_mating(db: Session, farm_id: int, record_id: int,
+                 audit_status: str, remark: Optional[str] = None) -> MatingRecord:
+    """
+    审核配种记录（场主/超管）：
+    - 通过：audit_status=通过，母畜置为"妊娠"（生长阶段 + 生理状态）
+    - 驳回：audit_status=驳回，母畜档案不变
+    """
+    if audit_status not in ("通过", "驳回"):
+        raise BizException("审核状态只能填：通过 / 驳回", code=40139)
+
+    rec = get_mating(db, farm_id, record_id)
+    if rec.audit_status != "待审核":
+        raise BizException("该配种记录已审核，不能重复审核", code=40140)
+
+    if audit_status == "通过":
+        female = _get_animal(db, farm_id, rec.female_tag)
+        # 防重复置妊娠：同母畜可能已有别的已通过记录
+        if female.growth_stage == "妊娠" or female.physio_status == "妊娠":
+            raise BizException(
+                f"母畜 {rec.female_tag} 当前已是妊娠状态（可能另一条配种记录已审核通过），请先核实",
+                code=40141,
+            )
+        female.growth_stage = "妊娠"
+        female.physio_status = "妊娠"
+        rec.status = "待孕检"
+
+    rec.audit_status = audit_status
+    if remark:
+        rec.remark = remark
     db.commit()
     return rec
 
 
 def update_mating(db: Session, farm_id: int, record_id: int, body: MatingUpdateIn) -> MatingRecord:
-    """修改配种记录：改配种日期时重算预产期；已孕检的记录不允许改"""
+    """
+    修改配种记录：改配种日期时重算预产期；已登记孕检的记录不允许改。
+
+    已审核通过的记录也可以改，但改动后 audit_status 重置回「待审核」（同饲喂记录口径），
+    并把该记录原先给母畜置的妊娠标记回退 —— 未重新审核通过前不生效。
+    """
     rec = get_mating(db, farm_id, record_id)
     if rec.pregnancy_check_result:
         raise BizException("该配种记录已登记孕检，不能修改", code=40116)
@@ -276,31 +348,41 @@ def update_mating(db: Session, farm_id: int, record_id: int, body: MatingUpdateI
         if male.gender != "公":
             raise BizException(f"耳标 {data['male_tag']} 不是公畜，不能作为父本", code=40115)
 
+    was_approved = rec.audit_status == "通过"
     for k, v in data.items():
         setattr(rec, k, v)
     # 改配种日期 → 重算预产期（妊娠期不变）
     if data.get("mating_date"):
         rec.expected_birth_date = rec.mating_date + timedelta(days=rec.gestation_days or 0)
+    if was_approved:
+        rec.audit_status = "待审核"
+        _restore_female_stage(db, farm_id, rec.female_tag)
     db.commit()
     return rec
 
 
 def delete_mating(db: Session, farm_id: int, record_id: int):
-    """删除配种记录：已关联产犊记录禁止删；母畜妊娠标记回退"""
+    """
+    删除配种记录：已关联产犊记录禁止删；已审核通过的不能删（同饲喂记录口径，
+    如确需删除请先编辑该记录使其退回待审核）。
+    """
     rec = get_mating(db, farm_id, record_id)
     linked = db.query(BirthRecord).filter(
         BirthRecord.mating_id == record_id, BirthRecord.deleted == False
     ).first()
     if linked:
         raise BizException("该配种记录已关联产犊记录，不能删除", code=40117)
+    if rec.audit_status == "通过":
+        raise BizException("已审核通过的配种记录不能删除，如需修改请先编辑（会退回待审核）", code=40142)
     rec.deleted = True
-    _restore_female_stage(db, farm_id, rec.female_tag)
     db.commit()
 
 
 def pregnancy_check(db: Session, farm_id: int, record_id: int, body: PregnancyCheckIn, user_id: int) -> MatingRecord:
-    """孕检登记：阳性→成功怀孕；阴性→配种失败，母畜恢复繁育期"""
+    """孕检登记：阳性→成功怀孕；阴性→配种失败，母畜恢复繁育期（仅已审核通过的记录可登记）"""
     rec = get_mating(db, farm_id, record_id)
+    if rec.audit_status != "通过":
+        raise BizException("该配种记录尚未审核通过，不能登记孕检", code=40143)
     if rec.status == "配种失败":
         raise BizException("该配种记录已判定失败，不能重复孕检", code=40118)
     if body.pregnancy_check_result not in PREGNANCY_RESULTS:
@@ -324,7 +406,11 @@ def pregnancy_check(db: Session, farm_id: int, record_id: int, body: PregnancyCh
 
 
 def _restore_female_stage(db: Session, farm_id: int, female_tag: str) -> Optional[Animal]:
-    """配种失败/删除配种后，母畜妊娠标记清除、生理状态回到发情；返回母畜"""
+    """
+    配种失败/删除配种/记录退回待审核后，母畜妊娠标记清除。
+    生理状态回退为「正常」—— 「发情」只在母羊进入适配繁育周期时才代表真实状态，
+    给牛/猪母畜统一置「发情」与实际生理不符（与档案模块的默认值规则保持一致）。
+    """
     female = db.query(Animal).filter(
         Animal.farm_id == farm_id,
         Animal.ear_tag == female_tag,
@@ -334,7 +420,7 @@ def _restore_female_stage(db: Session, farm_id: int, female_tag: str) -> Optiona
         if female.growth_stage == "妊娠":
             female.growth_stage = "繁育期"
         if female.physio_status == "妊娠":
-            female.physio_status = "发情"
+            female.physio_status = "正常"
     return female
 
 
@@ -399,6 +485,8 @@ def add_birth(db: Session, farm_id: int, body: BirthIn, user_id: int) -> BirthRe
         ).first()
         if not mating:
             raise BizException("关联的配种记录不存在", code=40122)
+        if mating.audit_status != "通过":
+            raise BizException("关联的配种记录尚未审核通过，不能登记产犊", code=40144)
 
     rec = BirthRecord(
         farm_id=farm_id,
