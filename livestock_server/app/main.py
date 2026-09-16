@@ -111,6 +111,54 @@ def _ensure_sys_notice_farm_id(db):
         db.rollback()
 
 
+def _ensure_pen_species(db):
+    """
+    圈舍畜种归属：为老库 pen_info 补充 species 列并回填存量圈舍。
+
+    背景：原先"某畜种的圈舍列表"是靠"圈里有没有该畜种的动物"反推的，
+    新建的空圈舍没有任何动物 → 在三个畜种的列表里都查不到，且无法被指派归属。
+    改为圈舍自身携带 species 字段。
+
+    回填规则：取该圈舍内数量最多的畜种。
+    圈内没有任何动物的圈舍保持 NULL（视为「待归属」，列表仍可见并标记，可手动指定）。
+    """
+    from sqlalchemy import text
+    try:
+        rows = db.execute(text(
+            "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
+            "WHERE TABLE_NAME='pen_info' AND COLUMN_NAME='species'"
+        )).fetchall()
+        if not rows:
+            db.execute(text("ALTER TABLE pen_info ADD COLUMN species VARCHAR(10) NULL"))
+            db.commit()
+            print("[init] 已为 pen_info 表补充 species 列")
+
+        # 存量回填：按圈内动物数量最多的畜种归属；空圈舍保持 NULL
+        result = db.execute(text(
+            "UPDATE pen_info p SET p.species = ("
+            "  SELECT a.species FROM animal_archive a "
+            "  WHERE a.pen_id = p.id AND a.deleted = 0 AND a.species IS NOT NULL "
+            "  GROUP BY a.species ORDER BY COUNT(*) DESC LIMIT 1"
+            ") WHERE p.species IS NULL"
+        ))
+        db.commit()
+        if result.rowcount:
+            print(f"[init] pen_info.species 存量回填完成，共 {result.rowcount} 个圈舍")
+
+        # 补索引（create_all 不会给已存在的表加索引）
+        idx = db.execute(text(
+            "SELECT INDEX_NAME FROM INFORMATION_SCHEMA.STATISTICS "
+            "WHERE TABLE_NAME='pen_info' AND INDEX_NAME='ix_pen_info_species'"
+        )).fetchall()
+        if not idx:
+            db.execute(text("CREATE INDEX ix_pen_info_species ON pen_info (species)"))
+            db.commit()
+            print("[init] 已为 pen_info.species 建索引")
+    except Exception as e:
+        print(f"[init] pen_info.species 迁移跳过（非 MySQL 或已迁移）：{e}")
+        db.rollback()
+
+
 def init_db():
     """
     初始化数据库：
@@ -127,6 +175,7 @@ def init_db():
         _ensure_sys_role_perms(db)
         _ensure_stock_unit_price(db)
         _ensure_sys_notice_farm_id(db)
+        _ensure_pen_species(db)
         admin = db.query(User).filter(User.username == settings.SUPER_ADMIN_USERNAME).first()
         if not admin:
             admin = User(

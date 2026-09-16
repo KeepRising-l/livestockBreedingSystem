@@ -91,7 +91,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { getBreedFemalesApi, setFemalePhysioStatusApi, type BreedAnimal } from '@/api/breeding'
 import { SPECIES_OPTIONS, PHYSIO_STATUS_OPTIONS } from '@/utils/constants'
 import { useSpecies } from '@/composables/useSpecies'
@@ -186,6 +186,13 @@ async function copyTag(tag: string) {
 }
 
 onMounted(loadData)
+
+// 切换畜种时同一条路由记录不会重建组件，必须主动重新加载，
+// 否则页面会一直停留在上一个畜种的数据上
+watch(species, () => {
+  pageNum.value = 1
+  loadData()
+})
 </script>
 
 <style scoped>

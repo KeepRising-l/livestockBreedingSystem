@@ -6,6 +6,10 @@
 - pen_type=B：育成舍，容量 12
 - pen_type=C：繁育舍，容量 6
 - pen_type=D：种畜圈舍，容量 1
+
+畜种归属（species）：圈舍明确归属某一个畜种，列表按该字段区分牛/羊/猪。
+- 新建圈舍时按当前畜种写入
+- 尚未分配（NULL）表示"空圈舍、待归属"，列表里仍会展示并标记，首次入栏时自动归属
 """
 from sqlalchemy import Column, String, Integer
 
@@ -18,6 +22,7 @@ class Pen(BasePO):
     farm_id = Column(Integer, nullable=False, index=True, comment="所属养殖场ID")
     pen_code = Column(String(20), nullable=False, comment="圈舍编号，如 A10")
     pen_type = Column(String(10), nullable=False, comment="圈舍类型：A/B/C/D")
+    species = Column(String(10), nullable=True, index=True, comment="所属畜种：牛/羊/猪；NULL=尚未分配")
     capacity = Column(Integer, nullable=False, default=12, comment="容纳上限")
     current_count = Column(Integer, default=0, comment="当前存栏数")
     status = Column(Integer, default=1, comment="状态：1正常 0空闲")

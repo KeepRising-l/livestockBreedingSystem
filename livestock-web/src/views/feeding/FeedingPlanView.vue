@@ -173,7 +173,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { getFeedingPlanListApi, addFeedingPlanApi, updateFeedingPlanApi, deleteFeedingPlanApi, type FeedingPlan } from '@/api/feeding'
 import { useAuthStore } from '@/stores/auth'
 import { PEN_TYPE_MAP, SPECIES_CODE_OPTIONS, SPECIES_CODE_MAP } from '@/utils/constants'
@@ -325,6 +325,13 @@ async function handleDelete(id: number) {
 }
 
 onMounted(loadData)
+
+// 切换畜种时同一条路由记录不会重建组件，必须主动重新加载，
+// 否则页面会一直停留在上一个畜种的数据上
+watch(species, () => {
+  pageNum.value = 1
+  loadData()
+})
 </script>
 
 <style scoped>

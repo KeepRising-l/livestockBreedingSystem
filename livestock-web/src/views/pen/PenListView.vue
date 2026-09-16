@@ -26,7 +26,13 @@
     <el-card>
       <el-table :data="list" v-loading="loading" stripe @row-click="(row: PenInfo) => router.push(`/${species}/pen/${row.id}`)" style="cursor: pointer">
         <el-table-column prop="id" label="ID" width="60" />
-        <el-table-column prop="pen_code" label="编号" width="100" />
+        <el-table-column label="编号" width="150">
+          <template #default="{ row }">
+            <span>{{ row.pen_code }}</span>
+            <!-- 未归属畜种的圈舍会在各畜种列表里都出现，显式标记以免被当成"串了数据" -->
+            <el-tag v-if="!row.species" type="warning" size="small" class="ml-1">待归属</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="pen_type" label="类型" width="100">
           <template #default="{ row }">
             <el-tag :type="penTypeColor(row.pen_type)">{{ PEN_TYPE_MAP[row.pen_type] || row.pen_type }}</el-tag>
@@ -78,6 +84,11 @@
         <el-form-item label="圈舍编号" prop="pen_code">
           <el-input v-model="form.pen_code" placeholder="如 A01" />
         </el-form-item>
+        <el-form-item label="所属畜种" prop="species">
+          <el-select v-model="form.species" placeholder="请选择" style="width: 100%">
+            <el-option v-for="s in SPECIES_OPTIONS" :key="s.value" :label="s.label" :value="s.value" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="圈舍类型" prop="pen_type">
           <el-select v-model="form.pen_type" placeholder="请选择" style="width: 100%">
             <el-option v-for="(label, key) in PEN_TYPE_MAP" :key="key" :label="label" :value="key" />
@@ -99,11 +110,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { getPenListApi, addPenApi, updatePenApi, deletePenApi, type PenInfo } from '@/api/pen'
 import { useAuthStore } from '@/stores/auth'
-import { PEN_TYPE_MAP } from '@/utils/constants'
+import { PEN_TYPE_MAP, SPECIES_OPTIONS } from '@/utils/constants'
 import { useSpecies } from '@/composables/useSpecies'
 import { type TagProps, ElMessage, type FormInstance, type FormRules } from 'element-plus'
 
@@ -130,6 +141,7 @@ const editId = ref(0)
 const form = reactive({
   pen_code: '',
   pen_type: 'A',
+  species: '牛' as string,
   capacity: 12,
   remark: '',
 })
@@ -137,6 +149,7 @@ const form = reactive({
 const formRules: FormRules = {
   pen_code: [{ required: true, message: '请输入圈舍编号', trigger: 'blur' }],
   pen_type: [{ required: true, message: '请选择圈舍类型', trigger: 'change' }],
+  species: [{ required: true, message: '请选择所属畜种', trigger: 'change' }],
   capacity: [{ required: true, message: '请输入容量', trigger: 'blur' }],
 }
 
@@ -180,9 +193,12 @@ function handleAdd() {
   editId.value = 0
   form.pen_code = ''
   form.pen_type = 'A'
+  // 默认归属当前路由所在的畜种，避免新建后跑到别的畜种列表去
+  form.species = speciesZh.value
   form.capacity = 12
   form.remark = ''
   dialogVisible.value = true
+  nextTick(() => formRef.value?.clearValidate())
 }
 
 function handleEdit(row: PenInfo) {
@@ -190,9 +206,11 @@ function handleEdit(row: PenInfo) {
   editId.value = row.id
   form.pen_code = row.pen_code
   form.pen_type = row.pen_type
+  form.species = row.species || ''
   form.capacity = row.capacity
   form.remark = row.remark || ''
   dialogVisible.value = true
+  nextTick(() => formRef.value?.clearValidate())
 }
 
 async function handleSave() {
@@ -204,16 +222,24 @@ async function handleSave() {
       await updatePenApi(editId.value, {
         pen_code: form.pen_code,
         pen_type: form.pen_type,
+        species: form.species,
         capacity: form.capacity,
         remark: form.remark,
       })
       ElMessage.success('修改成功')
     } else {
-      await addPenApi({ pen_code: form.pen_code, pen_type: form.pen_type, capacity: form.capacity, remark: form.remark })
+      await addPenApi({
+        pen_code: form.pen_code,
+        pen_type: form.pen_type,
+        species: form.species,
+        capacity: form.capacity,
+        remark: form.remark,
+      })
       ElMessage.success('添加成功')
     }
     dialogVisible.value = false
-    loadData()
+    // 等列表刷新完成再解除 saving，避免"提示已成功但列表还没变"的错觉
+    await loadData()
   } catch {
     // handled by interceptor
   } finally {
@@ -225,11 +251,19 @@ async function handleDelete(id: number) {
   try {
     await deletePenApi(id)
     ElMessage.success('删除成功')
-    loadData()
+    await loadData()
   } catch {
     // handled by interceptor
   }
 }
+
+// 切换畜种时，路由参数变化不会重建组件（同一条路由记录），必须主动重新拉取，
+// 否则会一直停留在上一个畜种的圈舍数据上
+watch(species, () => {
+  pageNum.value = 1
+  query.pen_type = ''
+  loadData()
+})
 
 onMounted(loadData)
 </script>

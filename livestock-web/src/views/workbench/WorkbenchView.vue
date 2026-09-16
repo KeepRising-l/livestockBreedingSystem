@@ -153,7 +153,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useSpecies } from '@/composables/useSpecies'
 import { getDashboardStatsApi, type DashboardStats } from '@/api/statistics'
@@ -244,6 +244,13 @@ async function loadAll() {
 }
 
 onMounted(() => {
+  loadKpi()
+  loadAll()
+})
+
+// 切换畜种时同一条路由记录不会重建组件，必须主动重新加载，
+// 否则页面会一直停留在上一个畜种的数据上
+watch(species, () => {
   loadKpi()
   loadAll()
 })

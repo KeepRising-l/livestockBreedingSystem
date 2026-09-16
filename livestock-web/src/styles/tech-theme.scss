@@ -13,6 +13,8 @@
  *   因此所有组件覆盖统一加 html.dark 前缀，保证稳定生效。
  * ========================================================================== */
 
+@use 'sass:color';
+
 /* ---------------------------------------------------------------- 调色板 */
 $tech-dark-base: #041024; // 暗色混合基准（EP dark 语义：light-* 向底色靠拢）
 $tech-cyan: #22d3ee;
@@ -23,7 +25,7 @@ $tech-amber: #ffb020;
 $tech-rose: #ff4d6d;
 
 @function tint($color, $percent) {
-  @return mix($tech-dark-base, $color, $percent);
+  @return color.mix($tech-dark-base, $color, $percent);
 }
 
 /* --------------------------------------------------- 设计令牌（业务可复用） */

@@ -19,7 +19,13 @@ from app.modules.animal.schema import (
     AnimalHistoryQuery, AnimalUpdateIn,
 )
 from app.modules.pen.model import Pen
-from app.modules.pen.service import STAGE_TO_PEN_TYPE, find_available_pen
+from app.modules.pen.service import (
+    STAGE_TO_PEN_TYPE,
+    claim_pen_species,
+    ensure_pen_species_match,
+    find_available_pen,
+    list_available_pens,
+)
 
 
 # 各畜种生长阶段日龄配置
@@ -189,6 +195,10 @@ def update_animal(db: Session, farm_id: int, animal_id: int, body: AnimalUpdateI
                 f"目标圈舍 {new_pen.pen_code} 已满（{new_pen.current_count}/{new_pen.capacity}）",
                 code=40030,
             )
+        # 目标圈舍的畜种归属必须与该畜禽一致（未归属的圈舍随本次转舍自动归属）
+        target_species = body.species if body.species is not None else a.species
+        ensure_pen_species_match(new_pen, target_species)
+        claim_pen_species(new_pen, target_species)
         # 旧圈舍存栏-1
         if a.pen_id:
             old_pen = db.query(Pen).filter(Pen.id == a.pen_id).first()
@@ -276,12 +286,18 @@ def individual_create(db: Session, farm_id: int, body: AnimalIndividualIn) -> An
             raise BizException("指定圈舍不存在", code=40024)
         if pen.current_count >= pen.capacity:
             raise BizException("指定圈舍已满", code=40025)
+        # 圈舍已归属其它畜种时拒绝入栏，避免牛舍里混进羊
+        ensure_pen_species_match(pen, body.species)
     else:
         # 根据出生日期算日龄，再算生长阶段，再算圈舍类型
         age_days = calc_age_days(body.birth_date, body.in_date or date.today())
         stage = determine_growth_stage(body.species, age_days)
         pen_type = STAGE_TO_PEN_TYPE.get(stage, "A")
-        pen = find_available_pen(db, fid, pen_type)
+        # 自动分配时同样只在本畜种的圈舍里挑
+        pen = find_available_pen(db, fid, pen_type, body.species)
+
+    # 圈舍尚未归属畜种时，随本次入栏自动归属
+    claim_pen_species(pen, body.species)
 
     # 2. 生成耳标
     ear_tag = generate_ear_tag(db, fid, pen)
@@ -333,20 +349,14 @@ def batch_create(db: Session, farm_id: int, body: AnimalBatchIn) -> dict:
     stage = determine_growth_stage(body.species, age_days)
     pen_type = STAGE_TO_PEN_TYPE.get(stage, "A")
 
-    # 找出所有可用圈舍（按编号排序）
-    pens = db.query(Pen).filter(
-        Pen.farm_id == fid,
-        Pen.pen_type == pen_type,
-        Pen.deleted == False,
-        Pen.status == 1,
-        Pen.current_count < Pen.capacity,
-    ).order_by(Pen.pen_code).all()
+    # 找出本畜种下所有可用圈舍（按编号排序）
+    pens = list_available_pens(db, fid, pen_type, body.species)
 
     # 计算总空位数
     total_avail = sum(p.capacity - p.current_count for p in pens)
     if total_avail < body.count:
         raise BizException(
-            f"类型 {pen_type} 圈舍空位不足，需要 {body.count}，可用 {total_avail}",
+            f"{body.species}在类型 {pen_type} 圈舍的空位不足，需要 {body.count}，可用 {total_avail}",
             code=40027,
         )
 
@@ -358,6 +368,8 @@ def batch_create(db: Session, farm_id: int, body: AnimalBatchIn) -> dict:
     for pen in pens:
         if remain <= 0:
             break
+        # 圈舍尚未归属畜种时，随本次批量入栏自动归属
+        claim_pen_species(pen, body.species)
         slot = min(remain, pen.capacity - pen.current_count)
         # 为这个圈舍生成 slot 个耳标
         ear_tags = []

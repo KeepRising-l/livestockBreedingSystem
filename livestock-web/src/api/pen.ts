@@ -5,6 +5,8 @@ export interface PenInfo {
   farm_id: number
   pen_code: string
   pen_type: string
+  /** 所属畜种：牛/羊/猪；null 表示「待归属」（历史数据或未指定畜种时新建的圈舍） */
+  species: string | null
   capacity: number
   current_count: number
   status: number
@@ -26,7 +28,13 @@ export function getPenDetailApi(id: number) {
   return http.get(`/pen/${id}`)
 }
 
-export function addPenApi(params: { pen_code: string; pen_type: string; capacity: number; remark?: string }) {
+export function addPenApi(params: {
+  pen_code: string
+  pen_type: string
+  species?: string
+  capacity: number
+  remark?: string
+}) {
   return http.post('/pen/add', params)
 }
 
