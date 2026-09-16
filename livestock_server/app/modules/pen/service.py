@@ -99,6 +99,16 @@ def get_pen(db: Session, farm_id: int, pen_id: int) -> Pen:
     return pen
 
 
+def _pen_code_scope_filter(species: str):
+    """圈舍编号的查重范围：按畜种各自独立编号，牛/羊/猪 都可以有自己的 A01。
+    species 为 NULL（待归属）的圈舍自成一组。"""
+    return Pen.species.is_(None) if species is None else Pen.species == species
+
+
+def _pen_code_scope_label(species: str) -> str:
+    return f"「{species}」" if species else "未分配畜种的"
+
+
 def add_pen(db: Session, farm_id: int, body: PenAddIn) -> Pen:
     """新增圈舍"""
     fid = get_effective_farm_id(db, farm_id)
@@ -106,14 +116,20 @@ def add_pen(db: Session, farm_id: int, body: PenAddIn) -> Pen:
         raise BizException("圈舍类型必须是 A/B/C/D", code=40011)
     species = (body.species or "").strip() or None
     validate_species(species)
-    exists = db.query(Pen).filter(
-        Pen.farm_id == fid, Pen.pen_code == body.pen_code, Pen.deleted == False
-    ).first()
-    if exists:
-        raise BizException("圈舍编号已存在", code=40012)
+    code = (body.pen_code or "").strip()
+    if not code:
+        raise BizException("圈舍编号不能为空", code=40012)
+    # 编号在本畜种内唯一：牛的 A01 与羊的 A01 可以并存
+    dup = db.query(Pen).filter(
+        Pen.farm_id == fid, Pen.pen_code == code, Pen.deleted == False
+    ).filter(_pen_code_scope_filter(species)).first()
+    if dup:
+        raise BizException(
+            f"{_pen_code_scope_label(species)}圈舍编号 {code} 已存在", code=40012
+        )
     pen = Pen(
         farm_id=fid,
-        pen_code=body.pen_code,
+        pen_code=code,
         pen_type=body.pen_type,
         species=species,
         capacity=body.capacity,
@@ -128,29 +144,49 @@ def add_pen(db: Session, farm_id: int, body: PenAddIn) -> Pen:
 
 def update_pen(db: Session, farm_id: int, pen_id: int, body: PenUpdateIn) -> Pen:
     pen = get_pen(db, farm_id, pen_id)
-    if body.pen_code is not None:
-        pen.pen_code = body.pen_code
-    if body.pen_type is not None:
-        pen.pen_type = body.pen_type
+
+    # 先定下改后的畜种归属——编号查重要按改后的畜种算（换了畜种就等于换了编号命名空间）
+    new_species = pen.species
     if body.species is not None:
         # 空串 = 清除归属，回到「待归属」状态
-        species = (body.species or "").strip() or None
-        validate_species(species, code=40017)
+        new_species = (body.species or "").strip() or None
+        validate_species(new_species, code=40017)
         # 改归属前，校验圈内现有畜禽是否都是该畜种，避免一个圈舍混养后被标成单一畜种
-        if species and pen.current_count > 0:
+        if new_species and pen.current_count > 0:
             from app.modules.animal.model import Animal
             conflict = db.query(Animal).filter(
                 Animal.pen_id == pen.id,
                 Animal.farm_id == pen.farm_id,
                 Animal.deleted == False,
-                Animal.species != species,
+                Animal.species != new_species,
             ).count()
             if conflict:
                 raise BizException(
-                    f"该圈舍内有 {conflict} 头非「{species}」畜禽，不能改为「{species}」",
+                    f"该圈舍内有 {conflict} 头非「{new_species}」畜禽，不能改为「{new_species}」",
                     code=40019,
                 )
-        pen.species = species
+        pen.species = new_species
+
+    if body.pen_code is not None:
+        code = (body.pen_code or "").strip()
+        if not code:
+            raise BizException("圈舍编号不能为空", code=40012)
+        if code != pen.pen_code:
+            dup = db.query(Pen).filter(
+                Pen.id != pen.id,
+                Pen.farm_id == pen.farm_id,
+                Pen.pen_code == code,
+                Pen.deleted == False,
+            ).filter(_pen_code_scope_filter(new_species)).first()
+            if dup:
+                raise BizException(
+                    f"{_pen_code_scope_label(new_species)}圈舍编号 {code} 已存在",
+                    code=40020,
+                )
+            pen.pen_code = code
+
+    if body.pen_type is not None:
+        pen.pen_type = body.pen_type
     if body.capacity is not None:
         if body.capacity < pen.current_count:
             raise BizException("新容量不能小于当前存栏数", code=40013)

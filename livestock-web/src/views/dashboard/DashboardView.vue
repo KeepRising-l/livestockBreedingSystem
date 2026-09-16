@@ -234,7 +234,8 @@ const penOption = computed(() => {
   if (!pens.value.length) return null
   return {
     tooltip: { trigger: 'axis' },
-    xAxis: { type: 'category', data: pens.value.map(p => p.pen_code) },
+    // 圈舍编号只在畜种内唯一（牛/羊/猪 都可能叫 A01），坐标轴上要带畜种前缀才不至于混淆
+    xAxis: { type: 'category', data: pens.value.map(p => `${p.species || '待归属'}-${p.pen_code}`) },
     yAxis: { type: 'value', minInterval: 1 },
     series: [
       { name: '容量', type: 'bar', data: pens.value.map(p => p.capacity), itemStyle: { color: '#5b7f9e' }, barMaxWidth: 20 },
@@ -294,8 +295,8 @@ function handleExport() {
   if (pens.value.length) {
     sheets.push({
       name: '圈舍存栏',
-      headers: ['圈舍编号', '容量', '存栏'],
-      rows: pens.value.map((p) => [p.pen_code, p.capacity, p.current_count]),
+      headers: ['畜种', '圈舍编号', '容量', '存栏'],
+      rows: pens.value.map((p) => [p.species || '待归属', p.pen_code, p.capacity, p.current_count]),
     })
   }
   if (!sheets.length) {

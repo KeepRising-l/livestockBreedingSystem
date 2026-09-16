@@ -83,6 +83,7 @@
       <el-form :model="form" :rules="formRules" ref="formRef" label-width="100px">
         <el-form-item label="圈舍编号" prop="pen_code">
           <el-input v-model="form.pen_code" placeholder="如 A01" />
+          <div class="tip">编号在「所属畜种」范围内唯一，牛/羊/猪 可以各自都有 A01</div>
         </el-form-item>
         <el-form-item label="所属畜种" prop="species">
           <el-select v-model="form.species" placeholder="请选择" style="width: 100%">

@@ -26,7 +26,7 @@ class PenOut(BaseModel):
 
 class PenAddIn(BaseModel):
     """新增圈舍"""
-    pen_code: str = Field(..., max_length=20, description="圈舍编号")
+    pen_code: str = Field(..., max_length=20, description="圈舍编号，在本畜种内唯一（如 A01）")
     pen_type: str = Field(..., description="圈舍类型：A/B/C/D")
     species: Optional[str] = Field(None, description="所属畜种：牛/羊/猪；不传则视为待归属")
     capacity: int = Field(..., ge=1, description="容纳上限")
@@ -35,7 +35,7 @@ class PenAddIn(BaseModel):
 
 class PenUpdateIn(BaseModel):
     """修改圈舍"""
-    pen_code: Optional[str] = None
+    pen_code: Optional[str] = Field(None, description="圈舍编号，在本畜种内唯一")
     pen_type: Optional[str] = None
     species: Optional[str] = Field(None, description="所属畜种：牛/羊/猪；空串表示清除归属")
     capacity: Optional[int] = None
