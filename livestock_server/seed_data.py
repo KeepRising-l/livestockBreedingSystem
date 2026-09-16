@@ -35,16 +35,33 @@ try:
     pig_breeds = ['大白猪', '长白猪', '杜长大三元猪', '黑土猪']
 
     animals = []
-    ear_tag_pool = {
-        'A01': 1, 'A02': 1, 'A03': 1,
-        'B01': 1, 'B02': 1, 'B03': 1,
-        'C01': 1, 'C02': 1, 'D01': 1,
-    }
 
-    def next_tag(pen_code):
-        seq = ear_tag_pool.get(pen_code, 1)
-        ear_tag_pool[pen_code] = seq + 1
-        return f"{pen_code.replace('A','').replace('B','').replace('C','').replace('D','')}{seq:02d}"
+    # 新耳标规则（5位）= 畜种位(牛1/羊2/猪3) + 圈舍编号数字(2位) + 入栏序号(2位)
+    # 同畜种内圈舍编号数字必须唯一，故按畜种各自重编号使数字连续：
+    #   牛 A01/A02/B03/B04/B05/C06/C07/D08（01-08）、羊 A01/B02/C03（01-03）、猪 A02/B03（02-03）
+    SPECIES_DIGIT = {'牛': '1', '羊': '2', '猪': '3'}
+    PEN_RENUMBER = {
+        ('牛', 'B01'): 'B03', ('牛', 'B02'): 'B04', ('牛', 'B03'): 'B05',
+        ('牛', 'C01'): 'C06', ('牛', 'C02'): 'C07', ('牛', 'D01'): 'D08',
+        ('羊', 'C02'): 'C03',
+    }
+    ear_tag_pool = {}  # (species, pen_code) -> 下一个入栏序号
+
+    def next_tag(species, pen_code):
+        pen_code = PEN_RENUMBER.get((species, pen_code), pen_code)
+        key = (species, pen_code)
+        seq = ear_tag_pool.get(key, 1)
+        ear_tag_pool[key] = seq + 1
+        number = ''.join(ch for ch in pen_code if ch.isdigit())
+        return f"{SPECIES_DIGIT[species]}{number}{seq:02d}"
+
+    def pen_id_for(species, pen_code):
+        """按重编号后的圈舍代码解析 pen_id（库里没有新代码时回退原代码）。"""
+        new_code = PEN_RENUMBER.get((species, pen_code), pen_code)
+        pid = pen_map.get(new_code) or pen_map.get(pen_code)
+        if pid is None:
+            print(f"!! 找不到圈舍 {new_code}（原 {pen_code}，{species}）")
+        return pid
 
     # ===== 牛的档案 (A类+ B类圈舍) =====
     cattle_data = [
@@ -97,8 +114,8 @@ try:
     # ===== 创建牛的档案 =====
     for cd in cattle_data:
         pen_code = cd['pen']
-        ear_tag = next_tag(pen_code)
-        pen_id = pen_map[pen_code]
+        ear_tag = next_tag('牛', pen_code)
+        pen_id = pen_id_for('牛', pen_code)
         animals.append(Animal(
             farm_id=1, ear_tag=ear_tag, species='牛', breed=cd['breed'],
             pen_id=pen_id, gender=cd['gender'], birth_date=cd['birth'],
@@ -123,11 +140,11 @@ try:
         sheep_data.append({'pen': 'C02', 'breed': random.choice(sheep_breeds), 'gender': '母', 'birth': d, 'stage': '繁育期'})
 
     for sd in sheep_data:
-        ear_tag = next_tag(sd['pen'])
         pen_code = sd['pen']
+        ear_tag = next_tag('羊', pen_code)
         animals.append(Animal(
             farm_id=1, ear_tag=ear_tag, species='羊', breed=sd['breed'],
-            pen_id=pen_map[pen_code], gender=sd['gender'], birth_date=sd['birth'],
+            pen_id=pen_id_for('羊', pen_code), gender=sd['gender'], birth_date=sd['birth'],
             in_date=sd['birth'] + timedelta(days=random.randint(3, 15)),
             growth_stage=sd['stage'], status='在栏', source='自繁',
             remark=None,
@@ -143,11 +160,11 @@ try:
         pig_data.append({'pen': 'B03', 'breed': random.choice(pig_breeds), 'gender': random.choice(['公','母']), 'birth': d, 'stage': '生长期'})
 
     for pd in pig_data:
-        ear_tag = next_tag(pd['pen'])
         pen_code = pd['pen']
+        ear_tag = next_tag('猪', pen_code)
         animals.append(Animal(
             farm_id=1, ear_tag=ear_tag, species='猪', breed=pd['breed'],
-            pen_id=pen_map[pen_code], gender=pd['gender'], birth_date=pd['birth'],
+            pen_id=pen_id_for('猪', pen_code), gender=pd['gender'], birth_date=pd['birth'],
             in_date=pd['birth'] + timedelta(days=random.randint(3, 20)),
             growth_stage=pd['stage'], status='在栏', source='外购',
             remark=None,

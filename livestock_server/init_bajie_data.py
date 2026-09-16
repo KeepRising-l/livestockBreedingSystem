@@ -116,22 +116,24 @@ if RESET and not USE_SQLITE:
 
 # ============================================================
 # 1. 创建圈舍（猪场：仔猪/保育/育成/繁育/种公猪舍）
+#    耳标 5 位规则：畜种位(猪=3) + 圈舍编号数字(2位) + 入栏序号(2位)，
+#    要求同畜种内编号数字唯一，故 8 个猪舍编号数字连续 01-08（A01/A02/B03/.../D08）
 # ============================================================
 print("\n[1/9] 创建圈舍...")
 pens = []
 for pen_code, pen_type, capacity, remark in [
     ("A01", "A", 12, "仔猪保育舍"),
     ("A02", "A", 12, "保育猪舍"),
-    ("B01", "B", 12, "育成猪舍"),
-    ("B02", "B", 12, "育肥猪舍"),
-    ("B03", "B", 12, "育肥猪舍2"),
-    ("C01", "C", 6, "母猪繁育舍"),
-    ("C02", "C", 6, "后备母猪舍"),
-    ("D01", "D", 1, "种公猪舍"),
+    ("B03", "B", 12, "育成猪舍"),
+    ("B04", "B", 12, "育肥猪舍"),
+    ("B05", "B", 12, "育肥猪舍2"),
+    ("C06", "C", 6, "母猪繁育舍"),
+    ("C07", "C", 6, "后备母猪舍"),
+    ("D08", "D", 1, "种公猪舍"),
 ]:
     r = client.post("/api/v1/pen/add", json={
         "pen_code": pen_code, "pen_type": pen_type,
-        "capacity": capacity, "remark": remark,
+        "capacity": capacity, "remark": remark, "species": "猪",
     }, headers=headers)
     if r.status_code == 200 and r.json()["code"] == 200:
         pens.append({"id": r.json()["data"]["id"], "code": pen_code, "type": pen_type})
@@ -141,12 +143,12 @@ for pen_code, pen_type, capacity, remark in [
 
 pen_a01 = next((p["id"] for p in pens if p["code"] == "A01"), None)
 pen_a02 = next((p["id"] for p in pens if p["code"] == "A02"), None)
-pen_b01 = next((p["id"] for p in pens if p["code"] == "B01"), None)
-pen_b02 = next((p["id"] for p in pens if p["code"] == "B02"), None)
 pen_b03 = next((p["id"] for p in pens if p["code"] == "B03"), None)
-pen_c01 = next((p["id"] for p in pens if p["code"] == "C01"), None)
-pen_c02 = next((p["id"] for p in pens if p["code"] == "C02"), None)
-pen_d01 = next((p["id"] for p in pens if p["code"] == "D01"), None)
+pen_b04 = next((p["id"] for p in pens if p["code"] == "B04"), None)
+pen_b05 = next((p["id"] for p in pens if p["code"] == "B05"), None)
+pen_c06 = next((p["id"] for p in pens if p["code"] == "C06"), None)
+pen_c07 = next((p["id"] for p in pens if p["code"] == "C07"), None)
+pen_d08 = next((p["id"] for p in pens if p["code"] == "D08"), None)
 
 # ============================================================
 # 2. 个体入栏（猪：不同阶段进不同圈舍）
@@ -160,19 +162,19 @@ animals = [
     # 保育猪（A02）
     {"species": "猪", "breed": "大白猪", "gender": "母", "birth_date": "2026-06-05", "in_date": "2026-07-01", "source": "自繁", "pen_id": pen_a02, "remark": "保育期"},
     {"species": "猪", "breed": "杜洛克", "gender": "公", "birth_date": "2026-06-10", "in_date": "2026-07-05", "source": "外购", "pen_id": pen_a02, "remark": "保育期"},
-    # 育成猪（B01）
-    {"species": "猪", "breed": "长白猪", "gender": "母", "birth_date": "2026-04-15", "in_date": "2026-05-20", "source": "自繁", "pen_id": pen_b01, "remark": "生长期"},
-    {"species": "猪", "breed": "大白猪", "gender": "母", "birth_date": "2026-04-20", "in_date": "2026-05-25", "source": "自繁", "pen_id": pen_b01, "remark": "生长期"},
-    # 育肥猪（B02）
-    {"species": "猪", "breed": "大白猪", "gender": "公", "birth_date": "2026-03-01", "in_date": "2026-04-10", "source": "外购", "pen_id": pen_b02, "remark": "育肥期"},
-    {"species": "猪", "breed": "长白猪", "gender": "公", "birth_date": "2026-03-05", "in_date": "2026-04-15", "source": "外购", "pen_id": pen_b02, "remark": "育肥期"},
-    # 可繁育母猪（C01）
-    {"species": "猪", "breed": "大白猪", "gender": "母", "birth_date": "2025-10-01", "in_date": "2026-01-01", "source": "外购", "pen_id": pen_c01, "remark": "可繁育母猪"},
-    {"species": "猪", "breed": "长白猪", "gender": "母", "birth_date": "2025-11-15", "in_date": "2026-02-01", "source": "外购", "pen_id": pen_c01, "remark": "可繁育母猪"},
-    # 后备母猪（C02）
-    {"species": "猪", "breed": "杜洛克", "gender": "母", "birth_date": "2026-01-10", "in_date": "2026-03-01", "source": "外购", "pen_id": pen_c02, "remark": "后备母猪"},
-    # 种公猪（D01）
-    {"species": "猪", "breed": "杜洛克", "gender": "公", "birth_date": "2024-05-01", "in_date": "2025-01-01", "source": "外购", "pen_id": pen_d01, "remark": "种公猪"},
+    # 育成猪（B03）
+    {"species": "猪", "breed": "长白猪", "gender": "母", "birth_date": "2026-04-15", "in_date": "2026-05-20", "source": "自繁", "pen_id": pen_b03, "remark": "生长期"},
+    {"species": "猪", "breed": "大白猪", "gender": "母", "birth_date": "2026-04-20", "in_date": "2026-05-25", "source": "自繁", "pen_id": pen_b03, "remark": "生长期"},
+    # 育肥猪（B04）
+    {"species": "猪", "breed": "大白猪", "gender": "公", "birth_date": "2026-03-01", "in_date": "2026-04-10", "source": "外购", "pen_id": pen_b04, "remark": "育肥期"},
+    {"species": "猪", "breed": "长白猪", "gender": "公", "birth_date": "2026-03-05", "in_date": "2026-04-15", "source": "外购", "pen_id": pen_b04, "remark": "育肥期"},
+    # 可繁育母猪（C06）
+    {"species": "猪", "breed": "大白猪", "gender": "母", "birth_date": "2025-10-01", "in_date": "2026-01-01", "source": "外购", "pen_id": pen_c06, "remark": "可繁育母猪"},
+    {"species": "猪", "breed": "长白猪", "gender": "母", "birth_date": "2025-11-15", "in_date": "2026-02-01", "source": "外购", "pen_id": pen_c06, "remark": "可繁育母猪"},
+    # 后备母猪（C07）
+    {"species": "猪", "breed": "杜洛克", "gender": "母", "birth_date": "2026-01-10", "in_date": "2026-03-01", "source": "外购", "pen_id": pen_c07, "remark": "后备母猪"},
+    # 种公猪（D08）
+    {"species": "猪", "breed": "杜洛克", "gender": "公", "birth_date": "2024-05-01", "in_date": "2025-01-01", "source": "外购", "pen_id": pen_d08, "remark": "种公猪"},
 ]
 for a in animals:
     if not a["pen_id"]:
@@ -249,11 +251,11 @@ print("\n[5/9] 提交饲喂记录...")
 records_to_audit = []
 feeding_records = [
     # 今天早上的育肥猪舍（已通过）
-    {"feed_date": "2026-08-10", "time_period": "早", "pen_id": pen_b02, "plan_id": plan_fatten,
+    {"feed_date": "2026-08-10", "time_period": "早", "pen_id": pen_b04, "plan_id": plan_fatten,
      "actual_concentrate": 18.0, "actual_silage": None, "actual_hay": None, "animal_count": 10,
      "status": "已投喂", "remark": "早班正常投喂"},
     # 今天晚上的育肥猪舍（待审核）
-    {"feed_date": "2026-08-10", "time_period": "晚", "pen_id": pen_b02, "plan_id": plan_fatten,
+    {"feed_date": "2026-08-10", "time_period": "晚", "pen_id": pen_b04, "plan_id": plan_fatten,
      "actual_concentrate": 17.5, "actual_silage": None, "actual_hay": None, "animal_count": 10,
      "status": "已投喂", "remark": "晚班正常投喂"},
     # 今天早上保育舍（待审核）
@@ -261,11 +263,11 @@ feeding_records = [
      "actual_concentrate": 0.8, "actual_silage": None, "actual_hay": None, "animal_count": 2,
      "status": "已投喂", "remark": "保育猪投喂"},
     # 昨天早上育肥猪舍（已通过）
-    {"feed_date": "2026-08-09", "time_period": "早", "pen_id": pen_b02, "plan_id": plan_fatten,
+    {"feed_date": "2026-08-09", "time_period": "早", "pen_id": pen_b04, "plan_id": plan_fatten,
      "actual_concentrate": 18.0, "actual_silage": None, "actual_hay": None, "animal_count": 10,
      "status": "已投喂", "remark": "昨日早班"},
     # 昨天早上繁育母猪（待审核）
-    {"feed_date": "2026-08-09", "time_period": "早", "pen_id": pen_c01, "plan_id": plan_breed,
+    {"feed_date": "2026-08-09", "time_period": "早", "pen_id": pen_c06, "plan_id": plan_breed,
      "actual_concentrate": 5.0, "actual_silage": 1.0, "actual_hay": None, "animal_count": 2,
      "status": "已投喂", "remark": "繁育母猪投喂"},
 ]
@@ -377,10 +379,10 @@ print("  --- 提交领用记录 ---")
 consume_records = [
     # 已审核通过：今天早班育肥猪投喂用全价料
     {"stock_id": stock_map.get(("饲料", "猪全价配合料")), "quantity": 18.0, "unit": "kg",
-     "consume_date": "2026-08-10", "related_module": "饲喂", "remark": "B02 早班育肥猪投喂"},
+     "consume_date": "2026-08-10", "related_module": "饲喂", "remark": "B04 早班育肥猪投喂"},
     # 待审核：今天晚班育肥猪投喂
     {"stock_id": stock_map.get(("饲料", "猪全价配合料")), "quantity": 17.5, "unit": "kg",
-     "consume_date": "2026-08-10", "related_module": "饲喂", "remark": "B02 晚班育肥猪投喂"},
+     "consume_date": "2026-08-10", "related_module": "饲喂", "remark": "B04 晚班育肥猪投喂"},
     # 待审核：保育猪投喂保育料
     {"stock_id": stock_map.get(("饲料", "仔猪保育料")), "quantity": 0.8, "unit": "kg",
      "consume_date": "2026-08-10", "related_module": "饲喂", "remark": "A02 保育猪投喂"},
@@ -430,7 +432,7 @@ print("=" * 70)
 print("\n========== 八戒牧场数据快照 ==========")
 with _session_factory() as db:
     print("\n--- pen_info ---")
-    rows = db.execute(text("SELECT id, farm_id, pen_code, pen_type, capacity, current_count FROM pen_info WHERE farm_id=:fid AND deleted=0"), {"fid": farm_id})
+    rows = db.execute(text("SELECT id, farm_id, pen_code, species, pen_type, capacity, current_count FROM pen_info WHERE farm_id=:fid AND deleted=0"), {"fid": farm_id})
     for r in rows:
         print(f"  {r}")
 

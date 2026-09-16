@@ -141,38 +141,44 @@ _session.close()
 print("  -> 员工岗位角色补绑完成")
 
 # ============================================================
-# 3. 创建圈舍（A/B/C/D 四类各几个）
+# 3. 创建圈舍（按备注归属畜种：犊牛/育成牛/母牛/种公牛=牛，羔羊/育成羊=羊，育成猪/母猪=猪）
+#    耳标 5 位规则：畜种位 + 圈舍编号数字(2位) + 入栏序号(2位)，
+#    同畜种内编号数字必须唯一，故各畜种编号数字各自连续：
+#    牛 A01/B02/C03/D04、羊 A01/B02、猪 B03/C02（编号只在畜种内唯一，牛A01与羊A01可并存）
 # ============================================================
 print("\n[3/9] 创建圈舍...")
 pens = []
-for pen_code, pen_type, capacity, remark in [
-    ("A01", "A", 12, "犊牛保育舍"),
-    ("A02", "A", 12, "羔羊保育舍"),
-    ("B01", "B", 12, "育成牛舍"),
-    ("B02", "B", 12, "育成羊舍"),
-    ("B03", "B", 12, "育成猪舍"),
-    ("C01", "C", 6, "母牛繁育舍"),
-    ("C02", "C", 6, "母猪繁育舍"),
-    ("D01", "D", 1, "种公牛舍"),
+for pen_code, pen_type, capacity, species, remark in [
+    ("A01", "A", 12, "牛", "犊牛保育舍"),
+    ("A01", "A", 12, "羊", "羔羊保育舍"),
+    ("B02", "B", 12, "牛", "育成牛舍"),
+    ("B02", "B", 12, "羊", "育成羊舍"),
+    ("B03", "B", 12, "猪", "育成猪舍"),
+    ("C03", "C", 6, "牛", "母牛繁育舍"),
+    ("C02", "C", 6, "猪", "母猪繁育舍"),
+    ("D04", "D", 1, "牛", "种公牛舍"),
 ]:
     r = client.post("/api/v1/pen/add", json={
         "pen_code": pen_code, "pen_type": pen_type,
-        "capacity": capacity, "remark": remark,
+        "capacity": capacity, "remark": remark, "species": species,
     }, headers=headers)
     if r.status_code == 200 and r.json()["code"] == 200:
-        pens.append({"id": r.json()["data"]["id"], "code": pen_code, "type": pen_type})
-        print(f"  {pen_code} ({pen_type}类) -> ID={r.json()['data']['id']}  {remark}")
+        pens.append({"id": r.json()["data"]["id"], "code": pen_code, "type": pen_type, "species": species})
+        print(f"  {pen_code} ({pen_type}类/{species}) -> ID={r.json()['data']['id']}  {remark}")
     else:
-        print(f"  {pen_code} -> {r.json()}")
+        print(f"  {pen_code} ({species}) -> {r.json()}")
 
-pen_a01 = next(p["id"] for p in pens if p["code"] == "A01")
-pen_a02 = next(p["id"] for p in pens if p["code"] == "A02")
-pen_b01 = next(p["id"] for p in pens if p["code"] == "B01")
-pen_b02 = next(p["id"] for p in pens if p["code"] == "B02")
-pen_b03 = next(p["id"] for p in pens if p["code"] == "B03")
-pen_c01 = next(p["id"] for p in pens if p["code"] == "C01")
-pen_c02 = next(p["id"] for p in pens if p["code"] == "C02")
-pen_d01 = next(p["id"] for p in pens if p["code"] == "D01")
+def pen_id(code, species):
+    return next(p["id"] for p in pens if p["code"] == code and p["species"] == species)
+
+pen_a01 = pen_id("A01", "牛")   # 犊牛保育舍
+pen_a02 = pen_id("A01", "羊")   # 羔羊保育舍
+pen_b01 = pen_id("B02", "牛")   # 育成牛舍
+pen_b02 = pen_id("B02", "羊")   # 育成羊舍
+pen_b03 = pen_id("B03", "猪")   # 育成猪舍
+pen_c01 = pen_id("C03", "牛")   # 母牛繁育舍
+pen_c02 = pen_id("C02", "猪")   # 母猪繁育舍
+pen_d01 = pen_id("D04", "牛")   # 种公牛舍
 
 # ============================================================
 # 4. 个体入栏（牛4 + 羊2 + 猪2）
@@ -200,7 +206,7 @@ for a in animals:
         print(f"  {a['species']} -> {r.json()}")
 
 # ============================================================
-# 5. 批量入栏（4 头育肥牛，自动分配到 B01）
+# 5. 批量入栏（4 头育肥牛，自动分配到育成牛舍 B02）
 # ============================================================
 print("\n[5/9] 批量入栏 4 头育肥牛...")
 r = client.post("/api/v1/animal/batch", json={
@@ -395,13 +401,13 @@ print("  --- 提交领用记录 ---")
 consume_records = [
     # 已审核通过：今天早班育肥牛饲喂用精料
     {"stock_id": stock_map.get(("饲料", "玉米精料")), "quantity": 36.0, "unit": "kg",
-     "consume_date": "2026-08-10", "related_module": "饲喂", "remark": "B01 早班育肥牛投喂"},
+     "consume_date": "2026-08-10", "related_module": "饲喂", "remark": "B02 早班育肥牛投喂"},
     # 已审核通过：今天早班青贮
     {"stock_id": stock_map.get(("饲料", "青贮玉米")), "quantity": 72.0, "unit": "kg",
-     "consume_date": "2026-08-10", "related_module": "饲喂", "remark": "B01 早班青贮投喂"},
+     "consume_date": "2026-08-10", "related_module": "饲喂", "remark": "B02 早班青贮投喂"},
     # 待审核：今天晚班精料
     {"stock_id": stock_map.get(("饲料", "玉米精料")), "quantity": 35.0, "unit": "kg",
-     "consume_date": "2026-08-10", "related_module": "饲喂", "remark": "B01 晚班育肥牛投喂"},
+     "consume_date": "2026-08-10", "related_module": "饲喂", "remark": "B02 晚班育肥牛投喂"},
     # 待审核：犊牛保育用精料
     {"stock_id": stock_map.get(("饲料", "玉米精料")), "quantity": 2.0, "unit": "kg",
      "consume_date": "2026-08-10", "related_module": "饲喂", "remark": "A01 犊牛投喂"},
@@ -464,7 +470,7 @@ with _session_factory() as db:
         print(f"  {r}")
 
     print("\n--- pen_info ---")
-    rows = db.execute(text("SELECT id, farm_id, pen_code, pen_type, capacity, current_count FROM pen_info WHERE deleted=0"))
+    rows = db.execute(text("SELECT id, farm_id, pen_code, species, pen_type, capacity, current_count FROM pen_info WHERE deleted=0"))
     for r in rows:
         print(f"  {r}")
 
