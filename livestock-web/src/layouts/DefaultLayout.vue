@@ -39,12 +39,12 @@ const isCollapse = ref(false)
 /* ---------------------------------------------------- 侧边导航 */
 .app-aside {
   position: relative;
-  background: linear-gradient(180deg, #e6eff7 0%, #d3e3f0 62%, #bdd3e6 100%);
-  border-right: 1px solid rgba(15, 168, 201, 0.16);
+  background: linear-gradient(180deg, #e6f6ea 0%, #e7f6eb 62%, #bbf7d0 100%);
+  border-right: 1px solid rgba(21,128,61, 0.16);
   transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
   overflow: hidden;
 
-  /* 右缘全息光带 */
+  /* 右缘自然光带 */
   &::after {
     content: '';
     position: absolute;
@@ -52,8 +52,8 @@ const isCollapse = ref(false)
     right: 0;
     bottom: 0;
     width: 1px;
-    background: linear-gradient(180deg, transparent, rgba(15, 168, 201, 0.75), transparent);
-    opacity: 0.7;
+    background: linear-gradient(180deg, transparent, rgba(21,128,61, 0.4), transparent);
+    opacity: 0.6;
   }
 }
 
@@ -64,7 +64,7 @@ const isCollapse = ref(false)
   width: 240px;
   height: 240px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(15, 168, 201, 0.22), transparent 68%);
+  background: radial-gradient(circle, rgba(21,128,61, 0.22), transparent 68%);
   pointer-events: none;
 }
 
@@ -78,15 +78,15 @@ const isCollapse = ref(false)
   padding: 0 18px;
   display: flex;
   align-items: center;
-  background: linear-gradient(90deg, rgba(232, 241, 248, 0.95), rgba(206, 224, 239, 0.92));
+  background: linear-gradient(90deg, rgba(232,247,235, 0.95), rgba(206,236,214, 0.92));
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border-bottom: 1px solid rgba(15, 168, 201, 0.16);
-  box-shadow: 0 6px 24px rgba(16, 66, 100, 0.08);
+  border-bottom: 1px solid rgba(21,128,61, 0.16);
+  box-shadow: 0 6px 24px rgba(23,58,40, 0.08);
   position: relative;
   z-index: 2;
 
-  /* 底沿流动全息线 */
+  /* 底沿柔和光线 */
   &::after {
     content: '';
     position: absolute;
@@ -94,8 +94,8 @@ const isCollapse = ref(false)
     right: 0;
     bottom: -1px;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(15, 168, 201, 0.6), transparent);
-    opacity: 0.6;
+    background: linear-gradient(90deg, transparent, rgba(21,128,61, 0.4), transparent);
+    opacity: 0.5;
   }
 }
 
@@ -108,17 +108,18 @@ const isCollapse = ref(false)
   min-height: 0;
 }
 
-/* 内容区数据网格底纹 */
+/* 内容区有机光晕底纹（替代原数据网格） */
 .main-grid {
   position: absolute;
   inset: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(15, 168, 201, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(15, 168, 201, 0.08) 1px, transparent 1px);
-  background-size: 38px 38px;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 78%);
-  -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 78%);
+    radial-gradient(720px 420px at 18% 0%, rgba(34,197,94, 0.08), transparent 65%),
+    radial-gradient(640px 400px at 88% 30%, rgba(14,165,233, 0.06), transparent 62%),
+    radial-gradient(560px 360px at 55% 100%, rgba(161,98,7, 0.05), transparent 65%);
+  background-size: 100% 100%, 100% 100%, 100% 100%;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 82%);
+  -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 82%);
 }
 
 .main-content {

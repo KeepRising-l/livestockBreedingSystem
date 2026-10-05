@@ -15,6 +15,6 @@
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #0e2f47; }
+.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #14532d; }
 .center-card { max-width: 500px; margin: 40px auto; text-align: center; }
 </style>

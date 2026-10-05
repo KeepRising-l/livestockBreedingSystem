@@ -251,11 +251,11 @@ watch(species, () => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; color: #0e2f47; }
+.page-title { font-size: 20px; font-weight: 600; color: #14532d; }
 .mt-16 { margin-top: 16px; }
 .ml-8 { margin-left: 8px; }
 .form-card { max-width: 900px; }
-.tip { color: #6b8ba4; font-size: 12px; margin-top: 4px; line-height: 1.6; }
+.tip { color: #64748b; font-size: 12px; margin-top: 4px; line-height: 1.6; }
 /* 下拉项右侧的规格说明，靠右淡显，避免与编号抢视线 */
-.pen-opt-meta { float: right; color: #6b8ba4; font-size: 12px; padding-left: 16px; }
+.pen-opt-meta { float: right; color: #64748b; font-size: 12px; padding-left: 16px; }
 </style>

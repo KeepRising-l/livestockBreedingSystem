@@ -1,7 +1,13 @@
 <template>
   <div class="sidebar-container">
     <div class="logo">
-      <span class="logo-mark">🐄</span>
+      <span class="logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="18" height="18">
+          <path d="M12 21v-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
+          <path d="M12 13C7.8 13 5 10.2 5 5.5 9.6 5.5 12 8 12 13Z" fill="currentColor" />
+          <path d="M12.5 10.5c.3-3.6 2.7-5.8 6.8-6-.1 4-2.4 6.4-6.8 6Z" fill="currentColor" opacity="0.72" />
+        </svg>
+      </span>
       <span v-if="!isCollapse" class="logo-text">智能养殖</span>
     </div>
     <el-scrollbar class="menu-scrollbar">
@@ -256,15 +262,21 @@ function modulesOf(sp: string): ModuleDef[] {
   justify-content: center;
   gap: 9px;
   padding: 0 12px;
-  border-bottom: 1px solid rgba(15, 168, 201, 0.16);
-  background: linear-gradient(90deg, rgba(15, 168, 201, 0.1), transparent 70%);
+  border-bottom: 1px solid rgba(21,128,61, 0.16);
+  background: linear-gradient(90deg, rgba(21,128,61, 0.1), transparent 70%);
   overflow: hidden;
 }
 
 .logo-mark {
-  font-size: 19px;
-  line-height: 1;
-  filter: drop-shadow(0 0 10px rgba(15, 168, 201, 0.7));
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #22c55e, #15803d);
+  box-shadow: 0 4px 12px rgba(21,128,61, 0.35);
 }
 
 .logo-text {
@@ -272,7 +284,7 @@ function modulesOf(sp: string): ModuleDef[] {
   font-weight: 700;
   letter-spacing: 2px;
   white-space: nowrap;
-  background: linear-gradient(92deg, #0e2f47 10%, #37bcd8 55%, #2b7fff 100%);
+  background: linear-gradient(92deg, #14532d 10%, #4ade80 55%, #0ea5e9 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -290,8 +302,8 @@ function modulesOf(sp: string): ModuleDef[] {
 /* 菜单内图标在激活态下发光 */
 .side-menu :deep(.el-menu-item.is-active .el-icon),
 .side-menu :deep(.el-sub-menu.is-active > .el-sub-menu__title .el-icon) {
-  color: #37bcd8;
-  filter: drop-shadow(0 0 8px rgba(15, 168, 201, 0.85));
+  color: #4ade80;
+  filter: drop-shadow(0 0 8px rgba(21,128,61, 0.85));
 }
 
 .side-menu :deep(.el-sub-menu .el-menu-item) {

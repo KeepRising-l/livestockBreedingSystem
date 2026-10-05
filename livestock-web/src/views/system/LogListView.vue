@@ -224,7 +224,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; color: #0e2f47; }
+.page-title { font-size: 20px; font-weight: 600; color: #14532d; }
 .mb-16 { margin-bottom: 16px; }
 .mt-16 { margin-top: 16px; }
 .text-right { text-align: right; }

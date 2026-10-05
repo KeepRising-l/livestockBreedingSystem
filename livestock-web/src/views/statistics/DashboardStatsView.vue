@@ -80,14 +80,14 @@ const kpiCards = computed(() => {
   const k = stats.value?.kpi
   if (!k) return []
   return [
-    { label: '今日存栏', value: k.today_stock, unit: '头', color: '#0b9a78', icon: 'Grid' },
-    { label: '本月入栏', value: k.month_in, unit: '头', color: '#2b7fff', icon: 'Plus' },
-    { label: '本月出栏', value: k.month_out, unit: '头', color: '#d98d1c', icon: 'Sell' },
-    { label: '累计销售额', value: k.total_sale, unit: '元', color: '#6b46e0', icon: 'Money' },
-    { label: '累计利润', value: k.total_profit, unit: '元', color: '#e8455f', icon: 'TrendCharts' },
-    { label: '待审核记录', value: k.pending_audit, unit: '条', color: '#d98d1c', icon: 'Stamp' },
-    { label: '待处理预警', value: k.pending_alert, unit: '条', color: '#e8455f', icon: 'Bell' },
-    { label: '员工数', value: k.staff_count, unit: '人', color: '#5b7d95', icon: 'UserFilled' },
+    { label: '今日存栏', value: k.today_stock, unit: '头', color: '#17954d', icon: 'Grid' },
+    { label: '本月入栏', value: k.month_in, unit: '头', color: '#0ea5e9', icon: 'Plus' },
+    { label: '本月出栏', value: k.month_out, unit: '头', color: '#a16207', icon: 'Sell' },
+    { label: '累计销售额', value: k.total_sale, unit: '元', color: '#8b4513', icon: 'Money' },
+    { label: '累计利润', value: k.total_profit, unit: '元', color: '#dc2626', icon: 'TrendCharts' },
+    { label: '待审核记录', value: k.pending_audit, unit: '条', color: '#a16207', icon: 'Stamp' },
+    { label: '待处理预警', value: k.pending_alert, unit: '条', color: '#dc2626', icon: 'Bell' },
+    { label: '员工数', value: k.staff_count, unit: '人', color: '#475569', icon: 'UserFilled' },
   ]
 })
 
@@ -110,8 +110,8 @@ const trendOption = computed(() => {
     xAxis: { type: 'category', data: t.months },
     yAxis: { type: 'value', minInterval: 1 },
     series: [
-      { name: '入栏', type: 'bar', data: t.in_values, itemStyle: { color: '#2b7fff' }, barMaxWidth: 24 },
-      { name: '出栏', type: 'bar', data: t.out_values, itemStyle: { color: '#d98d1c' }, barMaxWidth: 24 },
+      { name: '入栏', type: 'bar', data: t.in_values, itemStyle: { color: '#0ea5e9' }, barMaxWidth: 24 },
+      { name: '出栏', type: 'bar', data: t.out_values, itemStyle: { color: '#a16207' }, barMaxWidth: 24 },
     ],
   }
 })
@@ -133,7 +133,7 @@ const stageOption = computed(() => {
     tooltip: { trigger: 'axis' },
     xAxis: { type: 'category', data: d.map(i => i.name) },
     yAxis: { type: 'value', minInterval: 1 },
-    series: [{ type: 'bar', data: d.map(i => i.value), itemStyle: { color: '#0ea47a' }, barMaxWidth: 40 }],
+    series: [{ type: 'bar', data: d.map(i => i.value), itemStyle: { color: '#16a34a' }, barMaxWidth: 40 }],
   }
 })
 
@@ -149,10 +149,10 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #0e2f47; }
+.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #14532d; }
 .mb-16 { margin-bottom: 16px; }
 .summary-row { margin-top: 8px; }
-.summary-item { text-align: center; padding: 20px 0; border: 1px solid #eef2f6; border-radius: 8px; background: #fafbfc; }
-.summary-value { font-size: 24px; font-weight: 700; color: #0ea47a; }
-.summary-label { font-size: 13px; color: #6b8ba4; margin-top: 6px; }
+.summary-item { text-align: center; padding: 20px 0; border: 1px solid #f4faf5; border-radius: 8px; background: #fafcfa; }
+.summary-value { font-size: 24px; font-weight: 700; color: #16a34a; }
+.summary-label { font-size: 13px; color: #64748b; margin-top: 6px; }
 </style>

@@ -210,7 +210,7 @@ onMounted(loadMenus)
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; color: #0e2f47; }
+.page-title { font-size: 20px; font-weight: 600; color: #14532d; }
 .mb-16 { margin-bottom: 16px; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
 .mr-8 { margin-right: 8px; }

@@ -76,7 +76,7 @@
         </el-table-column>
         <el-table-column prop="delete_time" label="删除日期" width="110">
           <template #default="{ row }">
-            <span style="color: #f56c6c;">{{ row.delete_time || '-' }}</span>
+            <span style="color: #dc2626;">{{ row.delete_time || '-' }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="remark" label="备注" min-width="120" show-overflow-tooltip />
@@ -175,11 +175,11 @@ watch(species, () => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; color: #0e2f47; }
+.page-title { font-size: 20px; font-weight: 600; color: #14532d; }
 .mb-16 { margin-bottom: 16px; }
 .mt-16 { margin-top: 16px; }
 .text-right { text-align: right; }
 .text-center { text-align: center; }
-.text-gray { color: #6b8ba4; }
+.text-gray { color: #64748b; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
 </style>

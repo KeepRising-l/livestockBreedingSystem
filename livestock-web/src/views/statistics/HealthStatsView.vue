@@ -72,14 +72,14 @@ const kpiCards = computed(() => {
   const s = stats.value
   if (!s) return []
   return [
-    { label: '本月防疫记录', value: s.month_vaccine, unit: '条', color: '#2b7fff', icon: 'FirstAidKit' },
-    { label: '本月已免疫牛只', value: s.month_immunized_animals, unit: '头', color: '#0b9a78', icon: 'Grid' },
-    { label: '免疫覆盖率', value: s.immunization_coverage, unit: '%', color: '#6b46e0', icon: 'DataAnalysis' },
-    { label: '本月诊疗记录', value: s.month_medical, unit: '条', color: '#d98d1c', icon: 'Notebook' },
-    { label: '发病率', value: s.morbidity_rate, unit: '%', color: '#d98d1c', icon: 'TrendCharts' },
-    { label: '死亡率', value: s.mortality_rate, unit: '%', color: '#e8455f', icon: 'Bell' },
-    { label: '死亡数量', value: s.death_count, unit: '头', color: '#cf3350', icon: 'Delete' },
-    { label: '治疗中', value: (s.treatment_dist.find(i => i.name === '治疗中')?.value ?? 0), unit: '头', color: '#5b7d95', icon: 'Stamp' },
+    { label: '本月防疫记录', value: s.month_vaccine, unit: '条', color: '#0ea5e9', icon: 'FirstAidKit' },
+    { label: '本月已免疫牛只', value: s.month_immunized_animals, unit: '头', color: '#17954d', icon: 'Grid' },
+    { label: '免疫覆盖率', value: s.immunization_coverage, unit: '%', color: '#8b4513', icon: 'DataAnalysis' },
+    { label: '本月诊疗记录', value: s.month_medical, unit: '条', color: '#a16207', icon: 'Notebook' },
+    { label: '发病率', value: s.morbidity_rate, unit: '%', color: '#a16207', icon: 'TrendCharts' },
+    { label: '死亡率', value: s.mortality_rate, unit: '%', color: '#dc2626', icon: 'Bell' },
+    { label: '死亡数量', value: s.death_count, unit: '头', color: '#b91c1c', icon: 'Delete' },
+    { label: '治疗中', value: (s.treatment_dist.find(i => i.name === '治疗中')?.value ?? 0), unit: '头', color: '#475569', icon: 'Stamp' },
   ]
 })
 
@@ -93,8 +93,8 @@ function barOption(data: { name: string; value: number }[] | undefined, color: s
   }
 }
 
-const vaccineOption = computed(() => barOption(stats.value?.vaccine_dist, '#2b7fff'))
-const diseaseOption = computed(() => barOption(stats.value?.disease_dist, '#d98d1c'))
+const vaccineOption = computed(() => barOption(stats.value?.vaccine_dist, '#0ea5e9'))
+const diseaseOption = computed(() => barOption(stats.value?.disease_dist, '#a16207'))
 
 const treatmentOption = computed(() => {
   const d = stats.value?.treatment_dist
@@ -115,8 +115,8 @@ const healthTrendOption = computed(() => {
     xAxis: { type: 'category', data: t.months },
     yAxis: { type: 'value', minInterval: 1 },
     series: [
-      { name: '防疫', type: 'line', smooth: true, data: t.vaccine_values, itemStyle: { color: '#2b7fff' } },
-      { name: '诊疗', type: 'line', smooth: true, data: t.medical_values, itemStyle: { color: '#d98d1c' } },
+      { name: '防疫', type: 'line', smooth: true, data: t.vaccine_values, itemStyle: { color: '#0ea5e9' } },
+      { name: '诊疗', type: 'line', smooth: true, data: t.medical_values, itemStyle: { color: '#a16207' } },
     ],
   }
 })
@@ -130,6 +130,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #0e2f47; }
+.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #14532d; }
 .mb-16 { margin-bottom: 16px; }
 </style>

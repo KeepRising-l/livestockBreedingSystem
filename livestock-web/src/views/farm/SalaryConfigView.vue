@@ -223,11 +223,11 @@ onMounted(loadConfigs)
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; color: #0e2f47; }
+.page-title { font-size: 20px; font-weight: 600; color: #14532d; }
 .mb-16 { margin-bottom: 16px; }
 .mt-16 { margin-top: 16px; }
 .text-right { text-align: right; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
-.salary { font-weight: 600; color: #e6a23c; }
-.muted { color: #6b8ba4; }
+.salary { font-weight: 600; color: #a16207; }
+.muted { color: #64748b; }
 </style>
