@@ -39,8 +39,8 @@ const isCollapse = ref(false)
 /* ---------------------------------------------------- 侧边导航 */
 .app-aside {
   position: relative;
-  background: linear-gradient(180deg, #061530 0%, #041024 62%, #020a1c 100%);
-  border-right: 1px solid rgba(34, 211, 238, 0.16);
+  background: linear-gradient(180deg, #e6eff7 0%, #d3e3f0 62%, #bdd3e6 100%);
+  border-right: 1px solid rgba(15, 168, 201, 0.16);
   transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
   overflow: hidden;
 
@@ -52,7 +52,7 @@ const isCollapse = ref(false)
     right: 0;
     bottom: 0;
     width: 1px;
-    background: linear-gradient(180deg, transparent, rgba(34, 211, 238, 0.75), transparent);
+    background: linear-gradient(180deg, transparent, rgba(15, 168, 201, 0.75), transparent);
     opacity: 0.7;
   }
 }
@@ -64,7 +64,7 @@ const isCollapse = ref(false)
   width: 240px;
   height: 240px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(34, 211, 238, 0.22), transparent 68%);
+  background: radial-gradient(circle, rgba(15, 168, 201, 0.22), transparent 68%);
   pointer-events: none;
 }
 
@@ -78,11 +78,11 @@ const isCollapse = ref(false)
   padding: 0 18px;
   display: flex;
   align-items: center;
-  background: linear-gradient(90deg, rgba(6, 22, 46, 0.94), rgba(5, 18, 40, 0.9));
+  background: linear-gradient(90deg, rgba(232, 241, 248, 0.95), rgba(206, 224, 239, 0.92));
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border-bottom: 1px solid rgba(34, 211, 238, 0.16);
-  box-shadow: 0 6px 24px rgba(0, 6, 20, 0.42);
+  border-bottom: 1px solid rgba(15, 168, 201, 0.16);
+  box-shadow: 0 6px 24px rgba(16, 66, 100, 0.08);
   position: relative;
   z-index: 2;
 
@@ -94,7 +94,7 @@ const isCollapse = ref(false)
     right: 0;
     bottom: -1px;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.6), transparent);
+    background: linear-gradient(90deg, transparent, rgba(15, 168, 201, 0.6), transparent);
     opacity: 0.6;
   }
 }
@@ -114,8 +114,8 @@ const isCollapse = ref(false)
   inset: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(34, 211, 238, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(34, 211, 238, 0.04) 1px, transparent 1px);
+    linear-gradient(rgba(15, 168, 201, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 168, 201, 0.08) 1px, transparent 1px);
   background-size: 38px 38px;
   mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 78%);
   -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 78%);

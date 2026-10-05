@@ -58,6 +58,7 @@ export interface MaterialConsume {
   status: string | null
   audit_status: string
   consumer_user_id: number | null
+  consumer_name: string | null
   remark: string | null
   create_time: string | null
 }
@@ -81,6 +82,23 @@ export function getStockDetailApi(id: number) {
 
 export function addStockApi(params: Partial<MaterialStock>) {
   return http.post('/inventory/stock/add', params)
+}
+
+/** 管理端增加库存（免审直接入库，后端落一条已通过的进货记录并同步库存） */
+export function increaseStockApi(params: {
+  material_type: string
+  material_name: string
+  quantity: number
+  unit: string
+  cost_price?: number
+  batch_no?: string
+  supplier?: string
+  purchase_date?: string
+  production_date?: string
+  expiry_date?: string
+  remark?: string
+}) {
+  return http.post('/inventory/stock/increase', params)
 }
 
 export function updateStockApi(id: number, params: Partial<MaterialStock>) {

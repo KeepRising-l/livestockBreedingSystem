@@ -4,11 +4,14 @@
 
     <!-- KPI 卡片 -->
     <el-row :gutter="16" class="mb-16">
-      <el-col :span="6" v-for="card in kpiCards" :key="card.label">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-value" :style="{ color: card.color }">{{ card.value }}</div>
-          <div class="stat-label">{{ card.label }}</div>
-        </el-card>
+      <el-col :span="6" v-for="card in kpiCards" :key="card.label" class="mb-16">
+        <MetricCard
+          :label="card.label"
+          :value="card.value"
+          :unit="card.unit"
+          :color="card.color"
+          :icon="card.icon"
+        />
       </el-col>
     </el-row>
 
@@ -42,7 +45,7 @@
             <el-descriptions-item label="利润率(%)">{{ monthSummary.profit_rate }}%</el-descriptions-item>
             <el-descriptions-item label="成本支出(元)">{{ monthSummary.expense_amount.toLocaleString() }}</el-descriptions-item>
             <el-descriptions-item label="净利润(元)">
-              <span :style="{ color: (monthSummary.net_profit ?? 0) >= 0 ? '#00e6a8' : '#ff6b85', fontWeight: 700 }">
+              <span :style="{ color: (monthSummary.net_profit ?? 0) >= 0 ? '#0ea47a' : '#ff6b85', fontWeight: 700 }">
                 {{ (monthSummary.net_profit ?? 0).toLocaleString() }}
               </span>
             </el-descriptions-item>
@@ -72,14 +75,14 @@ const kpiCards = computed(() => {
   if (!s) return []
   const t = s.total
   return [
-    { label: '累计销售额(元)', value: t.total_amount.toLocaleString(), color: '#4a95ff' },
-    { label: '累计销售成本(元)', value: t.total_cost.toLocaleString(), color: '#a78bfa' },
-    { label: '累计销售利润(元)', value: t.total_profit.toLocaleString(), color: '#00e6a8' },
-    { label: '累计净利润(元)', value: (t.net_profit ?? 0).toLocaleString(), color: (t.net_profit ?? 0) >= 0 ? '#00e6a8' : '#ff6b85' },
-    { label: '累计订单数', value: t.order_count, color: '#7fa8c9' },
-    { label: '累计出栏数', value: t.animal_count, color: '#ffb020' },
-    { label: '本月净利润(元)', value: (s.month.net_profit ?? 0).toLocaleString(), color: (s.month.net_profit ?? 0) >= 0 ? '#00e6a8' : '#ff6b85' },
-    { label: '成本支出(元)', value: t.expense_amount.toLocaleString(), color: '#ffd166' },
+    { label: '累计销售额', value: t.total_amount, unit: '元', color: '#2b7fff', icon: 'Sell' },
+    { label: '累计销售成本', value: t.total_cost, unit: '元', color: '#6b46e0', icon: 'Money' },
+    { label: '累计销售利润', value: t.total_profit, unit: '元', color: '#0b9a78', icon: 'TrendCharts' },
+    { label: '累计净利润', value: (t.net_profit ?? 0), unit: '元', color: (t.net_profit ?? 0) >= 0 ? '#0b9a78' : '#e8455f', icon: 'Money' },
+    { label: '累计订单数', value: t.order_count, unit: '单', color: '#5b7d95', icon: 'Notebook' },
+    { label: '累计出栏数', value: t.animal_count, unit: '头', color: '#d98d1c', icon: 'Grid' },
+    { label: '本月净利润', value: (s.month.net_profit ?? 0), unit: '元', color: (s.month.net_profit ?? 0) >= 0 ? '#0b9a78' : '#e8455f', icon: 'TrendCharts' },
+    { label: '成本支出', value: t.expense_amount, unit: '元', color: '#d98d1c', icon: 'Money' },
   ]
 })
 
@@ -94,8 +97,8 @@ const profitTrendOption = computed(() => {
     xAxis: { type: 'category', data: t.months },
     yAxis: { type: 'value' },
     series: [
-      { name: '销售额', type: 'bar', data: t.sale_values, itemStyle: { color: '#4a95ff' }, barMaxWidth: 24 },
-      { name: '利润', type: 'line', smooth: true, data: t.profit_values, itemStyle: { color: '#00e6a8' } },
+      { name: '销售额', type: 'bar', data: t.sale_values, itemStyle: { color: '#2b7fff' }, barMaxWidth: 24 },
+      { name: '利润', type: 'line', smooth: true, data: t.profit_values, itemStyle: { color: '#0ea47a' } },
     ],
   }
 })
@@ -119,9 +122,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #eaf6ff; }
+.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #0e2f47; }
 .mb-16 { margin-bottom: 16px; }
-.stat-card { text-align: center; padding: 8px; }
-.stat-value { font-size: 26px; font-weight: 700; }
-.stat-label { font-size: 13px; color: #8fa9bf; margin-top: 4px; }
 </style>

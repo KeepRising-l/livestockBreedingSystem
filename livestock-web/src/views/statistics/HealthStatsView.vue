@@ -6,11 +6,14 @@
     <el-alert type="info" :closable="false" show-icon class="mb-16"
       title="统计口径：分母=当前存栏；已免疫=本月审核通过防疫记录去重耳标；发病=本月审核通过诊疗记录数；死亡=本月审核通过诊疗记录中治疗状态为死亡的去重耳标" />
     <el-row :gutter="16" class="mb-16">
-      <el-col :span="6" v-for="card in kpiCards" :key="card.label">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-value" :style="{ color: card.color }">{{ card.value }}{{ card.suffix || '' }}</div>
-          <div class="stat-label">{{ card.label }}</div>
-        </el-card>
+      <el-col :span="6" v-for="card in kpiCards" :key="card.label" class="mb-16">
+        <MetricCard
+          :label="card.label"
+          :value="card.value"
+          :unit="card.unit"
+          :color="card.color"
+          :icon="card.icon"
+        />
       </el-col>
     </el-row>
 
@@ -69,14 +72,14 @@ const kpiCards = computed(() => {
   const s = stats.value
   if (!s) return []
   return [
-    { label: '本月防疫记录', value: s.month_vaccine, color: '#4a95ff' },
-    { label: '本月已免疫牛只', value: s.month_immunized_animals, color: '#00e6a8' },
-    { label: '免疫覆盖率', value: s.immunization_coverage, suffix: '%', color: '#a78bfa' },
-    { label: '本月诊疗记录', value: s.month_medical, color: '#ffb020' },
-    { label: '发病率', value: s.morbidity_rate, suffix: '%', color: '#ffd166' },
-    { label: '死亡率', value: s.mortality_rate, suffix: '%', color: '#ff6b85' },
-    { label: '死亡数量', value: s.death_count, color: '#B71C1C' },
-    { label: '治疗中', value: (s.treatment_dist.find(i => i.name === '治疗中')?.value ?? 0), color: '#7fa8c9' },
+    { label: '本月防疫记录', value: s.month_vaccine, unit: '条', color: '#2b7fff', icon: 'FirstAidKit' },
+    { label: '本月已免疫牛只', value: s.month_immunized_animals, unit: '头', color: '#0b9a78', icon: 'Grid' },
+    { label: '免疫覆盖率', value: s.immunization_coverage, unit: '%', color: '#6b46e0', icon: 'DataAnalysis' },
+    { label: '本月诊疗记录', value: s.month_medical, unit: '条', color: '#d98d1c', icon: 'Notebook' },
+    { label: '发病率', value: s.morbidity_rate, unit: '%', color: '#d98d1c', icon: 'TrendCharts' },
+    { label: '死亡率', value: s.mortality_rate, unit: '%', color: '#e8455f', icon: 'Bell' },
+    { label: '死亡数量', value: s.death_count, unit: '头', color: '#cf3350', icon: 'Delete' },
+    { label: '治疗中', value: (s.treatment_dist.find(i => i.name === '治疗中')?.value ?? 0), unit: '头', color: '#5b7d95', icon: 'Stamp' },
   ]
 })
 
@@ -90,8 +93,8 @@ function barOption(data: { name: string; value: number }[] | undefined, color: s
   }
 }
 
-const vaccineOption = computed(() => barOption(stats.value?.vaccine_dist, '#4a95ff'))
-const diseaseOption = computed(() => barOption(stats.value?.disease_dist, '#ffb020'))
+const vaccineOption = computed(() => barOption(stats.value?.vaccine_dist, '#2b7fff'))
+const diseaseOption = computed(() => barOption(stats.value?.disease_dist, '#d98d1c'))
 
 const treatmentOption = computed(() => {
   const d = stats.value?.treatment_dist
@@ -112,8 +115,8 @@ const healthTrendOption = computed(() => {
     xAxis: { type: 'category', data: t.months },
     yAxis: { type: 'value', minInterval: 1 },
     series: [
-      { name: '防疫', type: 'line', smooth: true, data: t.vaccine_values, itemStyle: { color: '#4a95ff' } },
-      { name: '诊疗', type: 'line', smooth: true, data: t.medical_values, itemStyle: { color: '#ffb020' } },
+      { name: '防疫', type: 'line', smooth: true, data: t.vaccine_values, itemStyle: { color: '#2b7fff' } },
+      { name: '诊疗', type: 'line', smooth: true, data: t.medical_values, itemStyle: { color: '#d98d1c' } },
     ],
   }
 })
@@ -127,9 +130,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #eaf6ff; }
+.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #0e2f47; }
 .mb-16 { margin-bottom: 16px; }
-.stat-card { text-align: center; padding: 8px; }
-.stat-value { font-size: 26px; font-weight: 700; }
-.stat-label { font-size: 13px; color: #8fa9bf; margin-top: 4px; }
 </style>

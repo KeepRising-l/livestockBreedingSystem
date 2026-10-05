@@ -58,13 +58,13 @@ onMounted(loadSummary)
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; color: #eaf6ff; }
+.page-title { font-size: 20px; font-weight: 600; color: #0e2f47; }
 .mb-16 { margin-bottom: 16px; }
 .mt-16 { margin-top: 16px; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
 .stat-card { text-align: center; }
-.stat-label { font-size: 13px; color: #8fa9bf; margin-bottom: 8px; }
-.stat-value { font-size: 22px; font-weight: 700; color: #eaf6ff; }
+.stat-label { font-size: 13px; color: #6b8ba4; margin-bottom: 8px; }
+.stat-value { font-size: 22px; font-weight: 700; color: #0e2f47; }
 .money { color: #e6a23c; }
 .green { color: #67c23a; }
 .red { color: #f56c6c; }

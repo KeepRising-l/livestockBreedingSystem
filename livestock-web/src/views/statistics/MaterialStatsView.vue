@@ -4,11 +4,14 @@
 
     <!-- KPI 卡片 -->
     <el-row :gutter="16" class="mb-16">
-      <el-col :span="6" v-for="card in kpiCards" :key="card.label">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-value" :style="{ color: card.color }">{{ card.value }}</div>
-          <div class="stat-label">{{ card.label }}</div>
-        </el-card>
+      <el-col :span="6" v-for="card in kpiCards" :key="card.label" class="mb-16">
+        <MetricCard
+          :label="card.label"
+          :value="card.value"
+          :unit="card.unit"
+          :color="card.color"
+          :icon="card.icon"
+        />
       </el-col>
     </el-row>
 
@@ -60,12 +63,12 @@ const kpiCards = computed(() => {
   const s = stats.value
   if (!s) return []
   return [
-    { label: '库存种类', value: s.stock_count, color: '#4a95ff' },
-    { label: '缺货物资', value: s.shortage_count, color: '#ff4d6d' },
-    { label: '已过期', value: s.expired_count, color: '#ff6b85' },
-    { label: '即将过期', value: s.expiring_count, color: '#ffd166' },
-    { label: '本月进货金额(元)', value: s.month_purchase_amount.toLocaleString(), color: '#00e6a8' },
-    { label: '本月领用量', value: s.month_consume.toLocaleString(), color: '#a78bfa' },
+    { label: '库存种类', value: s.stock_count, unit: '种', color: '#2b7fff', icon: 'Grid' },
+    { label: '缺货物资', value: s.shortage_count, unit: '项', color: '#e8455f', icon: 'Box' },
+    { label: '已过期', value: s.expired_count, unit: '项', color: '#cf3350', icon: 'Delete' },
+    { label: '即将过期', value: s.expiring_count, unit: '项', color: '#d98d1c', icon: 'AlarmClock' },
+    { label: '本月进货金额', value: s.month_purchase_amount, unit: '元', color: '#0b9a78', icon: 'Money' },
+    { label: '本月领用量', value: s.month_consume, unit: '', color: '#6b46e0', icon: 'Sell' },
   ]
 })
 
@@ -101,9 +104,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #eaf6ff; }
+.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #0e2f47; }
 .mb-16 { margin-bottom: 16px; }
-.stat-card { text-align: center; padding: 8px; }
-.stat-value { font-size: 26px; font-weight: 700; }
-.stat-label { font-size: 13px; color: #8fa9bf; margin-top: 4px; }
 </style>

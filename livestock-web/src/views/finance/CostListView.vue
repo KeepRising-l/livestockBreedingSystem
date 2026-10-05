@@ -205,11 +205,11 @@ onMounted(loadExpenses)
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; color: #eaf6ff; }
+.page-title { font-size: 20px; font-weight: 600; color: #0e2f47; }
 .mb-16 { margin-bottom: 16px; }
 .mt-16 { margin-top: 16px; }
 .text-right { text-align: right; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
 .amount { font-weight: 600; color: #e6a23c; }
-.muted { color: #8fa9bf; }
+.muted { color: #6b8ba4; }
 </style>

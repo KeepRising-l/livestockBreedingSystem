@@ -24,6 +24,21 @@ class MaterialStockIn(BaseModel):
     remark: Optional[str] = Field(None, max_length=255)
 
 
+class MaterialStockIncreaseIn(BaseModel):
+    """管理端增加库存（免审：直接生成一条已通过的进货记录并立即同步库存）"""
+    material_type: str = Field(..., description="物资类型：饲料/疫苗/兽药")
+    material_name: str = Field(..., max_length=100, description="物资名称（可下拉选已有，也可输入新物资）")
+    quantity: float = Field(..., gt=0, description="进货数量")
+    unit: str = Field("kg", max_length=10, description="单位")
+    cost_price: Optional[float] = Field(None, gt=0, description="进货单价（元），不填则库存均价保持不变")
+    batch_no: Optional[str] = Field(None, max_length=50, description="批次号")
+    supplier: Optional[str] = Field(None, max_length=100, description="供应商")
+    purchase_date: date = Field(default_factory=date.today, description="进货日期")
+    production_date: Optional[date] = Field(None, description="生产日期")
+    expiry_date: Optional[date] = Field(None, description="有效期")
+    remark: Optional[str] = Field(None, max_length=255)
+
+
 class MaterialStockUpdateIn(BaseModel):
     """修改库存物资基本信息（数量不在此处改，走进货/领用）"""
     specification: Optional[str] = None
@@ -172,6 +187,7 @@ class MaterialConsumeOut(BaseModel):
     status: Optional[str] = None
     audit_status: str
     consumer_user_id: Optional[int] = None
+    consumer_name: Optional[str] = Field(None, description="领用人姓名（= 提交人）")
     remark: Optional[str] = None
     create_time: Optional[datetime] = None
 

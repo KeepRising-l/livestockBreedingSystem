@@ -151,10 +151,10 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; color: #eaf6ff; }
+.page-title { font-size: 20px; font-weight: 600; color: #0e2f47; }
 .mb-16 { margin-bottom: 16px; }
 .mt-16 { margin-top: 16px; }
 .text-right { text-align: right; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
-.text-muted { color: #8fa9bf; }
+.text-muted { color: #6b8ba4; }
 </style>

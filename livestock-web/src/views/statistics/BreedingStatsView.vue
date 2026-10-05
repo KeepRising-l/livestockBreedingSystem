@@ -6,11 +6,14 @@
     <el-alert type="info" :closable="false" show-icon class="mb-16"
       title="统计口径：受孕率=累计已孕检定论配种中成功怀孕占比（待孕检不计入）；生产率=本月产犊数÷本月配种数；平均成活率=产犊记录成活率均值" />
     <el-row :gutter="16" class="mb-16">
-      <el-col :span="6" v-for="card in kpiCards" :key="card.label">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-value" :style="{ color: card.color }">{{ card.value }}{{ card.suffix || '' }}</div>
-          <div class="stat-label">{{ card.label }}</div>
-        </el-card>
+      <el-col :span="6" v-for="card in kpiCards" :key="card.label" class="mb-16">
+        <MetricCard
+          :label="card.label"
+          :value="card.value"
+          :unit="card.unit"
+          :color="card.color"
+          :icon="card.icon"
+        />
       </el-col>
     </el-row>
 
@@ -87,14 +90,14 @@ const kpiCards = computed(() => {
   const s = stats.value
   if (!s) return []
   return [
-    { label: '当前存栏', value: s.current_stock, color: '#00e6a8' },
-    { label: '本月配种', value: s.month_mating, color: '#4a95ff' },
-    { label: '本月产犊', value: s.month_birth, color: '#ffb020' },
-    { label: '妊娠母畜', value: s.pregnant_count, color: '#a78bfa' },
-    { label: '受孕率', value: s.pregnancy_rate, suffix: '%', color: '#00897B' },
-    { label: '生产率', value: s.reproduction_rate, suffix: '%', color: '#ffd166' },
-    { label: '平均成活率', value: s.avg_survival_rate, suffix: '%', color: '#43A047' },
-    { label: '待处理预警', value: s.pending_alert_count, color: '#ff6b85' },
+    { label: '当前存栏', value: s.current_stock, unit: '头', color: '#0b9a78', icon: 'Grid' },
+    { label: '本月配种', value: s.month_mating, unit: '次', color: '#2b7fff', icon: 'Connection' },
+    { label: '本月产犊', value: s.month_birth, unit: '头', color: '#d98d1c', icon: 'Plus' },
+    { label: '妊娠母畜', value: s.pregnant_count, unit: '头', color: '#6b46e0', icon: 'Notebook' },
+    { label: '受孕率', value: s.pregnancy_rate, unit: '%', color: '#0b9a78', icon: 'DataAnalysis' },
+    { label: '生产率', value: s.reproduction_rate, unit: '%', color: '#d98d1c', icon: 'TrendCharts' },
+    { label: '平均成活率', value: s.avg_survival_rate, unit: '%', color: '#0b9a78', icon: 'FirstAidKit' },
+    { label: '待处理预警', value: s.pending_alert_count, unit: '条', color: '#e8455f', icon: 'Bell' },
   ]
 })
 
@@ -119,7 +122,7 @@ const penOption = computed(() => {
     tooltip: { trigger: 'axis' },
     xAxis: { type: 'category', data: d.map(i => i.name) },
     yAxis: { type: 'value', minInterval: 1 },
-    series: [{ type: 'bar', data: d.map(i => i.value), itemStyle: { color: '#4a95ff' }, barMaxWidth: 36 }],
+    series: [{ type: 'bar', data: d.map(i => i.value), itemStyle: { color: '#2b7fff' }, barMaxWidth: 36 }],
   }
 })
 
@@ -130,7 +133,7 @@ const birthTrendOption = computed(() => {
     tooltip: { trigger: 'axis' },
     xAxis: { type: 'category', data: t.months },
     yAxis: { type: 'value', minInterval: 1 },
-    series: [{ name: '产犊数', type: 'line', smooth: true, data: t.values, areaStyle: { opacity: 0.15 }, itemStyle: { color: '#ffb020' } }],
+    series: [{ name: '产犊数', type: 'line', smooth: true, data: t.values, areaStyle: { opacity: 0.15 }, itemStyle: { color: '#d98d1c' } }],
   }
 })
 
@@ -143,9 +146,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #eaf6ff; }
+.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #0e2f47; }
 .mb-16 { margin-bottom: 16px; }
-.stat-card { text-align: center; padding: 8px; }
-.stat-value { font-size: 26px; font-weight: 700; }
-.stat-label { font-size: 13px; color: #8fa9bf; margin-top: 4px; }
 </style>

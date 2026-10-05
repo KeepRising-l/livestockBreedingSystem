@@ -51,6 +51,9 @@
           </template>
         </el-table-column>
         <el-table-column prop="material_name" label="物资名称" min-width="140" />
+        <el-table-column prop="consumer_name" label="领用人" width="90">
+          <template #default="{ row }">{{ row.consumer_name || '-' }}</template>
+        </el-table-column>
         <el-table-column prop="batch_no" label="批次号" width="120">
           <template #default="{ row }">{{ row.batch_no || '-' }}</template>
         </el-table-column>
@@ -110,7 +113,7 @@
               :value="s.id"
             />
           </el-select>
-          <div style="color:#8fa9bf;font-size:12px;">仅显示库存数量 > 0 的物资</div>
+          <div style="color:#6b8ba4;font-size:12px;">仅显示库存数量 > 0 的物资</div>
         </el-form-item>
         <el-form-item label="物资" v-else>
           <el-input :model-value="`${form.material_type} / ${form.material_name}`" disabled />
@@ -382,7 +385,7 @@ onMounted(loadData)
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; color: #eaf6ff; }
+.page-title { font-size: 20px; font-weight: 600; color: #0e2f47; }
 .mb-16 { margin-bottom: 16px; }
 .mt-16 { margin-top: 16px; }
 .text-right { text-align: right; }

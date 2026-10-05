@@ -116,9 +116,18 @@
                 <el-table-column prop="source" label="来源" width="70" />
                 <el-table-column prop="birth_date" label="出生日期" width="110" />
                 <el-table-column prop="in_date" label="入栏日期" width="110" />
-                <el-table-column label="操作" width="80" fixed="right">
+                <el-table-column label="操作" width="190" fixed="right">
                   <template #default="{ row }">
                     <el-button link type="primary" size="small" @click.stop="router.push(`/${species}/animal/${row.id}`)">详情</el-button>
+                    <el-button link type="warning" size="small" @click.stop="handleEdit(row as AnimalInfo)">编辑</el-button>
+                    <el-popconfirm
+                      title="确定删除该档案？删除后可在「历史记录」中恢复"
+                      @confirm="handleDelete(row as AnimalInfo)"
+                    >
+                      <template #reference>
+                        <el-button link type="danger" size="small" @click.stop>删除</el-button>
+                      </template>
+                    </el-popconfirm>
                   </template>
                 </el-table-column>
               </el-table>
@@ -140,6 +149,82 @@
         @current-change="loadData"
       />
     </div>
+
+    <!-- 编辑档案弹窗 -->
+    <el-dialog v-model="editVisible" title="编辑档案" width="620px">
+      <el-form :model="editForm" :rules="editRules" ref="editFormRef" label-width="100px">
+        <el-form-item label="耳标">
+          <el-input v-model="editForm.ear_tag" disabled />
+          <div class="tip-text">耳标由圈舍与序号自动生成，如需换圈舍请在详情页进行转舍</div>
+        </el-form-item>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="品种" prop="breed">
+              <el-input v-model="editForm.breed" placeholder="如：西门塔尔" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="性别" prop="gender">
+              <el-radio-group v-model="editForm.gender">
+                <el-radio v-for="g in GENDER_OPTIONS" :key="g.value" :value="g.value">{{ g.label }}</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="出生日期">
+              <el-date-picker v-model="editForm.birth_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="入栏日期">
+              <el-date-picker v-model="editForm.in_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="状态" prop="status">
+              <el-select v-model="editForm.status" style="width: 100%">
+                <el-option v-for="(label, key) in ANIMAL_STATUS_MAP" :key="key" :label="label" :value="key" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="生理状态">
+              <el-select v-model="editForm.physio_status" placeholder="请选择" clearable style="width: 100%">
+                <el-option v-for="s in PHYSIO_STATUS_OPTIONS" :key="s.value" :label="s.label" :value="s.value" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="来源">
+          <el-select v-model="editForm.source" placeholder="请选择" clearable style="width: 100%">
+            <el-option v-for="s in SOURCE_OPTIONS" :key="s.value" :label="s.label" :value="s.value" />
+          </el-select>
+        </el-form-item>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="父本耳标">
+              <el-input v-model="editForm.sire_tag" placeholder="可选" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="母本耳标">
+              <el-input v-model="editForm.dam_tag" placeholder="可选" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="备注">
+          <el-input v-model="editForm.remark" type="textarea" :rows="2" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editVisible = false">取消</el-button>
+        <el-button type="primary" :loading="editSaving" @click="handleSaveEdit">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -147,12 +232,14 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  getAnimalGroupedApi, batchDeleteAnimalApi,
+  getAnimalGroupedApi, batchDeleteAnimalApi, updateAnimalApi,
   type AnimalInfo, type AnimalGroupInfo,
 } from '@/api/animal'
-import { GENDER_OPTIONS, ANIMAL_STATUS_MAP, PHYSIO_STATUS_OPTIONS, PEN_TYPE_MAP } from '@/utils/constants'
+import {
+  GENDER_OPTIONS, ANIMAL_STATUS_MAP, PHYSIO_STATUS_OPTIONS, PEN_TYPE_MAP, SOURCE_OPTIONS,
+} from '@/utils/constants'
 import { useSpecies } from '@/composables/useSpecies'
-import { type TagProps, ElMessage, type TableInstance } from 'element-plus'
+import { type TagProps, ElMessage, type TableInstance, type FormInstance, type FormRules } from 'element-plus'
 
 const router = useRouter()
 const { species, speciesZh } = useSpecies()
@@ -264,6 +351,89 @@ async function handleBatchDelete() {
   }
 }
 
+/** 单条删除：走同一个批量删除接口（软删除并转入历史记录，可恢复） */
+async function handleDelete(row: AnimalInfo) {
+  try {
+    await batchDeleteAnimalApi([row.id])
+    ElMessage.success('删除成功，可在「历史记录」中恢复')
+    loadData()
+  } catch {
+    // handled
+  }
+}
+
+// ============ 编辑档案 ============
+const editVisible = ref(false)
+const editSaving = ref(false)
+const editId = ref(0)
+const editFormRef = ref<FormInstance>()
+const editForm = reactive({
+  ear_tag: '',
+  breed: '',
+  gender: '母',
+  birth_date: null as string | null,
+  in_date: null as string | null,
+  status: '在栏',
+  physio_status: '' as string,
+  source: '' as string,
+  sire_tag: '',
+  dam_tag: '',
+  remark: '',
+})
+
+const editRules: FormRules = {
+  breed: [{ required: true, message: '请输入品种', trigger: 'blur' }],
+  gender: [{ required: true, message: '请选择性别', trigger: 'change' }],
+  status: [{ required: true, message: '请选择状态', trigger: 'change' }],
+}
+
+function handleEdit(row: AnimalInfo) {
+  editId.value = row.id
+  Object.assign(editForm, {
+    ear_tag: row.ear_tag,
+    breed: row.breed || '',
+    gender: row.gender || '母',
+    birth_date: row.birth_date || null,
+    in_date: row.in_date || null,
+    status: row.status || '在栏',
+    physio_status: row.physio_status || '',
+    source: row.source || '',
+    sire_tag: row.sire_tag || '',
+    dam_tag: row.dam_tag || '',
+    remark: row.remark || '',
+  })
+  editVisible.value = true
+}
+
+async function handleSaveEdit() {
+  const valid = await editFormRef.value?.validate().catch(() => false)
+  if (!valid) return
+  editSaving.value = true
+  try {
+    // 后端只更新传入的字段：空字符串/空值不提交，避免把已有数据清成空
+    const payload: Record<string, unknown> = {
+      breed: editForm.breed,
+      gender: editForm.gender,
+      status: editForm.status,
+    }
+    if (editForm.birth_date) payload.birth_date = editForm.birth_date
+    if (editForm.in_date) payload.in_date = editForm.in_date
+    if (editForm.physio_status) payload.physio_status = editForm.physio_status
+    if (editForm.source) payload.source = editForm.source
+    payload.sire_tag = editForm.sire_tag
+    payload.dam_tag = editForm.dam_tag
+    payload.remark = editForm.remark
+    await updateAnimalApi(editId.value, payload)
+    ElMessage.success('修改成功')
+    editVisible.value = false
+    loadData()
+  } catch {
+    // handled
+  } finally {
+    editSaving.value = false
+  }
+}
+
 onMounted(loadData)
 
 // 切换畜种时同一条路由记录不会重建组件，必须主动重新加载，
@@ -275,7 +445,7 @@ watch(species, () => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; color: #eaf6ff; }
+.page-title { font-size: 20px; font-weight: 600; color: #0e2f47; }
 .mb-16 { margin-bottom: 16px; }
 .mt-16 { margin-top: 16px; }
 .mr-4 { margin-right: 4px; }
@@ -291,10 +461,11 @@ watch(species, () => {
   flex-wrap: wrap;
   user-select: none;
 }
-.expand-icon { transition: transform 0.2s; color: #8fa9bf; }
+.expand-icon { transition: transform 0.2s; color: #6b8ba4; }
 .expand-icon.expanded { transform: rotate(90deg); }
-.pen-code { font-size: 16px; font-weight: 600; color: #eaf6ff; min-width: 56px; }
-.summary-item { color: #8fa9bf; font-size: 13px; }
-.summary-item strong { color: #eaf6ff; }
+.pen-code { font-size: 16px; font-weight: 600; color: #0e2f47; min-width: 56px; }
+.summary-item { color: #6b8ba4; font-size: 13px; }
+.summary-item strong { color: #0e2f47; }
 .group-body { margin-top: 12px; }
+.tip-text { font-size: 12px; color: #6b8ba4; line-height: 1.4; margin-top: 4px; }
 </style>

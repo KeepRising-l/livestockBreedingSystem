@@ -15,7 +15,7 @@ from app.core.perms import require_perms
 from app.core.exceptions import BizException
 from app.models.user import User
 from app.modules.inventory.schema import (
-    MaterialStockIn, MaterialStockUpdateIn, MaterialStockOut, MaterialStockQuery,
+    MaterialStockIn, MaterialStockIncreaseIn, MaterialStockUpdateIn, MaterialStockOut, MaterialStockQuery,
     MaterialPurchaseIn, MaterialPurchaseUpdateIn, MaterialPurchaseOut, MaterialPurchaseQuery,
     MaterialConsumeIn, MaterialConsumeUpdateIn, MaterialConsumeOut, MaterialConsumeQuery,
     AuditActionIn,
@@ -73,6 +73,14 @@ def add_stock(body: MaterialStockIn, db: Session = Depends(get_db),
     _check_manager(current_user)
     s = inventory_service.add_stock(db, current_user.farm_id, body, current_user.id)
     return Result.ok(data=MaterialStockOut.model_validate(s), msg="添加成功")
+
+
+@router.post("/stock/increase", summary="增加库存（管理端免审直接入库）")
+def increase_stock(body: MaterialStockIncreaseIn, db: Session = Depends(get_db),
+                   current_user: User = Depends(get_current_user)):
+    _check_manager(current_user)
+    p = inventory_service.increase_stock(db, current_user.farm_id, body, current_user.id)
+    return Result.ok(data=MaterialPurchaseOut.model_validate(p), msg="入库成功")
 
 
 @router.put("/stock/update/{stock_id}", summary="修改库存物资")

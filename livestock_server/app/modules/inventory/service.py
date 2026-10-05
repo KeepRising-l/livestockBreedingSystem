@@ -14,15 +14,16 @@
    - 已过期：有效期 < 今天
    - 缺货：库存数量 < 预警阈值
 """
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Optional
 
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import BizException
+from app.models.user import User
 from app.modules.inventory.model import MaterialStock, MaterialPurchase, MaterialConsume
 from app.modules.inventory.schema import (
-    MaterialStockIn, MaterialStockUpdateIn, MaterialStockQuery,
+    MaterialStockIn, MaterialStockIncreaseIn, MaterialStockUpdateIn, MaterialStockQuery,
     MaterialPurchaseIn, MaterialPurchaseUpdateIn, MaterialPurchaseQuery,
     MaterialConsumeIn, MaterialConsumeUpdateIn, MaterialConsumeQuery,
     AuditActionIn,
@@ -47,11 +48,29 @@ def list_stock(db: Session, farm_id: int, query: MaterialStockQuery) -> dict:
         q = q.filter(MaterialStock.material_type == query.material_type)
     if query.material_name:
         q = q.filter(MaterialStock.material_name.like(f"%{query.material_name}%"))
+    # status / is_shortage 是派生状态，但推导规则固定，可以直接下推到 SQL 过滤，保证分页正确
+    today = date.today()
+    warn_date = today + timedelta(days=EXPIRY_WARNING_DAYS)
     if query.status:
-        # 状态是动态算的，不能用 SQL 直接过滤，先取全部再内存过滤
-        pass
+        if query.status == "已过期":
+            q = q.filter(MaterialStock.expiry_date < today)
+        elif query.status == "即将过期":
+            q = q.filter(MaterialStock.expiry_date >= today, MaterialStock.expiry_date <= warn_date)
+        elif query.status == "正常":
+            q = q.filter(
+                (MaterialStock.expiry_date.is_(None)) | (MaterialStock.expiry_date > warn_date)
+            )
     if query.is_shortage is not None:
-        pass
+        if query.is_shortage == 1:
+            q = q.filter(
+                MaterialStock.warning_threshold.isnot(None),
+                MaterialStock.quantity < MaterialStock.warning_threshold,
+            )
+        else:
+            q = q.filter(
+                (MaterialStock.warning_threshold.is_(None))
+                | (MaterialStock.quantity >= MaterialStock.warning_threshold)
+            )
 
     total = q.count()
     items = q.order_by(MaterialStock.id.desc()).offset(
@@ -62,15 +81,6 @@ def list_stock(db: Session, farm_id: int, query: MaterialStockQuery) -> dict:
     for s in items:
         _refresh_stock_status(s)
         db.flush()
-
-    # 内存过滤 status / is_shortage
-    if query.status:
-        items = [s for s in items if s.status == query.status]
-    if query.is_shortage is not None:
-        items = [s for s in items if s.is_shortage == query.is_shortage]
-    # 如果做了内存过滤，总数需要重新算
-    if query.status or query.is_shortage is not None:
-        total = len(items)
 
     return {"list": items, "total": total, "pageNum": query.pageNum, "pageSize": query.pageSize}
 
@@ -118,6 +128,38 @@ def add_stock(db: Session, farm_id: int, body: MaterialStockIn, user_id: int) ->
     db.add(stock)
     db.commit()
     return stock
+
+
+def increase_stock(db: Session, farm_id: int, body: MaterialStockIncreaseIn, user_id: int) -> MaterialPurchase:
+    """管理端增加库存（免审）：落一条 audit_status=通过 的进货记录作为同步依据，并立即同步库存。
+    与员工进货共用同一段同步逻辑，库存变化全系统只有一条路径。"""
+    if body.material_type not in MATERIAL_TYPES:
+        raise BizException(f"物资类型只能是：{MATERIAL_TYPES}", code=40051)
+
+    p = MaterialPurchase(
+        farm_id=farm_id,
+        stock_id=None,
+        material_type=body.material_type,
+        material_name=body.material_name,
+        batch_no=body.batch_no,
+        quantity=body.quantity,
+        unit=body.unit,
+        # cost_price 列 NOT NULL：不填时落 0 表示"未提供单价"，同步时会跳过均价更新
+        cost_price=body.cost_price or 0,
+        total_cost=round(body.quantity * body.cost_price, 2) if body.cost_price else None,
+        production_date=body.production_date,
+        expiry_date=body.expiry_date,
+        supplier=body.supplier,
+        purchase_date=body.purchase_date,
+        audit_status="通过",  # 管理端免审，直接通过
+        operator_user_id=user_id,
+        remark=body.remark,
+    )
+    db.add(p)
+    db.flush()
+    _sync_purchase_to_stock(db, farm_id, p)
+    db.commit()
+    return p
 
 
 def update_stock(db: Session, farm_id: int, stock_id: int, body: MaterialStockUpdateIn) -> MaterialStock:
@@ -292,52 +334,64 @@ def audit_purchase(db: Session, farm_id: int, purchase_id: int, body: AuditActio
         p.remark = body.remark
 
     if body.audit_status == "通过":
-        # 找库存（按 farm_id + 类型 + 名称）
-        stock = db.query(MaterialStock).filter(
-            MaterialStock.farm_id == farm_id,
-            MaterialStock.material_type == p.material_type,
-            MaterialStock.material_name == p.material_name,
-            MaterialStock.deleted == False,
-        ).first()
-
-        if not stock:
-            # 库存里没有，自动创建一条
-            stock = MaterialStock(
-                farm_id=farm_id,
-                material_type=p.material_type,
-                material_name=p.material_name,
-                specification=None,
-                quantity=0,
-                unit=p.unit,
-                unit_price=float(p.cost_price or 0),  # 首次建档直接取进货单价
-                warning_threshold=None,
-                production_date=p.production_date,
-                expiry_date=p.expiry_date,
-                status="正常",
-                is_shortage=0,
-            )
-            db.add(stock)
-            db.flush()
-
-        # 增加库存数量
-        old_qty = float(stock.quantity or 0)
-        old_price = float(stock.unit_price or 0)
-        in_qty = float(p.quantity)
-        stock.quantity = old_qty + in_qty
-        # 移动加权平均价：新均价 = (旧库存量×旧均价 + 本次进货量×进货单价) / 新库存量
-        stock.unit_price = round((old_qty * old_price + in_qty * float(p.cost_price or 0)) / stock.quantity, 2)
-        # 更新最新批次的有效期/生产日期
-        if p.production_date:
-            stock.production_date = p.production_date
-        if p.expiry_date:
-            stock.expiry_date = p.expiry_date
-        # 关联 stock_id
-        p.stock_id = stock.id
-        # 刷新库存状态
-        _refresh_stock_status(stock)
+        _sync_purchase_to_stock(db, farm_id, p)
 
     db.commit()
     return p
+
+
+def _sync_purchase_to_stock(db: Session, farm_id: int, p: MaterialPurchase):
+    """
+    进货记录同步库存（全系统唯一入口）：
+    1. 按 (farm_id, 类型, 名称) 找库存，没有则自动建档
+    2. 数量累加进货数量
+    3. 有进货单价则移动加权更新均价，无单价则保持原价
+    4. 生产日期/有效期更新为最新批次
+    5. 回填 stock_id 并刷新过期/缺货状态
+    """
+    stock = db.query(MaterialStock).filter(
+        MaterialStock.farm_id == farm_id,
+        MaterialStock.material_type == p.material_type,
+        MaterialStock.material_name == p.material_name,
+        MaterialStock.deleted == False,
+    ).first()
+
+    if not stock:
+        # 库存里没有，自动创建一条
+        stock = MaterialStock(
+            farm_id=farm_id,
+            material_type=p.material_type,
+            material_name=p.material_name,
+            specification=None,
+            quantity=0,
+            unit=p.unit,
+            unit_price=float(p.cost_price) if p.cost_price else None,
+            warning_threshold=None,
+            production_date=p.production_date,
+            expiry_date=p.expiry_date,
+            status="正常",
+            is_shortage=0,
+        )
+        db.add(stock)
+        db.flush()
+
+    # 增加库存数量
+    old_qty = float(stock.quantity or 0)
+    in_qty = float(p.quantity)
+    stock.quantity = old_qty + in_qty
+    # 移动加权平均价：新均价 = (旧库存量×旧均价 + 本次进货量×进货单价) / 新库存量；无单价则不动均价
+    if p.cost_price:
+        old_price = float(stock.unit_price or 0)
+        stock.unit_price = round((old_qty * old_price + in_qty * float(p.cost_price)) / stock.quantity, 2)
+    # 更新最新批次的有效期/生产日期
+    if p.production_date:
+        stock.production_date = p.production_date
+    if p.expiry_date:
+        stock.expiry_date = p.expiry_date
+    # 关联 stock_id
+    p.stock_id = stock.id
+    # 刷新库存状态
+    _refresh_stock_status(stock)
 
 
 # ============================================================
@@ -367,6 +421,7 @@ def list_consume(db: Session, farm_id: int, query: MaterialConsumeQuery) -> dict
     items = q.order_by(MaterialConsume.consume_date.desc(), MaterialConsume.id.desc()).offset(
         (query.pageNum - 1) * query.pageSize
     ).limit(query.pageSize).all()
+    _attach_consumer_names(db, items)
     return {"list": items, "total": total, "pageNum": query.pageNum, "pageSize": query.pageSize}
 
 
@@ -376,6 +431,7 @@ def get_consume(db: Session, farm_id: int, consume_id: int) -> MaterialConsume:
     ).first()
     if not c:
         raise BizException("领用记录不存在", code=40070)
+    _attach_consumer_names(db, [c])
     return c
 
 
@@ -513,6 +569,17 @@ def refresh_all_stock_status(db: Session) -> int:
             changed += 1
     db.commit()
     return changed
+
+
+def _attach_consumer_names(db: Session, items: list):
+    """给领用记录动态挂上领用人姓名（= consumer_user_id 对应用户 real_name），仅用于展示"""
+    ids = {c.consumer_user_id for c in items if c.consumer_user_id}
+    if not ids:
+        return
+    users = db.query(User.id, User.real_name).filter(User.id.in_(ids)).all()
+    name_map = {u.id: u.real_name for u in users}
+    for c in items:
+        c.consumer_name = name_map.get(c.consumer_user_id)
 
 
 def _refresh_stock_status(stock: MaterialStock):

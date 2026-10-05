@@ -14,68 +14,68 @@ import { registerTheme } from 'echarts/core'
 
 /** 离散色板：青 → 蓝 → 薄荷 → 琥珀 → 紫 → 玫红 */
 export const TECH_CHART_PALETTE = [
-  '#22d3ee',
-  '#4a95ff',
-  '#00e6a8',
-  '#ffb020',
+  '#0fa8c9',
+  '#2b7fff',
+  '#0ea47a',
+  '#d98d1c',
   '#a78bfa',
   '#ff6b85',
-  '#7fe6f7',
+  '#37bcd8',
   '#5b7f9e',
 ]
 
 /** 供业务复用的语义色（与视图内配色保持一致） */
 export const TECH_CHART_COLORS = {
-  cyan: '#22d3ee',
-  blue: '#4a95ff',
-  green: '#00e6a8',
-  amber: '#ffb020',
+  cyan: '#0fa8c9',
+  blue: '#2b7fff',
+  green: '#0ea47a',
+  amber: '#d98d1c',
   violet: '#a78bfa',
   rose: '#ff6b85',
   slate: '#5b7f9e',
 }
 
-const AXIS_LINE = 'rgba(34, 211, 238, 0.28)'
-const AXIS_SPLIT = 'rgba(34, 211, 238, 0.12)'
-const AXIS_LABEL = '#8fa9bf'
+const AXIS_LINE = 'rgba(15, 168, 201, 0.28)'
+const AXIS_SPLIT = 'rgba(15, 168, 201, 0.12)'
+const AXIS_LABEL = '#6b8ba4'
 
 registerTheme('tech', {
   color: TECH_CHART_PALETTE,
   backgroundColor: 'transparent',
 
   textStyle: {
-    color: '#cfe4f5',
+    color: '#2b4b63',
     fontFamily: "'HarmonyOS Sans SC', 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif",
   },
 
   title: {
-    textStyle: { color: '#eaf6ff', fontWeight: 600 },
-    subtextStyle: { color: '#8fa9bf' },
+    textStyle: { color: '#0e2f47', fontWeight: 600 },
+    subtextStyle: { color: '#6b8ba4' },
   },
 
   legend: {
-    textStyle: { color: '#a8c6e0' },
+    textStyle: { color: '#5b7d95' },
     inactiveColor: '#5b7f9e',
     itemWidth: 12,
     itemHeight: 8,
   },
 
   tooltip: {
-    backgroundColor: 'rgba(8, 28, 54, 0.96)',
-    borderColor: 'rgba(34, 211, 238, 0.35)',
+    backgroundColor: '#ffffff',
+    borderColor: 'rgba(15, 168, 201, 0.35)',
     borderWidth: 1,
     padding: [10, 14],
-    textStyle: { color: '#eaf6ff', fontSize: 13 },
-    extraCssText: 'backdrop-filter: blur(12px); border-radius: 8px; box-shadow: 0 12px 32px rgba(0,6,20,.6);',
+    textStyle: { color: '#0e2f47', fontSize: 13 },
+    extraCssText: 'backdrop-filter: blur(12px); border-radius: 8px; box-shadow: 0 12px 32px rgba(16, 66, 100, 0.16);',
     axisPointer: {
-      lineStyle: { color: 'rgba(34, 211, 238, 0.6)', width: 1, type: 'dashed' },
-      crossStyle: { color: 'rgba(34, 211, 238, 0.6)' },
-      shadowStyle: { color: 'rgba(34, 211, 238, 0.08)' },
+      lineStyle: { color: 'rgba(15, 168, 201, 0.6)', width: 1, type: 'dashed' },
+      crossStyle: { color: 'rgba(15, 168, 201, 0.6)' },
+      shadowStyle: { color: 'rgba(15, 168, 201, 0.08)' },
       label: {
-        backgroundColor: 'rgba(8, 28, 54, 0.96)',
-        borderColor: 'rgba(34, 211, 238, 0.4)',
+        backgroundColor: '#ffffff',
+        borderColor: 'rgba(15, 168, 201, 0.4)',
         borderWidth: 1,
-        color: '#eaf6ff',
+        color: '#0e2f47',
       },
     },
   },
@@ -116,33 +116,33 @@ registerTheme('tech', {
   },
 
   pie: {
-    itemStyle: { borderColor: 'rgba(2, 7, 26, 0.85)', borderWidth: 2 },
-    label: { color: '#cfe4f5' },
+    itemStyle: { borderColor: '#ffffff', borderWidth: 2 },
+    label: { color: '#2b4b63' },
     labelLine: { lineStyle: { color: AXIS_LINE } },
   },
 
   /* 其他可能被用到的图表类型，给出一致的文字色兜底 */
   scatter: { itemStyle: { borderWidth: 0 } },
   radar: {
-    axisName: { color: '#a8c6e0' },
+    axisName: { color: '#5b7d95' },
     splitLine: { lineStyle: { color: AXIS_SPLIT } },
     splitArea: { areaStyle: { color: ['rgba(34,211,238,0.03)', 'rgba(34,211,238,0.07)'] } },
     axisLine: { lineStyle: { color: AXIS_LINE } },
   },
   gauge: {
-    axisLine: { lineStyle: { color: [[1, 'rgba(34, 211, 238, 0.18)']] } },
+    axisLine: { lineStyle: { color: [[1, 'rgba(15, 168, 201, 0.18)']] } },
     axisLabel: { color: AXIS_LABEL },
-    detail: { color: '#22d3ee' },
-    title: { color: '#a8c6e0' },
+    detail: { color: '#0fa8c9' },
+    title: { color: '#5b7d95' },
   },
   dataZoom: {
-    textStyle: { color: '#a8c6e0' },
+    textStyle: { color: '#5b7d95' },
     borderColor: AXIS_LINE,
-    fillerColor: 'rgba(34, 211, 238, 0.14)',
-    handleStyle: { color: '#22d3ee' },
+    fillerColor: 'rgba(15, 168, 201, 0.14)',
+    handleStyle: { color: '#0fa8c9' },
     dataBackground: {
       lineStyle: { color: AXIS_LINE },
-      areaStyle: { color: 'rgba(34, 211, 238, 0.1)' },
+      areaStyle: { color: 'rgba(15, 168, 201, 0.1)' },
     },
   },
 })

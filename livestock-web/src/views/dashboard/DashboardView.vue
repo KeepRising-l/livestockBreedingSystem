@@ -17,10 +17,15 @@
       </template>
       <el-row :gutter="12">
         <el-col :span="4" v-for="card in todoCards" :key="card.label">
-          <div class="todo-card" :class="{ clickable: !!card.path }" @click="card.path && goTo(card.path, card.perm)">
-            <div class="todo-value" :style="{ color: card.color }">{{ card.value }}</div>
-            <div class="todo-label">{{ card.label }}</div>
-          </div>
+          <MetricCard
+            :label="card.label"
+            :value="card.value"
+            :unit="card.unit"
+            :color="card.color"
+            :icon="card.icon"
+            :clickable="!!card.path"
+            @click="card.path && goTo(card.path, card.perm)"
+          />
         </el-col>
       </el-row>
       <el-divider v-if="todoItems.length" />
@@ -36,11 +41,14 @@
 
     <!-- 统计卡片 -->
     <el-row :gutter="16" class="mb-16">
-      <el-col :span="6" v-for="card in kpiCards" :key="card.label">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-value" :style="{ color: card.color }">{{ card.value }}</div>
-          <div class="stat-label">{{ card.label }}</div>
-        </el-card>
+      <el-col :span="6" v-for="card in kpiCards" :key="card.label" class="mb-16">
+        <MetricCard
+          :label="card.label"
+          :value="card.value"
+          :unit="card.unit"
+          :color="card.color"
+          :icon="card.icon"
+        />
       </el-col>
     </el-row>
 
@@ -104,6 +112,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import VChart from '@/components/TechChart.vue'
+import MetricCard from '@/components/MetricCard.vue'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { BarChart, PieChart } from 'echarts/charts'
@@ -138,14 +147,14 @@ const kpiCards = computed(() => {
   const k = stats.value?.kpi
   if (!k) return []
   return [
-    { label: '今日存栏', value: k.today_stock, color: '#00e6a8' },
-    { label: '本月入栏', value: k.month_in, color: '#4a95ff' },
-    { label: '本月出栏', value: k.month_out, color: '#ffb020' },
-    { label: '当前养殖场', value: farmInfo.value?.farm_name || '-', color: '#7fa8c9' },
-    { label: '累计销售额(元)', value: k.total_sale.toLocaleString(), color: '#a78bfa' },
-    { label: '累计利润(元)', value: k.total_profit.toLocaleString(), color: '#ff6b85' },
-    { label: '待审核记录', value: k.pending_audit, color: '#ffd166' },
-    { label: '待处理预警', value: k.pending_alert, color: '#ff4d6d' },
+    { label: '今日存栏', value: k.today_stock, unit: '头', color: '#0b9a78', icon: 'Grid' },
+    { label: '本月入栏', value: k.month_in, unit: '头', color: '#2b7fff', icon: 'Plus' },
+    { label: '本月出栏', value: k.month_out, unit: '头', color: '#d98d1c', icon: 'Sell' },
+    { label: '当前养殖场', value: farmInfo.value?.farm_name || '-', unit: '', color: '#5b7d95', icon: 'OfficeBuilding' },
+    { label: '累计销售额', value: k.total_sale, unit: '元', color: '#6b46e0', icon: 'Money' },
+    { label: '累计利润', value: k.total_profit, unit: '元', color: '#e8455f', icon: 'TrendCharts' },
+    { label: '待审核记录', value: k.pending_audit, unit: '条', color: '#d98d1c', icon: 'Stamp' },
+    { label: '待处理预警', value: k.pending_alert, unit: '条', color: '#e8455f', icon: 'Bell' },
   ]
 })
 
@@ -156,12 +165,12 @@ const todoCards = computed(() => {
   const alertMap: Record<string, number> = {}
   t.alert_by_type.forEach(a => { alertMap[a.name] = a.value })
   return [
-    { label: '存栏总数', value: k.today_stock, color: '#00e6a8', path: '', perm: '' },
-    { label: '圈舍总数', value: t.pen_count, color: '#4a95ff', path: '', perm: '' },
-    { label: '待审核记录', value: k.pending_audit, color: '#ffd166', path: 'review/list', perm: 'review' },
-    { label: '待处理预警', value: k.pending_alert, color: '#ff4d6d', path: 'breeding/alert', perm: 'breeding' },
-    { label: '临产提醒', value: alertMap['临产'] || 0, color: '#ffb020', path: 'breeding/alert', perm: 'breeding' },
-    { label: '库存不足', value: t.shortage_count, color: '#ff6b85', path: 'inventory/stock', perm: 'inventory' },
+    { label: '存栏总数', value: k.today_stock, unit: '头', color: '#0b9a78', icon: 'Grid', path: '', perm: '' },
+    { label: '圈舍总数', value: t.pen_count, unit: '个', color: '#2b7fff', icon: 'House', path: '', perm: '' },
+    { label: '待审核记录', value: k.pending_audit, unit: '条', color: '#d98d1c', icon: 'Stamp', path: 'review/list', perm: 'review' },
+    { label: '待处理预警', value: k.pending_alert, unit: '条', color: '#e8455f', icon: 'Bell', path: 'breeding/alert', perm: 'breeding' },
+    { label: '临产提醒', value: alertMap['临产'] || 0, unit: '条', color: '#d98d1c', icon: 'AlarmClock', path: 'breeding/alert', perm: 'breeding' },
+    { label: '库存不足', value: t.shortage_count, unit: '项', color: '#e8455f', icon: 'Box', path: 'inventory/stock', perm: 'inventory' },
   ]
 })
 
@@ -214,8 +223,8 @@ const trendOption = computed(() => {
     xAxis: { type: 'category', data: t.months },
     yAxis: { type: 'value', minInterval: 1 },
     series: [
-      { name: '入栏', type: 'bar', data: t.in_values, itemStyle: { color: '#4a95ff' }, barMaxWidth: 24 },
-      { name: '出栏', type: 'bar', data: t.out_values, itemStyle: { color: '#ffb020' }, barMaxWidth: 24 },
+      { name: '入栏', type: 'bar', data: t.in_values, itemStyle: { color: '#2b7fff' }, barMaxWidth: 24 },
+      { name: '出栏', type: 'bar', data: t.out_values, itemStyle: { color: '#d98d1c' }, barMaxWidth: 24 },
     ],
   }
 })
@@ -239,7 +248,7 @@ const penOption = computed(() => {
     yAxis: { type: 'value', minInterval: 1 },
     series: [
       { name: '容量', type: 'bar', data: pens.value.map(p => p.capacity), itemStyle: { color: '#5b7f9e' }, barMaxWidth: 20 },
-      { name: '存栏', type: 'bar', data: pens.value.map(p => p.current_count), itemStyle: { color: '#00e6a8' }, barMaxWidth: 20 },
+      { name: '存栏', type: 'bar', data: pens.value.map(p => p.current_count), itemStyle: { color: '#0ea47a' }, barMaxWidth: 20 },
     ],
   }
 })
@@ -327,18 +336,9 @@ onMounted(async () => {
 
 <style scoped>
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.page-title { font-size: 20px; font-weight: 600; color: #eaf6ff; }
+.page-title { font-size: 20px; font-weight: 600; color: #0e2f47; }
 .mb-16 { margin-bottom: 16px; }
-.stat-card { text-align: center; padding: 8px; }
-.stat-value {
-  font-size: 26px;
-  font-weight: 700;
-  color: #00e6a8;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.5px;
-  text-shadow: 0 0 18px currentColor;
-}
-.stat-label { font-size: 13px; color: #8fa9bf; margin-top: 4px; }
+
 
 /* 快捷入口：霓虹描边 + 悬停浮起发光 */
 .quick-btn {
@@ -349,61 +349,43 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border: 1px solid rgba(34, 211, 238, 0.2);
+  border: 1px solid rgba(15, 168, 201, 0.2);
   transition: border-color .25s ease, color .25s ease, box-shadow .25s ease, transform .25s ease;
 }
 .quick-btn:hover {
-  border-color: #22d3ee;
-  color: #7fe6f7;
-  box-shadow: 0 0 20px rgba(34, 211, 238, 0.24);
+  border-color: #0fa8c9;
+  color: #37bcd8;
+  box-shadow: 0 0 20px rgba(15, 168, 201, 0.24);
   transform: translateY(-2px);
 }
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .card-title { font-weight: 600; }
-.todo-card {
-  text-align: center;
-  padding: 10px 4px;
-  border: 1px solid rgba(34, 211, 238, 0.2);
-  border-radius: 6px;
-  background: rgba(34, 211, 238, 0.04);
-  transition: border-color .25s ease, box-shadow .25s ease, background-color .25s ease;
-}
-.todo-card.clickable { cursor: pointer; }
-.todo-card.clickable:hover {
-  border-color: #22d3ee;
-  background: rgba(34, 211, 238, 0.1);
-  box-shadow: 0 0 18px rgba(34, 211, 238, 0.22);
-}
-.todo-value {
-  font-size: 22px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 16px currentColor;
-}
-.todo-label { font-size: 12px; color: #8fa9bf; margin-top: 4px; }
+
+/* 今日待办列表（轻量条目：左侧色条 + 悬停高亮） */
 .todo-list { display: flex; flex-direction: column; gap: 8px; }
 .todo-item {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
-  border-radius: 6px;
-  border-left: 2px solid rgba(34, 211, 238, 0.35);
-  background: rgba(34, 211, 238, 0.06);
+  border-radius: 10px;
+  border-left: 2px solid rgba(15, 168, 201, 0.45);
+  background: rgba(15, 168, 201, 0.05);
   cursor: pointer;
   transition: background-color .2s ease, border-color .2s ease;
 }
 .todo-item:hover {
-  background: rgba(34, 211, 238, 0.13);
-  border-left-color: #22d3ee;
+  background: rgba(15, 168, 201, 0.12);
+  border-left-color: #0fa8c9;
 }
 .todo-text {
   flex: 1;
   font-size: 13px;
-  color: #d5e8f7;
+  color: #2b4b63;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.todo-meta { font-size: 12px; color: #8fa9bf; white-space: nowrap; }
+.todo-meta { font-size: 12px; color: #8ba7bb; white-space: nowrap; }
+
 </style>

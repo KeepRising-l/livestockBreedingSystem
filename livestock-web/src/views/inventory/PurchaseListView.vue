@@ -96,7 +96,7 @@
           <el-select v-model="form.material_type" placeholder="请选择" style="width: 100%" :disabled="isEdit">
             <el-option v-for="o in MATERIAL_TYPE_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
           </el-select>
-          <div style="color:#8fa9bf;font-size:12px;">若库存里没有此物资，审核通过时会自动创建</div>
+          <div style="color:#6b8ba4;font-size:12px;">若库存里没有此物资，审核通过时会自动创建</div>
         </el-form-item>
         <el-form-item label="物资名称" prop="material_name">
           <el-input v-model="form.material_name" placeholder="如：玉米精料" :disabled="isEdit" />
@@ -365,7 +365,7 @@ onMounted(loadData)
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; color: #eaf6ff; }
+.page-title { font-size: 20px; font-weight: 600; color: #0e2f47; }
 .mb-16 { margin-bottom: 16px; }
 .mt-16 { margin-top: 16px; }
 .text-right { text-align: right; }

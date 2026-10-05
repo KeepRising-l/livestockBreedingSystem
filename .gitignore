@@ -122,3 +122,12 @@ temp/
 # 前端
 node_modules/
 dist/
+
+# 本地临时/备份文件
+.workbuddy/
+_backup/
+_tmp_docx/
+_shots/
+image.jpg
+*.docx
+_mock-*.html

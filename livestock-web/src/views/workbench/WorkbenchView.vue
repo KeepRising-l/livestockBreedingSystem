@@ -183,8 +183,8 @@ const purchases = ref<any[]>([])
 const kpiCards = computed(() => {
   const k = stats.value?.kpi
   return [
-    { label: '今日存栏', value: k?.today_stock ?? '-', color: '#00e6a8' },
-    { label: '待处理预警', value: k?.pending_alert ?? '-', color: '#ff4d6d' },
+    { label: '今日存栏', value: k?.today_stock ?? '-', color: '#0ea47a' },
+    { label: '待处理预警', value: k?.pending_alert ?? '-', color: '#e8455f' },
     { label: '待审核记录', value: k?.pending_audit ?? '-', color: '#ffd166' },
     { label: '我的岗位', value: post.value || '-', color: '#7fa8c9' },
   ]
@@ -257,10 +257,10 @@ watch(species, () => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #eaf6ff; }
+.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #0e2f47; }
 .mb-16 { margin-bottom: 16px; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
 .kpi-card { text-align: center; padding: 8px; }
 .kpi-value { font-size: 26px; font-weight: 700; }
-.kpi-label { font-size: 13px; color: #8fa9bf; margin-top: 4px; }
+.kpi-label { font-size: 13px; color: #6b8ba4; margin-top: 4px; }
 </style>

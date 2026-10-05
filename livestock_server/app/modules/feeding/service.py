@@ -280,10 +280,14 @@ def add_record(db: Session, farm_id: int, body: FeedingRecordIn, user_id: int) -
 
 
 def update_record(db: Session, farm_id: int, record_id: int, body: FeedingRecordUpdateIn) -> FeedingRecord:
-    """修改饲喂记录（仅待审核状态可改）"""
+    """
+    修改饲喂记录。
+    - 待审核：直接改，状态保持待审核
+    - 已通过/已驳回：允许修改（不改变投喂日期/时段/圈舍），改完 audit_status 重置回 待审核，
+      需场主重新审核（审核不影响库存，重置只是让改动重新过一遍确认）
+    """
     rec = get_record(db, farm_id, record_id)
-    if rec.audit_status != "待审核":
-        raise BizException("已审核的记录不能修改", code=40043)
+    was_audited = rec.audit_status != "待审核"
 
     if body.actual_concentrate is not None:
         rec.actual_concentrate = body.actual_concentrate
@@ -307,6 +311,8 @@ def update_record(db: Session, farm_id: int, record_id: int, body: FeedingRecord
         rec.actual_silage, plan.silage_price if plan else None,
         rec.actual_hay, plan.hay_price if plan else None,
     )
+    if was_audited:
+        rec.audit_status = "待审核"
     db.commit()
     return rec
 

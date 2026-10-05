@@ -256,15 +256,15 @@ function modulesOf(sp: string): ModuleDef[] {
   justify-content: center;
   gap: 9px;
   padding: 0 12px;
-  border-bottom: 1px solid rgba(34, 211, 238, 0.16);
-  background: linear-gradient(90deg, rgba(34, 211, 238, 0.1), transparent 70%);
+  border-bottom: 1px solid rgba(15, 168, 201, 0.16);
+  background: linear-gradient(90deg, rgba(15, 168, 201, 0.1), transparent 70%);
   overflow: hidden;
 }
 
 .logo-mark {
   font-size: 19px;
   line-height: 1;
-  filter: drop-shadow(0 0 10px rgba(34, 211, 238, 0.7));
+  filter: drop-shadow(0 0 10px rgba(15, 168, 201, 0.7));
 }
 
 .logo-text {
@@ -272,7 +272,7 @@ function modulesOf(sp: string): ModuleDef[] {
   font-weight: 700;
   letter-spacing: 2px;
   white-space: nowrap;
-  background: linear-gradient(92deg, #eaf6ff 10%, #7fe6f7 55%, #4a95ff 100%);
+  background: linear-gradient(92deg, #0e2f47 10%, #37bcd8 55%, #2b7fff 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -290,8 +290,8 @@ function modulesOf(sp: string): ModuleDef[] {
 /* 菜单内图标在激活态下发光 */
 .side-menu :deep(.el-menu-item.is-active .el-icon),
 .side-menu :deep(.el-sub-menu.is-active > .el-sub-menu__title .el-icon) {
-  color: #7fe6f7;
-  filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.85));
+  color: #37bcd8;
+  filter: drop-shadow(0 0 8px rgba(15, 168, 201, 0.85));
 }
 
 .side-menu :deep(.el-sub-menu .el-menu-item) {

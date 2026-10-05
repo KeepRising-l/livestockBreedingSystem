@@ -83,7 +83,7 @@
         <el-table-column prop="remark" label="备注" min-width="120" show-overflow-tooltip />
         <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
-            <el-button link type="warning" size="small" @click.stop="handleEdit(row as FeedingRecord)" v-if="row.audit_status === '待审核'">编辑</el-button>
+            <el-button link type="warning" size="small" @click.stop="handleEdit(row as FeedingRecord)">编辑</el-button>
             <el-button link type="success" size="small" @click.stop="handleAudit(row as FeedingRecord, '通过')" v-if="canAudit && row.audit_status === '待审核'">通过</el-button>
             <el-button link type="danger" size="small" @click.stop="handleAudit(row as FeedingRecord, '驳回')" v-if="canAudit && row.audit_status === '待审核'">驳回</el-button>
             <el-popconfirm title="确定删除该记录？" @confirm="handleDelete(row.id)" v-if="row.audit_status !== '通过'">
@@ -109,17 +109,25 @@
 
     <!-- 新增/编辑弹窗 -->
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑饲喂记录' : '提交饲喂记录'" width="560px">
+      <el-alert
+        v-if="isEdit && editWasAudited"
+        type="warning"
+        :closable="false"
+        show-icon
+        title="该记录已审核过，保存后将重置为「待审核」，需重新审核"
+        class="mb-16"
+      />
       <el-form :model="form" :rules="formRules" ref="formRef" label-width="120px">
         <el-form-item label="饲喂日期" prop="feed_date">
-          <el-date-picker v-model="form.feed_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+          <el-date-picker v-model="form.feed_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" :disabled="isEdit" />
         </el-form-item>
         <el-form-item label="时段" prop="time_period">
-          <el-radio-group v-model="form.time_period">
+          <el-radio-group v-model="form.time_period" :disabled="isEdit">
             <el-radio v-for="o in FEED_TIME_PERIOD_OPTIONS" :key="o.value" :label="o.value">{{ o.label }}</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="圈舍" prop="pen_id">
-          <el-select v-model="form.pen_id" placeholder="请选择圈舍" filterable style="width: 100%">
+          <el-select v-model="form.pen_id" placeholder="请选择圈舍" filterable style="width: 100%" :disabled="isEdit">
             <el-option v-for="p in penOptions" :key="p.id" :label="p.pen_code + ' (' + p.pen_type + ')'" :value="p.id" />
           </el-select>
         </el-form-item>
@@ -233,6 +241,7 @@ const isEdit = ref(false)
 const saving = ref(false)
 const formRef = ref<FormInstance>()
 const editId = ref(0)
+const editWasAudited = ref(false)
 const form = reactive({
   feed_date: new Date().toISOString().slice(0, 10),
   time_period: '早',
@@ -345,6 +354,7 @@ function onPlanChange(planId: number | undefined) {
 function handleAdd() {
   isEdit.value = false
   editId.value = 0
+  editWasAudited.value = false
   Object.assign(form, {
     feed_date: new Date().toISOString().slice(0, 10),
     time_period: '早',
@@ -363,6 +373,7 @@ function handleAdd() {
 function handleEdit(row: FeedingRecord) {
   isEdit.value = true
   editId.value = row.id
+  editWasAudited.value = row.audit_status !== '待审核'
   Object.assign(form, {
     feed_date: row.feed_date,
     time_period: row.time_period,
@@ -387,7 +398,7 @@ async function handleSave() {
     if (!payload.plan_id) delete payload.plan_id
     if (isEdit.value) {
       await updateFeedingRecordApi(editId.value, payload)
-      ElMessage.success('修改成功')
+      ElMessage.success(editWasAudited.value ? '修改成功，已重置为待审核，需重新审核' : '修改成功')
     } else {
       await addFeedingRecordApi(payload)
       ElMessage.success('提交成功，等待审核')
@@ -452,12 +463,12 @@ watch(species, () => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; color: #eaf6ff; }
+.page-title { font-size: 20px; font-weight: 600; color: #0e2f47; }
 .mb-16 { margin-bottom: 16px; }
 .mt-16 { margin-top: 16px; }
 .text-right { text-align: right; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
 
 .feed-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 18px; }
-.feed-field-label { font-size: 13px; color: #a8c6e0; padding-left: 2px; }
+.feed-field-label { font-size: 13px; color: #5b7d95; padding-left: 2px; }
 </style>
