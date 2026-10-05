@@ -135,7 +135,7 @@ async function handleRegister() {
   justify-content: center;
   padding: 40px 20px;
   overflow: hidden;
-  background: #e3f6ea;
+  background: #eef6fb;
 }
 
 /* ---------------------------------------------------- 背景层（与登录页一致） */
@@ -155,8 +155,8 @@ async function handleRegister() {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(21,128,61, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(21,128,61, 0.07) 1px, transparent 1px);
+    linear-gradient(rgba(15, 168, 201, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 168, 201, 0.07) 1px, transparent 1px);
   background-size: 44px 44px;
   mask-image: radial-gradient(120% 100% at 50% 50%, #000 30%, transparent 85%);
   -webkit-mask-image: radial-gradient(120% 100% at 50% 50%, #000 30%, transparent 85%);
@@ -166,7 +166,7 @@ async function handleRegister() {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(20,83,45, 0.26) 0%, #ffffff 100%),
+    linear-gradient(180deg, rgba(14, 47, 71, 0.26) 0%, #ffffff 100%),
     radial-gradient(100% 80% at 50% 50%, transparent 30%, rgba(255, 255, 255, 0.92) 100%);
 }
 
@@ -182,7 +182,7 @@ async function handleRegister() {
     left: 0;
     right: 0;
     height: 180px;
-    background: linear-gradient(180deg, transparent, rgba(21,128,61, 0.14), transparent);
+    background: linear-gradient(180deg, transparent, rgba(15, 168, 201, 0.14), transparent);
     animation: scan 7s linear infinite;
   }
 }
@@ -201,12 +201,12 @@ async function handleRegister() {
   max-height: calc(100dvh - 48px);
   overflow-y: auto;
   padding: 34px 38px 28px;
-  border: 1px solid rgba(21,128,61, 0.3);
+  border: 1px solid rgba(15, 168, 201, 0.3);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(20px) saturate(1.3);
   -webkit-backdrop-filter: blur(20px) saturate(1.3);
-  box-shadow: 0 24px 60px rgba(23,58,40, 0.14), 0 0 48px rgba(21,128,61, 0.1),
+  box-shadow: 0 24px 60px rgba(16, 66, 100, 0.14), 0 0 48px rgba(15, 168, 201, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
   animation: card-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
 
@@ -214,7 +214,7 @@ async function handleRegister() {
     position: absolute;
     width: 18px;
     height: 18px;
-    border-color: #15803d;
+    border-color: #0fa8c9;
     opacity: 0.9;
     pointer-events: none;
 
@@ -243,7 +243,7 @@ async function handleRegister() {
   right: 12%;
   height: 2px;
   border-radius: 2px;
-  background: linear-gradient(90deg, transparent, #15803d, transparent);
+  background: linear-gradient(90deg, transparent, #0fa8c9, transparent);
   animation: glowline 3.4s ease-in-out infinite;
 }
 
@@ -269,10 +269,10 @@ async function handleRegister() {
     align-items: center;
     justify-content: center;
     border-radius: 13px;
-    color: #166534;
-    border: 1px solid rgba(21,128,61, 0.42);
-    background: radial-gradient(circle at 50% 30%, rgba(21,128,61, 0.28), rgba(14,165,233, 0.06));
-    box-shadow: 0 0 26px rgba(21,128,61, 0.35), inset 0 0 18px rgba(21,128,61, 0.18);
+    color: #0b7f9c;
+    border: 1px solid rgba(15, 168, 201, 0.42);
+    background: radial-gradient(circle at 50% 30%, rgba(15, 168, 201, 0.28), rgba(43, 127, 255, 0.06));
+    box-shadow: 0 0 26px rgba(15, 168, 201, 0.35), inset 0 0 18px rgba(15, 168, 201, 0.18);
   }
 
   h1 {
@@ -280,15 +280,15 @@ async function handleRegister() {
     font-size: 21px;
     font-weight: 600;
     letter-spacing: 2px;
-    color: #14532d;
-    text-shadow: 0 0 22px rgba(21,128,61, 0.4);
+    color: #0e2f47;
+    text-shadow: 0 0 22px rgba(15, 168, 201, 0.4);
   }
 
   p {
     margin: 0;
     font-size: 11px;
     letter-spacing: 1.6px;
-    color: #475569;
+    color: #5b7d95;
   }
 }
 
@@ -299,10 +299,10 @@ async function handleRegister() {
   font-size: 16px;
   letter-spacing: 6px;
   border-radius: 9px;
-  background: linear-gradient(135deg, #22c55e 0%, #0ea5e9 100%);
+  background: linear-gradient(135deg, #12a2c0 0%, #2b7fff 100%);
   border: none;
   color: #ffffff;
-  box-shadow: 0 12px 30px rgba(14,165,233, 0.34);
+  box-shadow: 0 12px 30px rgba(43, 127, 255, 0.34);
   position: relative;
   overflow: hidden;
 
@@ -320,7 +320,7 @@ async function handleRegister() {
 
   &:hover:not(.is-loading) {
     transform: translateY(-1px);
-    box-shadow: 0 16px 38px rgba(21,128,61, 0.46);
+    box-shadow: 0 16px 38px rgba(15, 168, 201, 0.46);
 
     &::after { left: 115%; }
   }
@@ -334,13 +334,13 @@ async function handleRegister() {
 
   a {
     font-size: 13px;
-    color: #166534;
+    color: #0b7f9c;
     text-decoration: none;
     transition: color 0.2s ease, text-shadow 0.2s ease;
 
     &:hover {
-      color: #166534;
-      text-shadow: 0 0 14px rgba(21,128,61, 0.7);
+      color: #0b7f9c;
+      text-shadow: 0 0 14px rgba(15, 168, 201, 0.7);
     }
   }
 }
@@ -353,16 +353,16 @@ async function handleRegister() {
 /* 表单控件：深色发光输入框（与登录页一致） */
 :deep(.el-input__wrapper) {
   background-color: rgba(255, 255, 255, 0.9) !important;
-  box-shadow: 0 0 0 1px rgba(21,128,61, 0.24) inset !important;
+  box-shadow: 0 0 0 1px rgba(15, 168, 201, 0.24) inset !important;
   border-radius: 9px;
 
   &:hover {
-    box-shadow: 0 0 0 1px rgba(21,128,61, 0.45) inset !important;
+    box-shadow: 0 0 0 1px rgba(15, 168, 201, 0.45) inset !important;
   }
 
   &.is-focus {
-    background-color: rgba(6,30,18, 0.92) !important;
-    box-shadow: 0 0 0 1px #15803d inset, 0 0 20px rgba(21,128,61, 0.32) !important;
+    background-color: rgba(3, 16, 36, 0.92) !important;
+    box-shadow: 0 0 0 1px #0fa8c9 inset, 0 0 20px rgba(15, 168, 201, 0.32) !important;
   }
 }
 
@@ -371,6 +371,6 @@ async function handleRegister() {
 }
 
 :deep(.el-checkbox__label) {
-  color: #334155;
+  color: #2b4b63;
 }
 </style>

@@ -63,12 +63,12 @@ const kpiCards = computed(() => {
   const s = stats.value
   if (!s) return []
   return [
-    { label: '库存种类', value: s.stock_count, unit: '种', color: '#0ea5e9', icon: 'Grid' },
-    { label: '缺货物资', value: s.shortage_count, unit: '项', color: '#dc2626', icon: 'Box' },
-    { label: '已过期', value: s.expired_count, unit: '项', color: '#b91c1c', icon: 'Delete' },
-    { label: '即将过期', value: s.expiring_count, unit: '项', color: '#a16207', icon: 'AlarmClock' },
-    { label: '本月进货金额', value: s.month_purchase_amount, unit: '元', color: '#17954d', icon: 'Money' },
-    { label: '本月领用量', value: s.month_consume, unit: '', color: '#8b4513', icon: 'Sell' },
+    { label: '库存种类', value: s.stock_count, unit: '种', color: '#2b7fff', icon: 'Grid' },
+    { label: '缺货物资', value: s.shortage_count, unit: '项', color: '#e8455f', icon: 'Box' },
+    { label: '已过期', value: s.expired_count, unit: '项', color: '#cf3350', icon: 'Delete' },
+    { label: '即将过期', value: s.expiring_count, unit: '项', color: '#d98d1c', icon: 'AlarmClock' },
+    { label: '本月进货金额', value: s.month_purchase_amount, unit: '元', color: '#0b9a78', icon: 'Money' },
+    { label: '本月领用量', value: s.month_consume, unit: '', color: '#6b46e0', icon: 'Sell' },
   ]
 })
 
@@ -91,7 +91,7 @@ const consumeTrendOption = computed(() => {
     tooltip: { trigger: 'axis' },
     xAxis: { type: 'category', data: t.months },
     yAxis: { type: 'value' },
-    series: [{ name: '领用量', type: 'bar', data: t.values, itemStyle: { color: '#b45309' }, barMaxWidth: 36 }],
+    series: [{ name: '领用量', type: 'bar', data: t.values, itemStyle: { color: '#a78bfa' }, barMaxWidth: 36 }],
   }
 })
 
@@ -104,6 +104,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #14532d; }
+.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #0e2f47; }
 .mb-16 { margin-bottom: 16px; }
 </style>

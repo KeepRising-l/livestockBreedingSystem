@@ -132,15 +132,15 @@ watch(() => route.fullPath, authStore.refreshUnreadCount)
 
 .collapse-btn {
   cursor: pointer;
-  color: #475569;
+  color: #5b7d95;
   padding: 5px;
   border-radius: 7px;
   transition: color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 
   &:hover {
-    color: #4ade80;
-    background: rgba(21,128,61, 0.12);
-    box-shadow: 0 0 14px rgba(21,128,61, 0.28);
+    color: #37bcd8;
+    background: rgba(15, 168, 201, 0.12);
+    box-shadow: 0 0 14px rgba(15, 168, 201, 0.28);
   }
 }
 
@@ -158,15 +158,15 @@ watch(() => route.fullPath, authStore.refreshUnreadCount)
   height: 30px;
   padding: 0 13px;
   margin-right: 16px;
-  border: 1px solid rgba(21,128,61, 0.24);
+  border: 1px solid rgba(15, 168, 201, 0.24);
   border-radius: 999px;
-  background: rgba(236,250,238, 0.62);
+  background: rgba(236, 244, 250, 0.62);
   backdrop-filter: blur(8px);
 
   .clock-text {
     font-size: 12.5px;
     letter-spacing: 0.8px;
-    color: #86efac;
+    color: #5ecbe2;
     white-space: nowrap;
   }
 }
@@ -177,12 +177,12 @@ watch(() => route.fullPath, authStore.refreshUnreadCount)
 
 .msg-bell {
   cursor: pointer;
-  color: #475569;
+  color: #5b7d95;
   transition: color 0.2s ease, filter 0.2s ease;
 
   &:hover {
-    color: #4ade80;
-    filter: drop-shadow(0 0 10px rgba(21,128,61, 0.8));
+    color: #37bcd8;
+    filter: drop-shadow(0 0 10px rgba(15, 168, 201, 0.8));
   }
 }
 
@@ -198,14 +198,14 @@ watch(() => route.fullPath, authStore.refreshUnreadCount)
   padding: 5px 12px;
   border-radius: 8px;
   border: 1px solid transparent;
-  color: #334155;
+  color: #2b4b63;
   font-size: 13.5px;
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 
   &:hover {
-    background: rgba(21,128,61, 0.12);
-    border-color: rgba(21,128,61, 0.32);
-    color: #14532d;
+    background: rgba(15, 168, 201, 0.12);
+    border-color: rgba(15, 168, 201, 0.32);
+    color: #0e2f47;
   }
 }
 

@@ -49,7 +49,7 @@ const props = withDefaults(
   }>(),
   {
     unit: '',
-    color: '#15803d',
+    color: '#0fa8c9',
     icon: '',
     sub: '',
     trendText: '',
@@ -77,7 +77,7 @@ const formatted = computed(() => {
 
 /** 主色的浅色版本（图标底色 / 顶部渐变） */
 const colorSoft = computed(() => {
-  const hex = (props.color || '#15803d').replace('#', '')
+  const hex = (props.color || '#0fa8c9').replace('#', '')
   const full = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex
   const r = parseInt(full.slice(0, 2), 16)
   const g = parseInt(full.slice(2, 4), 16)
@@ -92,9 +92,9 @@ const colorSoft = computed(() => {
   height: 100%;
   padding: 18px 20px;
   border-radius: var(--tech-radius, 16px);
-  border: 1px solid var(--tech-line, rgba(21,128,61, 0.18));
+  border: 1px solid var(--tech-line, rgba(15, 168, 201, 0.18));
   background: #fff;
-  box-shadow: 0 8px 26px rgba(23,58,40, 0.08);
+  box-shadow: 0 8px 26px rgba(16, 66, 100, 0.08);
   overflow: hidden;
   transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 
@@ -128,7 +128,7 @@ const colorSoft = computed(() => {
     &:hover {
       transform: translateY(-2px);
       border-color: var(--mc-color);
-      box-shadow: 0 14px 32px rgba(23,58,40, 0.14);
+      box-shadow: 0 14px 32px rgba(16, 66, 100, 0.14);
     }
   }
 }
@@ -175,13 +175,13 @@ const colorSoft = computed(() => {
 .mc-unit {
   font-size: 13px;
   font-weight: 500;
-  color: var(--tech-text-sub, #475569);
+  color: var(--tech-text-sub, #5b7d95);
 }
 
 .mc-label {
   margin-top: 4px;
   font-size: 13px;
-  color: var(--tech-text-sub, #475569);
+  color: var(--tech-text-sub, #5b7d95);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -190,16 +190,16 @@ const colorSoft = computed(() => {
 .mc-sub {
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px dashed var(--tech-line, rgba(21,128,61, 0.18));
+  border-top: 1px dashed var(--tech-line, rgba(15, 168, 201, 0.18));
   font-size: 12px;
-  color: var(--tech-text-dim, #94a3b8);
+  color: var(--tech-text-dim, #8ba7bb);
 }
 
 .mc-trend {
   margin-top: 6px;
   font-size: 12px;
 
-  &.is-up { color: #17954d; }
-  &.is-down { color: #b91c1c; }
+  &.is-up { color: #0b9a78; }
+  &.is-down { color: #cf3350; }
 }
 </style>

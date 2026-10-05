@@ -1,80 +1,81 @@
 import { registerTheme } from 'echarts/core'
 
 /**
- * ECharts 生态自然主题（'tech'，风格：Organic Biophilic）
+ * ECharts 科技主题（'tech'）
  *
- * 亮色背景下统一注册全局图表主题，与 design-system/smart-livestock/MASTER.md 同源：
- *   - 透明画布，交由卡片的白色面板承载
- *   - 大地绿主导的离散色板（草绿/天空蓝/收获金/沃土棕/松针青），与全站 --tech-* 令牌同源
- *   - 坐标轴、分隔线、图例、提示框统一柔和自然化
+ * 深色背景下 ECharts 默认主题的坐标轴/图例/文字是深灰色，几乎不可读。
+ * 这里注册一套与 login-bg2 视觉语言一致的全局主题：
+ *   - 透明画布，交由卡片的玻璃面板承载
+ *   - 青色系离散色板（与全站 --tech-* 令牌同源）
+ *   - 坐标轴、分隔线、图例、提示框统一暗色霓虹化
  *
  * 各页面 option 中显式声明的属性优先级高于主题，因此不会影响已有数据配置。
  */
 
-/** 离散色板：大地绿 → 天空蓝 → 收获金 → 草叶绿 → 沃土棕 → 松针青 → 抹茶绿 → 石板灰 */
+/** 离散色板：青 → 蓝 → 薄荷 → 琥珀 → 紫 → 玫红 */
 export const TECH_CHART_PALETTE = [
-  '#15803d',
-  '#0ea5e9',
-  '#a16207',
-  '#22c55e',
-  '#8b4513',
-  '#0f766e',
-  '#84cc16',
-  '#94a3b8',
+  '#0fa8c9',
+  '#2b7fff',
+  '#0ea47a',
+  '#d98d1c',
+  '#a78bfa',
+  '#ff6b85',
+  '#37bcd8',
+  '#5b7f9e',
 ]
 
-/** 供业务复用的语义色（与视图内配色保持一致；键名为历史命名，cyan 现持有主色绿） */
+/** 供业务复用的语义色（与视图内配色保持一致） */
 export const TECH_CHART_COLORS = {
-  cyan: '#15803d',
-  blue: '#0ea5e9',
-  green: '#22c55e',
-  amber: '#a16207',
-  violet: '#8b4513',
-  rose: '#dc2626',
-  slate: '#64748b',
+  cyan: '#0fa8c9',
+  blue: '#2b7fff',
+  green: '#0ea47a',
+  amber: '#d98d1c',
+  violet: '#a78bfa',
+  rose: '#ff6b85',
+  slate: '#5b7f9e',
 }
 
-const AXIS_LINE = 'rgba(21,128,61, 0.28)'
-const AXIS_SPLIT = 'rgba(21,128,61, 0.12)'
-const AXIS_LABEL = '#64748b'
+const AXIS_LINE = 'rgba(15, 168, 201, 0.28)'
+const AXIS_SPLIT = 'rgba(15, 168, 201, 0.12)'
+const AXIS_LABEL = '#6b8ba4'
 
 registerTheme('tech', {
   color: TECH_CHART_PALETTE,
   backgroundColor: 'transparent',
 
   textStyle: {
-    color: '#334155',
+    color: '#2b4b63',
     fontFamily: "'HarmonyOS Sans SC', 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif",
   },
 
   title: {
-    textStyle: { color: '#14532d', fontWeight: 600 },
-    subtextStyle: { color: '#64748b' },
+    textStyle: { color: '#0e2f47', fontWeight: 600 },
+    subtextStyle: { color: '#6b8ba4' },
   },
 
   legend: {
-    textStyle: { color: '#475569' },
-    inactiveColor: '#64748b',
+    textStyle: { color: '#5b7d95' },
+    inactiveColor: '#5b7f9e',
     itemWidth: 12,
     itemHeight: 8,
   },
 
   tooltip: {
     backgroundColor: '#ffffff',
-    borderColor: 'rgba(21,128,61, 0.35)',
+    borderColor: 'rgba(15, 168, 201, 0.35)',
     borderWidth: 1,
     padding: [10, 14],
-    textStyle: { color: '#14532d', fontSize: 13 },
-    extraCssText: 'backdrop-filter: blur(12px); border-radius: 8px; box-shadow: 0 12px 32px rgba(23,58,40, 0.16);',
+    textStyle: { color: '#0e2f47', fontSize: 13 },
+    extraCssText: 'backdrop-filter: blur(12px); border-radius: 8px; box-shadow: 0 12px 32px rgba(16, 66, 100, 0.16);',
     axisPointer: {
-      lineStyle: { color: 'rgba(21,128,61, 0.6)', width: 1, type: 'dashed' },
-      crossStyle: { color: 'rgba(21,128,61, 0.6)' },
-      shadowStyle: { color: 'rgba(21,128,61, 0.08)' },
+      lineStyle: { color: 'rgba(15, 168, 201, 0.6)', width: 1, type: 'dashed' },
+      crossStyle: { color: 'rgba(15, 168, 201, 0.6)' },
+      shadowStyle: { color: 'rgba(15, 168, 201, 0.08)' },
       label: {
         backgroundColor: '#ffffff',
-        borderColor: 'rgba(21,128,61, 0.4)',
+        borderColor: 'rgba(15, 168, 201, 0.4)',
         borderWidth: 1,
-        color: '#14532d',
+        color: '#0e2f47',
       },
     },
   },
@@ -105,43 +106,43 @@ registerTheme('tech', {
   line: {
     symbol: 'circle',
     symbolSize: 6,
-    smooth: true,
+    smooth: false,
     lineStyle: { width: 2.5 },
     itemStyle: { borderWidth: 0 },
   },
 
   bar: {
-    itemStyle: { borderRadius: [6, 6, 0, 0] },
+    itemStyle: { borderRadius: [4, 4, 0, 0] },
   },
 
   pie: {
     itemStyle: { borderColor: '#ffffff', borderWidth: 2 },
-    label: { color: '#334155' },
+    label: { color: '#2b4b63' },
     labelLine: { lineStyle: { color: AXIS_LINE } },
   },
 
   /* 其他可能被用到的图表类型，给出一致的文字色兜底 */
   scatter: { itemStyle: { borderWidth: 0 } },
   radar: {
-    axisName: { color: '#475569' },
+    axisName: { color: '#5b7d95' },
     splitLine: { lineStyle: { color: AXIS_SPLIT } },
-    splitArea: { areaStyle: { color: ['rgba(34,197,94,0.03)', 'rgba(34,197,94,0.07)'] } },
+    splitArea: { areaStyle: { color: ['rgba(34,211,238,0.03)', 'rgba(34,211,238,0.07)'] } },
     axisLine: { lineStyle: { color: AXIS_LINE } },
   },
   gauge: {
-    axisLine: { lineStyle: { color: [[1, 'rgba(21,128,61, 0.18)']] } },
+    axisLine: { lineStyle: { color: [[1, 'rgba(15, 168, 201, 0.18)']] } },
     axisLabel: { color: AXIS_LABEL },
-    detail: { color: '#15803d' },
-    title: { color: '#475569' },
+    detail: { color: '#0fa8c9' },
+    title: { color: '#5b7d95' },
   },
   dataZoom: {
-    textStyle: { color: '#475569' },
+    textStyle: { color: '#5b7d95' },
     borderColor: AXIS_LINE,
-    fillerColor: 'rgba(21,128,61, 0.14)',
-    handleStyle: { color: '#15803d' },
+    fillerColor: 'rgba(15, 168, 201, 0.14)',
+    handleStyle: { color: '#0fa8c9' },
     dataBackground: {
       lineStyle: { color: AXIS_LINE },
-      areaStyle: { color: 'rgba(21,128,61, 0.1)' },
+      areaStyle: { color: 'rgba(15, 168, 201, 0.1)' },
     },
   },
 })

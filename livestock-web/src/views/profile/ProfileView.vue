@@ -60,9 +60,9 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #14532d; }
+.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #0e2f47; }
 .mb-16 { margin-bottom: 16px; }
 .mr-8 { margin-right: 8px; }
-.perm-label { font-size: 14px; color: #475569; }
-.perm-empty { color: #94a3b8; }
+.perm-label { font-size: 14px; color: #5b7d95; }
+.perm-empty { color: #8ba7bb; }
 </style>

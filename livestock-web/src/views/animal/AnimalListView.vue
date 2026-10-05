@@ -445,7 +445,7 @@ watch(species, () => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; color: #14532d; }
+.page-title { font-size: 20px; font-weight: 600; color: #0e2f47; }
 .mb-16 { margin-bottom: 16px; }
 .mt-16 { margin-top: 16px; }
 .mr-4 { margin-right: 4px; }
@@ -461,11 +461,11 @@ watch(species, () => {
   flex-wrap: wrap;
   user-select: none;
 }
-.expand-icon { transition: transform 0.2s; color: #64748b; }
+.expand-icon { transition: transform 0.2s; color: #6b8ba4; }
 .expand-icon.expanded { transform: rotate(90deg); }
-.pen-code { font-size: 16px; font-weight: 600; color: #14532d; min-width: 56px; }
-.summary-item { color: #64748b; font-size: 13px; }
-.summary-item strong { color: #14532d; }
+.pen-code { font-size: 16px; font-weight: 600; color: #0e2f47; min-width: 56px; }
+.summary-item { color: #6b8ba4; font-size: 13px; }
+.summary-item strong { color: #0e2f47; }
 .group-body { margin-top: 12px; }
-.tip-text { font-size: 12px; color: #64748b; line-height: 1.4; margin-top: 4px; }
+.tip-text { font-size: 12px; color: #6b8ba4; line-height: 1.4; margin-top: 4px; }
 </style>

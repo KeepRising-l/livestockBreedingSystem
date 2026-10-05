@@ -59,7 +59,7 @@
         </el-table-column>
         <el-table-column label="数量" width="100">
           <template #default="{ row }">
-            <span style="color: #dc2626; font-weight: 600;">-{{ row.quantity }}</span>
+            <span style="color: #f56c6c; font-weight: 600;">-{{ row.quantity }}</span>
             {{ row.unit }}
           </template>
         </el-table-column>
@@ -113,7 +113,7 @@
               :value="s.id"
             />
           </el-select>
-          <div style="color:#64748b;font-size:12px;">仅显示库存数量 > 0 的物资</div>
+          <div style="color:#6b8ba4;font-size:12px;">仅显示库存数量 > 0 的物资</div>
         </el-form-item>
         <el-form-item label="物资" v-else>
           <el-input :model-value="`${form.material_type} / ${form.material_name}`" disabled />
@@ -385,7 +385,7 @@ onMounted(loadData)
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; color: #14532d; }
+.page-title { font-size: 20px; font-weight: 600; color: #0e2f47; }
 .mb-16 { margin-bottom: 16px; }
 .mt-16 { margin-top: 16px; }
 .text-right { text-align: right; }

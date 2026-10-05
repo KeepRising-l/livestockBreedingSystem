@@ -147,14 +147,14 @@ const kpiCards = computed(() => {
   const k = stats.value?.kpi
   if (!k) return []
   return [
-    { label: '今日存栏', value: k.today_stock, unit: '头', color: '#17954d', icon: 'Grid' },
-    { label: '本月入栏', value: k.month_in, unit: '头', color: '#0ea5e9', icon: 'Plus' },
-    { label: '本月出栏', value: k.month_out, unit: '头', color: '#a16207', icon: 'Sell' },
-    { label: '当前养殖场', value: farmInfo.value?.farm_name || '-', unit: '', color: '#475569', icon: 'OfficeBuilding' },
-    { label: '累计销售额', value: k.total_sale, unit: '元', color: '#8b4513', icon: 'Money' },
-    { label: '累计利润', value: k.total_profit, unit: '元', color: '#dc2626', icon: 'TrendCharts' },
-    { label: '待审核记录', value: k.pending_audit, unit: '条', color: '#a16207', icon: 'Stamp' },
-    { label: '待处理预警', value: k.pending_alert, unit: '条', color: '#dc2626', icon: 'Bell' },
+    { label: '今日存栏', value: k.today_stock, unit: '头', color: '#0b9a78', icon: 'Grid' },
+    { label: '本月入栏', value: k.month_in, unit: '头', color: '#2b7fff', icon: 'Plus' },
+    { label: '本月出栏', value: k.month_out, unit: '头', color: '#d98d1c', icon: 'Sell' },
+    { label: '当前养殖场', value: farmInfo.value?.farm_name || '-', unit: '', color: '#5b7d95', icon: 'OfficeBuilding' },
+    { label: '累计销售额', value: k.total_sale, unit: '元', color: '#6b46e0', icon: 'Money' },
+    { label: '累计利润', value: k.total_profit, unit: '元', color: '#e8455f', icon: 'TrendCharts' },
+    { label: '待审核记录', value: k.pending_audit, unit: '条', color: '#d98d1c', icon: 'Stamp' },
+    { label: '待处理预警', value: k.pending_alert, unit: '条', color: '#e8455f', icon: 'Bell' },
   ]
 })
 
@@ -165,12 +165,12 @@ const todoCards = computed(() => {
   const alertMap: Record<string, number> = {}
   t.alert_by_type.forEach(a => { alertMap[a.name] = a.value })
   return [
-    { label: '存栏总数', value: k.today_stock, unit: '头', color: '#17954d', icon: 'Grid', path: '', perm: '' },
-    { label: '圈舍总数', value: t.pen_count, unit: '个', color: '#0ea5e9', icon: 'House', path: '', perm: '' },
-    { label: '待审核记录', value: k.pending_audit, unit: '条', color: '#a16207', icon: 'Stamp', path: 'review/list', perm: 'review' },
-    { label: '待处理预警', value: k.pending_alert, unit: '条', color: '#dc2626', icon: 'Bell', path: 'breeding/alert', perm: 'breeding' },
-    { label: '临产提醒', value: alertMap['临产'] || 0, unit: '条', color: '#a16207', icon: 'AlarmClock', path: 'breeding/alert', perm: 'breeding' },
-    { label: '库存不足', value: t.shortage_count, unit: '项', color: '#dc2626', icon: 'Box', path: 'inventory/stock', perm: 'inventory' },
+    { label: '存栏总数', value: k.today_stock, unit: '头', color: '#0b9a78', icon: 'Grid', path: '', perm: '' },
+    { label: '圈舍总数', value: t.pen_count, unit: '个', color: '#2b7fff', icon: 'House', path: '', perm: '' },
+    { label: '待审核记录', value: k.pending_audit, unit: '条', color: '#d98d1c', icon: 'Stamp', path: 'review/list', perm: 'review' },
+    { label: '待处理预警', value: k.pending_alert, unit: '条', color: '#e8455f', icon: 'Bell', path: 'breeding/alert', perm: 'breeding' },
+    { label: '临产提醒', value: alertMap['临产'] || 0, unit: '条', color: '#d98d1c', icon: 'AlarmClock', path: 'breeding/alert', perm: 'breeding' },
+    { label: '库存不足', value: t.shortage_count, unit: '项', color: '#e8455f', icon: 'Box', path: 'inventory/stock', perm: 'inventory' },
   ]
 })
 
@@ -223,8 +223,8 @@ const trendOption = computed(() => {
     xAxis: { type: 'category', data: t.months },
     yAxis: { type: 'value', minInterval: 1 },
     series: [
-      { name: '入栏', type: 'bar', data: t.in_values, itemStyle: { color: '#0ea5e9' }, barMaxWidth: 24 },
-      { name: '出栏', type: 'bar', data: t.out_values, itemStyle: { color: '#a16207' }, barMaxWidth: 24 },
+      { name: '入栏', type: 'bar', data: t.in_values, itemStyle: { color: '#2b7fff' }, barMaxWidth: 24 },
+      { name: '出栏', type: 'bar', data: t.out_values, itemStyle: { color: '#d98d1c' }, barMaxWidth: 24 },
     ],
   }
 })
@@ -247,8 +247,8 @@ const penOption = computed(() => {
     xAxis: { type: 'category', data: pens.value.map(p => `${p.species || '待归属'}-${p.pen_code}`) },
     yAxis: { type: 'value', minInterval: 1 },
     series: [
-      { name: '容量', type: 'bar', data: pens.value.map(p => p.capacity), itemStyle: { color: '#64748b' }, barMaxWidth: 20 },
-      { name: '存栏', type: 'bar', data: pens.value.map(p => p.current_count), itemStyle: { color: '#16a34a' }, barMaxWidth: 20 },
+      { name: '容量', type: 'bar', data: pens.value.map(p => p.capacity), itemStyle: { color: '#5b7f9e' }, barMaxWidth: 20 },
+      { name: '存栏', type: 'bar', data: pens.value.map(p => p.current_count), itemStyle: { color: '#0ea47a' }, barMaxWidth: 20 },
     ],
   }
 })
@@ -260,7 +260,7 @@ const stageOption = computed(() => {
     tooltip: { trigger: 'axis' },
     xAxis: { type: 'category', data: d.map(i => i.name) },
     yAxis: { type: 'value', minInterval: 1 },
-    series: [{ type: 'bar', data: d.map(i => i.value), itemStyle: { color: '#b45309' }, barMaxWidth: 40 }],
+    series: [{ type: 'bar', data: d.map(i => i.value), itemStyle: { color: '#a78bfa' }, barMaxWidth: 40 }],
   }
 })
 
@@ -336,7 +336,7 @@ onMounted(async () => {
 
 <style scoped>
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.page-title { font-size: 20px; font-weight: 600; color: #14532d; }
+.page-title { font-size: 20px; font-weight: 600; color: #0e2f47; }
 .mb-16 { margin-bottom: 16px; }
 
 
@@ -349,13 +349,13 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border: 1px solid rgba(21,128,61, 0.2);
+  border: 1px solid rgba(15, 168, 201, 0.2);
   transition: border-color .25s ease, color .25s ease, box-shadow .25s ease, transform .25s ease;
 }
 .quick-btn:hover {
-  border-color: #15803d;
-  color: #4ade80;
-  box-shadow: 0 0 20px rgba(21,128,61, 0.24);
+  border-color: #0fa8c9;
+  color: #37bcd8;
+  box-shadow: 0 0 20px rgba(15, 168, 201, 0.24);
   transform: translateY(-2px);
 }
 .card-header { display: flex; justify-content: space-between; align-items: center; }
@@ -369,23 +369,23 @@ onMounted(async () => {
   gap: 10px;
   padding: 8px 10px;
   border-radius: 10px;
-  border-left: 2px solid rgba(21,128,61, 0.45);
-  background: rgba(21,128,61, 0.05);
+  border-left: 2px solid rgba(15, 168, 201, 0.45);
+  background: rgba(15, 168, 201, 0.05);
   cursor: pointer;
   transition: background-color .2s ease, border-color .2s ease;
 }
 .todo-item:hover {
-  background: rgba(21,128,61, 0.12);
-  border-left-color: #15803d;
+  background: rgba(15, 168, 201, 0.12);
+  border-left-color: #0fa8c9;
 }
 .todo-text {
   flex: 1;
   font-size: 13px;
-  color: #334155;
+  color: #2b4b63;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.todo-meta { font-size: 12px; color: #94a3b8; white-space: nowrap; }
+.todo-meta { font-size: 12px; color: #8ba7bb; white-space: nowrap; }
 
 </style>

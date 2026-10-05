@@ -201,8 +201,8 @@ watch(species, () => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; color: #14532d; }
-.section-title { font-size: 16px; font-weight: 600; margin: 20px 0 12px; color: #14532d; }
+.page-title { font-size: 20px; font-weight: 600; color: #0e2f47; }
+.section-title { font-size: 16px; font-weight: 600; margin: 20px 0 12px; color: #0e2f47; }
 .mb-16 { margin-bottom: 16px; }
 .mt-16 { margin-top: 16px; }
 </style>

@@ -348,11 +348,11 @@ watch(species, () => {
 
 <style scoped>
 .page-header { display: flex; justify-content: space-between; align-items: center; }
-.page-title { font-size: 20px; font-weight: 600; color: #14532d; }
+.page-title { font-size: 20px; font-weight: 600; color: #0e2f47; }
 .mt-16 { margin-top: 16px; }
 .mr-8 { margin-right: 8px; }
 .flex-gap { display: flex; align-items: center; gap: 12px; }
 .form-card { max-width: 900px; }
 .result-info { line-height: 2; }
-.tip { color: #64748b; font-size: 12px; margin-top: 4px; line-height: 1.6; }
+.tip { color: #6b8ba4; font-size: 12px; margin-top: 4px; line-height: 1.6; }
 </style>

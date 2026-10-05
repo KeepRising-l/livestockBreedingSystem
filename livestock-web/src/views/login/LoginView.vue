@@ -146,7 +146,7 @@ async function handleLogin() {
   gap: 24px;
   padding: 40px 7% 40px 5%;
   overflow: hidden;
-  background: #e3f6ea;
+  background: #eef6fb;
 }
 
 /* ---------------------------------------------------- 背景层 */
@@ -155,10 +155,10 @@ async function handleLogin() {
   inset: 0;
   /* 亮色主题：底图只作淡纹理，白/浅青渐变兜底，整体保持明亮 */
   background:
-    radial-gradient(900px 620px at 12% 8%, rgba(21,128,61, 0.16), transparent 62%),
-    radial-gradient(760px 540px at 92% 12%, rgba(14,165,233, 0.14), transparent 60%),
-    radial-gradient(700px 520px at 60% 108%, rgba(139,69,19, 0.1), transparent 62%),
-    linear-gradient(160deg, #f4fbf5 0%, #e8f9ee 46%, #ecfdf5 100%);
+    radial-gradient(900px 620px at 12% 8%, rgba(15, 168, 201, 0.16), transparent 62%),
+    radial-gradient(760px 540px at 92% 12%, rgba(43, 127, 255, 0.14), transparent 60%),
+    radial-gradient(700px 520px at 60% 108%, rgba(107, 70, 224, 0.1), transparent 62%),
+    linear-gradient(160deg, #f4fbfe 0%, #eaf6fd 46%, #e6f2fc 100%);
   animation: bg-drift 26s ease-in-out infinite alternate;
 }
 
@@ -177,22 +177,22 @@ async function handleLogin() {
   to { transform: scale(1.06); }
 }
 
-/* 有机光斑：大尺度柔光缓慢呼吸（替代原数据网格） */
+/* 数据网格：让背景具备"数据化"底纹 */
 .bg-grid {
   position: absolute;
   inset: 0;
   background-image:
-    radial-gradient(560px 380px at 24% 30%, rgba(34,197,94, 0.1), transparent 66%),
-    radial-gradient(480px 340px at 70% 62%, rgba(14,165,233, 0.08), transparent 64%);
-  background-size: 100% 100%, 100% 100%;
+    linear-gradient(rgba(15, 168, 201, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 168, 201, 0.07) 1px, transparent 1px);
+  background-size: 44px 44px;
   mask-image: radial-gradient(120% 100% at 50% 50%, #000 30%, transparent 85%);
   -webkit-mask-image: radial-gradient(120% 100% at 50% 50%, #000 30%, transparent 85%);
-  animation: blob-drift 18s ease-in-out infinite alternate;
+  animation: grid-slide 12s linear infinite;
 }
 
-@keyframes blob-drift {
-  from { transform: scale(1) translate(0, 0); }
-  to { transform: scale(1.08) translate(-1.5%, 1%); }
+@keyframes grid-slide {
+  from { background-position: 0 0, 0 0; }
+  to { background-position: 44px 44px, 44px 44px; }
 }
 
 /* 左右明暗控制：左侧保留全息细节，右侧压暗以便承载表单 */
@@ -221,7 +221,7 @@ async function handleLogin() {
     left: 0;
     right: 0;
     height: 180px;
-    background: linear-gradient(180deg, transparent, rgba(21,128,61, 0.08), transparent);
+    background: linear-gradient(180deg, transparent, rgba(15, 168, 201, 0.14), transparent);
     animation: scan 7s linear infinite;
   }
 }
@@ -244,11 +244,11 @@ async function handleLogin() {
   align-items: center;
   gap: 9px;
   padding: 5px 14px;
-  border: 1px solid rgba(21,128,61, 0.34);
+  border: 1px solid rgba(15, 168, 201, 0.34);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(10px);
-  box-shadow: 0 6px 18px rgba(23,58,40, 0.08);
+  box-shadow: 0 6px 18px rgba(16, 66, 100, 0.08);
   margin-bottom: 22px;
 }
 
@@ -256,7 +256,7 @@ async function handleLogin() {
   font-family: var(--tech-font-mono);
   font-size: 11px;
   letter-spacing: 2px;
-  color: #166534;
+  color: #0b7f9c;
 }
 
 .brand-title {
@@ -265,15 +265,15 @@ async function handleLogin() {
   line-height: 1.28;
   font-weight: 700;
   letter-spacing: 3px;
-  color: #14532d;
-  text-shadow: 0 0 34px rgba(21,128,61, 0.55), 0 0 80px rgba(14,165,233, 0.3);
+  color: #0e2f47;
+  text-shadow: 0 0 34px rgba(15, 168, 201, 0.55), 0 0 80px rgba(43, 127, 255, 0.3);
 }
 
 .brand-sub {
   margin: 0 0 30px;
   font-size: 12px;
   letter-spacing: 1.6px;
-  color: #475569;
+  color: #5b7d95;
   text-transform: uppercase;
 }
 
@@ -292,21 +292,21 @@ async function handleLogin() {
   }
 
   .ring-outer {
-    border: 1px dashed rgba(21,128,61, 0.4);
+    border: 1px dashed rgba(15, 168, 201, 0.4);
     animation: spin 18s linear infinite;
   }
 
   .ring-mid {
     inset: 13px;
     border: 1px solid transparent;
-    border-top-color: rgba(21,128,61, 0.85);
-    border-right-color: rgba(21,128,61, 0.2);
+    border-top-color: rgba(15, 168, 201, 0.85);
+    border-right-color: rgba(15, 168, 201, 0.2);
     animation: spin 6s linear infinite reverse;
   }
 
   .ring-inner {
     inset: 27px;
-    border: 1px solid rgba(14,165,233, 0.34);
+    border: 1px solid rgba(43, 127, 255, 0.34);
     animation: spin 10s linear infinite;
   }
 
@@ -317,11 +317,11 @@ async function handleLogin() {
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(21,128,61, 0.22), transparent 72%);
+    background: radial-gradient(circle, rgba(15, 168, 201, 0.22), transparent 72%);
     font-family: var(--tech-font-mono);
     font-size: 13px;
     letter-spacing: 1px;
-    color: #166534;
+    color: #0b7f9c;
   }
 }
 
@@ -344,16 +344,16 @@ async function handleLogin() {
     padding: 7px 15px;
     font-size: 12.5px;
     letter-spacing: 0.8px;
-    color: #475569;
-    border: 1px solid rgba(21,128,61, 0.28);
+    color: #5b7d95;
+    border: 1px solid rgba(15, 168, 201, 0.28);
     border-radius: 6px;
     background: rgba(255, 255, 255, 0.72);
     backdrop-filter: blur(10px);
     transition: border-color 0.25s ease, color 0.25s ease, transform 0.25s ease;
 
     &:hover {
-      border-color: rgba(21,128,61, 0.7);
-      color: #14532d;
+      border-color: rgba(15, 168, 201, 0.7);
+      color: #0e2f47;
       transform: translateY(-2px);
     }
   }
@@ -362,8 +362,8 @@ async function handleLogin() {
     width: 5px;
     height: 5px;
     border-radius: 50%;
-    background: #15803d;
-    box-shadow: 0 0 8px #15803d;
+    background: #0fa8c9;
+    box-shadow: 0 0 8px #0fa8c9;
   }
 }
 
@@ -378,22 +378,22 @@ async function handleLogin() {
   z-index: 1;
   width: 100%;
   padding: 42px 38px 30px;
-  border: 1px solid rgba(21,128,61, 0.26);
+  border: 1px solid rgba(15, 168, 201, 0.26);
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(20px) saturate(1.2);
   -webkit-backdrop-filter: blur(20px) saturate(1.2);
-  box-shadow: 0 24px 60px rgba(23,58,40, 0.14), 0 0 48px rgba(21,128,61, 0.1),
+  box-shadow: 0 24px 60px rgba(16, 66, 100, 0.14), 0 0 48px rgba(15, 168, 201, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
   animation: card-in 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
 
   /* 面板四角 HUD 标（TL/BR 由全局 .hud-corners 提供，此处补齐 TR/BL） */
   .corner {
     position: absolute;
-    width: 20px;
-    height: 20px;
-    border-color: #15803d;
-    opacity: 0.35;
+    width: 18px;
+    height: 18px;
+    border-color: #0fa8c9;
+    opacity: 0.9;
     pointer-events: none;
 
     &.corner-tr {
@@ -401,7 +401,7 @@ async function handleLogin() {
       right: -1px;
       border-top: 2px solid;
       border-right: 2px solid;
-      border-top-right-radius: 14px;
+      border-top-right-radius: 5px;
     }
 
     &.corner-bl {
@@ -409,7 +409,7 @@ async function handleLogin() {
       bottom: -1px;
       border-left: 2px solid;
       border-bottom: 2px solid;
-      border-bottom-left-radius: 14px;
+      border-bottom-left-radius: 5px;
     }
   }
 }
@@ -422,7 +422,7 @@ async function handleLogin() {
   right: 12%;
   height: 2px;
   border-radius: 2px;
-  background: linear-gradient(90deg, transparent, #15803d, transparent);
+  background: linear-gradient(90deg, transparent, #0fa8c9, transparent);
   filter: blur(0.5px);
   animation: glowline 3.4s ease-in-out infinite;
 }
@@ -449,10 +449,10 @@ async function handleLogin() {
     align-items: center;
     justify-content: center;
     border-radius: 14px;
-    color: #166534;
-    border: 1px solid rgba(21,128,61, 0.42);
-    background: radial-gradient(circle at 50% 30%, rgba(21,128,61, 0.28), rgba(14,165,233, 0.06));
-    box-shadow: 0 0 26px rgba(21,128,61, 0.35), inset 0 0 18px rgba(21,128,61, 0.18);
+    color: #0b7f9c;
+    border: 1px solid rgba(15, 168, 201, 0.42);
+    background: radial-gradient(circle at 50% 30%, rgba(15, 168, 201, 0.28), rgba(43, 127, 255, 0.06));
+    box-shadow: 0 0 26px rgba(15, 168, 201, 0.35), inset 0 0 18px rgba(15, 168, 201, 0.18);
   }
 
   h2 {
@@ -461,16 +461,16 @@ async function handleLogin() {
     font-weight: 600;
     letter-spacing: 2px;
     line-height: 1.4;
-    color: #14532d;
+    color: #0e2f47;
     text-wrap: balance;
-    text-shadow: 0 0 22px rgba(21,128,61, 0.4);
+    text-shadow: 0 0 22px rgba(15, 168, 201, 0.4);
   }
 
   p {
     margin: 0;
     font-size: 11px;
     letter-spacing: 0.9px;
-    color: #475569;
+    color: #5b7d95;
     text-transform: uppercase;
   }
 }
@@ -483,10 +483,10 @@ async function handleLogin() {
   font-size: 16px;
   letter-spacing: 6px;
   border-radius: 9px;
-  background: linear-gradient(135deg, #22c55e 0%, #0ea5e9 100%);
+  background: linear-gradient(135deg, #12a2c0 0%, #2b7fff 100%);
   border: none;
   color: #ffffff;
-  box-shadow: 0 12px 30px rgba(14,165,233, 0.34);
+  box-shadow: 0 12px 30px rgba(43, 127, 255, 0.34);
 
   &::after {
     content: '';
@@ -502,7 +502,7 @@ async function handleLogin() {
 
   &:hover:not(.is-loading) {
     transform: translateY(-1px);
-    box-shadow: 0 16px 38px rgba(21,128,61, 0.46);
+    box-shadow: 0 16px 38px rgba(15, 168, 201, 0.46);
 
     &::after { left: 115%; }
   }
@@ -516,13 +516,13 @@ async function handleLogin() {
 
   a {
     font-size: 13px;
-    color: #166534;
+    color: #0b7f9c;
     text-decoration: none;
     transition: color 0.2s ease, text-shadow 0.2s ease;
 
     &:hover {
-      color: #166534;
-      text-shadow: 0 0 14px rgba(21,128,61, 0.7);
+      color: #0b7f9c;
+      text-shadow: 0 0 14px rgba(15, 168, 201, 0.7);
     }
   }
 }
@@ -530,22 +530,22 @@ async function handleLogin() {
 .tips {
   text-align: center;
   font-size: 12px;
-  color: #94a3b8;
+  color: #8ba7bb;
 }
 
 /* 表单控件：深色发光输入框 */
 :deep(.el-input__wrapper) {
   background-color: rgba(255, 255, 255, 0.9) !important;
-  box-shadow: 0 0 0 1px rgba(21,128,61, 0.24) inset !important;
+  box-shadow: 0 0 0 1px rgba(15, 168, 201, 0.24) inset !important;
   border-radius: 9px;
 
   &:hover {
-    box-shadow: 0 0 0 1px rgba(21,128,61, 0.45) inset !important;
+    box-shadow: 0 0 0 1px rgba(15, 168, 201, 0.45) inset !important;
   }
 
   &.is-focus {
-    background-color: rgba(6,30,18, 0.92) !important;
-    box-shadow: 0 0 0 1px #15803d inset, 0 0 20px rgba(21,128,61, 0.32) !important;
+    background-color: rgba(3, 16, 36, 0.92) !important;
+    box-shadow: 0 0 0 1px #0fa8c9 inset, 0 0 20px rgba(15, 168, 201, 0.32) !important;
   }
 }
 

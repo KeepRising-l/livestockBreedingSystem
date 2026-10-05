@@ -133,7 +133,7 @@
         </el-form-item>
         <el-form-item label="进货单价">
           <el-input-number v-model="incForm.cost_price" :min="0.01" :precision="2" style="width: 100%" />
-          <div style="color:#64748b;font-size:12px;">元/单位，选填；不填则库存均价保持不变</div>
+          <div style="color:#6b8ba4;font-size:12px;">元/单位，选填；不填则库存均价保持不变</div>
         </el-form-item>
         <el-form-item label="单位" prop="unit">
           <el-select v-model="incForm.unit" placeholder="请选择" filterable allow-create style="width: 100%">
@@ -189,7 +189,7 @@
         </el-form-item>
         <el-form-item label="进货单价" prop="cost_price">
           <el-input-number v-model="applyForm.cost_price" :min="0.01" :precision="2" style="width: 100%" />
-          <div style="color:#64748b;font-size:12px;">元/单位，必填；审核通过后按移动加权平均更新库存均价</div>
+          <div style="color:#6b8ba4;font-size:12px;">元/单位，必填；审核通过后按移动加权平均更新库存均价</div>
         </el-form-item>
         <el-form-item label="单位" prop="unit">
           <el-select v-model="applyForm.unit" placeholder="请选择" filterable allow-create style="width: 100%">
@@ -234,11 +234,11 @@
         </el-form-item>
         <el-form-item label="单价">
           <el-input-number v-model="form.unit_price" :min="0" :precision="2" style="width: 100%" />
-          <div style="color:#64748b;font-size:12px;">元/单位；进货审核通过后按移动加权平均自动更新，用于出栏药品成本核算</div>
+          <div style="color:#6b8ba4;font-size:12px;">元/单位；进货审核通过后按移动加权平均自动更新，用于出栏药品成本核算</div>
         </el-form-item>
         <el-form-item label="预警阈值">
           <el-input-number v-model="form.warning_threshold" :min="0" :precision="2" style="width: 100%" />
-          <div style="color:#64748b;font-size:12px;">库存低于此值时标记为缺货</div>
+          <div style="color:#6b8ba4;font-size:12px;">库存低于此值时标记为缺货</div>
         </el-form-item>
         <el-form-item label="生产日期">
           <el-date-picker v-model="form.production_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
@@ -547,10 +547,10 @@ onMounted(loadData)
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; color: #14532d; }
+.page-title { font-size: 20px; font-weight: 600; color: #0e2f47; }
 .mb-16 { margin-bottom: 16px; }
 .mt-16 { margin-top: 16px; }
 .text-right { text-align: right; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
-.text-danger { color: #dc2626; }
+.text-danger { color: #f56c6c; }
 </style>

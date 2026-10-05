@@ -67,7 +67,7 @@
         </el-table-column>
         <el-table-column label="成本(元)" width="100">
           <template #default="{ row }">
-            <span style="color: #a16207; font-weight: 600;">{{ row.feed_cost ?? '-' }}</span>
+            <span style="color: #e6a23c; font-weight: 600;">{{ row.feed_cost ?? '-' }}</span>
           </template>
         </el-table-column>
         <el-table-column label="投喂状态" width="90">
@@ -463,12 +463,12 @@ watch(species, () => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; color: #14532d; }
+.page-title { font-size: 20px; font-weight: 600; color: #0e2f47; }
 .mb-16 { margin-bottom: 16px; }
 .mt-16 { margin-top: 16px; }
 .text-right { text-align: right; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
 
 .feed-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 18px; }
-.feed-field-label { font-size: 13px; color: #475569; padding-left: 2px; }
+.feed-field-label { font-size: 13px; color: #5b7d95; padding-left: 2px; }
 </style>

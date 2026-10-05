@@ -90,14 +90,14 @@ const kpiCards = computed(() => {
   const s = stats.value
   if (!s) return []
   return [
-    { label: '当前存栏', value: s.current_stock, unit: '头', color: '#17954d', icon: 'Grid' },
-    { label: '本月配种', value: s.month_mating, unit: '次', color: '#0ea5e9', icon: 'Connection' },
-    { label: '本月产犊', value: s.month_birth, unit: '头', color: '#a16207', icon: 'Plus' },
-    { label: '妊娠母畜', value: s.pregnant_count, unit: '头', color: '#8b4513', icon: 'Notebook' },
-    { label: '受孕率', value: s.pregnancy_rate, unit: '%', color: '#17954d', icon: 'DataAnalysis' },
-    { label: '生产率', value: s.reproduction_rate, unit: '%', color: '#a16207', icon: 'TrendCharts' },
-    { label: '平均成活率', value: s.avg_survival_rate, unit: '%', color: '#17954d', icon: 'FirstAidKit' },
-    { label: '待处理预警', value: s.pending_alert_count, unit: '条', color: '#dc2626', icon: 'Bell' },
+    { label: '当前存栏', value: s.current_stock, unit: '头', color: '#0b9a78', icon: 'Grid' },
+    { label: '本月配种', value: s.month_mating, unit: '次', color: '#2b7fff', icon: 'Connection' },
+    { label: '本月产犊', value: s.month_birth, unit: '头', color: '#d98d1c', icon: 'Plus' },
+    { label: '妊娠母畜', value: s.pregnant_count, unit: '头', color: '#6b46e0', icon: 'Notebook' },
+    { label: '受孕率', value: s.pregnancy_rate, unit: '%', color: '#0b9a78', icon: 'DataAnalysis' },
+    { label: '生产率', value: s.reproduction_rate, unit: '%', color: '#d98d1c', icon: 'TrendCharts' },
+    { label: '平均成活率', value: s.avg_survival_rate, unit: '%', color: '#0b9a78', icon: 'FirstAidKit' },
+    { label: '待处理预警', value: s.pending_alert_count, unit: '条', color: '#e8455f', icon: 'Bell' },
   ]
 })
 
@@ -122,7 +122,7 @@ const penOption = computed(() => {
     tooltip: { trigger: 'axis' },
     xAxis: { type: 'category', data: d.map(i => i.name) },
     yAxis: { type: 'value', minInterval: 1 },
-    series: [{ type: 'bar', data: d.map(i => i.value), itemStyle: { color: '#0ea5e9' }, barMaxWidth: 36 }],
+    series: [{ type: 'bar', data: d.map(i => i.value), itemStyle: { color: '#2b7fff' }, barMaxWidth: 36 }],
   }
 })
 
@@ -133,7 +133,7 @@ const birthTrendOption = computed(() => {
     tooltip: { trigger: 'axis' },
     xAxis: { type: 'category', data: t.months },
     yAxis: { type: 'value', minInterval: 1 },
-    series: [{ name: '产犊数', type: 'line', smooth: true, data: t.values, areaStyle: { opacity: 0.15 }, itemStyle: { color: '#a16207' } }],
+    series: [{ name: '产犊数', type: 'line', smooth: true, data: t.values, areaStyle: { opacity: 0.15 }, itemStyle: { color: '#d98d1c' } }],
   }
 })
 
@@ -146,6 +146,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #14532d; }
+.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #0e2f47; }
 .mb-16 { margin-bottom: 16px; }
 </style>

@@ -146,11 +146,11 @@ onMounted(loadSalaries)
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; color: #14532d; }
+.page-title { font-size: 20px; font-weight: 600; color: #0e2f47; }
 .mb-16 { margin-bottom: 16px; }
 .mt-16 { margin-top: 16px; }
 .text-right { text-align: right; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
-.amount { font-weight: 600; color: #a16207; }
-.muted { color: #64748b; }
+.amount { font-weight: 600; color: #e6a23c; }
+.muted { color: #6b8ba4; }
 </style>

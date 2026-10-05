@@ -153,7 +153,7 @@
         </el-form-item>
         <el-form-item label="类型标识" prop="dict_type">
           <el-input v-model="typeForm.dict_type" placeholder="如：sys_user_type" :disabled="typeIsEdit" />
-          <div style="color:#64748b;font-size:12px;">规范：sys_ 前缀 + 下划线分隔，创建后不可修改</div>
+          <div style="color:#6b8ba4;font-size:12px;">规范：sys_ 前缀 + 下划线分隔，创建后不可修改</div>
         </el-form-item>
         <el-form-item label="状态">
           <el-radio-group v-model="typeForm.status">
@@ -395,13 +395,13 @@ onMounted(loadTypeList)
 </script>
 
 <style scoped>
-.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #14532d; }
+.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #0e2f47; }
 .mb-12 { margin-bottom: 12px; }
 .mt-8 { margin-top: 8px; }
 .mt-12 { margin-top: 12px; }
 .ml-8 { margin-left: 8px; }
 .text-right { text-align: right; }
 .text-center { text-align: center; }
-.text-gray { color: #64748b; }
+.text-gray { color: #6b8ba4; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
 </style>
