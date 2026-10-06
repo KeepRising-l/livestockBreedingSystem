@@ -85,7 +85,7 @@
       <div class="links">
         <router-link to="/register/owner">还没有账号？注册养殖场</router-link>
       </div>
-      <div class="tips">支持账号或手机号登录 · 初始账号 admin / admin123</div>
+      <div class="tips">支持账号或手机号登录</div>
     </section>
   </div>
 </template>
@@ -125,7 +125,9 @@ async function handleLogin() {
     await authStore.login({ username: form.username, password: form.password })
     ElMessage.success('登录成功')
     // 员工登录默认进入当前畜种工作台，超管/场主仍进数据大屏
-    const redirect = (route.query.redirect as string) ||
+    // redirect 仅接受站内路径（以单个 / 开头），防开放重定向
+    const raw = route.query.redirect as string
+    const redirect = (raw && raw.startsWith('/') && !raw.startsWith('//') ? raw : '') ||
       (authStore.userType === 3 ? `/${authStore.currentSpecies || 'cattle'}/workbench` : '/dashboard')
     router.push(redirect)
   } catch {

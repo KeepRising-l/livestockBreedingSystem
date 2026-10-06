@@ -169,6 +169,7 @@
 </template>
 
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import { ref, reactive, computed, onMounted } from 'vue'
 import {
   getConsumeListApi, addConsumeApi, updateConsumeApi,
@@ -212,7 +213,7 @@ const form = reactive({
   batch_no: '',
   quantity: undefined as number | undefined,
   unit: 'kg',
-  consume_date: new Date().toISOString().slice(0, 10),
+  consume_date: dayjs().format('YYYY-MM-DD'),
   related_module: '',
   remark: '',
 })
@@ -302,7 +303,7 @@ function handleAdd() {
   Object.assign(form, {
     stock_id: undefined, material_type: '', material_name: '',
     batch_no: '', quantity: undefined, unit: 'kg',
-    consume_date: new Date().toISOString().slice(0, 10),
+    consume_date: dayjs().format('YYYY-MM-DD'),
     related_module: '', remark: '',
   })
   loadStockOptions()

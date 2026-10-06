@@ -173,6 +173,7 @@
 </template>
 
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import {
   getMedicalListApi, addMedicalApi, updateMedicalApi, deleteMedicalApi,
@@ -218,7 +219,7 @@ const saving = ref(false)
 const formRef = ref<FormInstance>()
 const editId = ref(0)
 const form = reactive({
-  medical_date: new Date().toISOString().slice(0, 10),
+  medical_date: dayjs().format('YYYY-MM-DD'),
   onset_date: '',
   ear_tag: '',
   species: speciesZh.value,
@@ -311,7 +312,7 @@ function handleAdd() {
   isEdit.value = false
   editId.value = 0
   Object.assign(form, {
-    medical_date: new Date().toISOString().slice(0, 10),
+    medical_date: dayjs().format('YYYY-MM-DD'),
     onset_date: '',
     ear_tag: '',
     species: speciesZh.value,

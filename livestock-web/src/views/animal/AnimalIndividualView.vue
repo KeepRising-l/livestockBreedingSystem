@@ -123,6 +123,7 @@
 </template>
 
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { createAnimalApi, generateEarTagApi } from '@/api/animal'
@@ -179,7 +180,7 @@ const form = reactive({
   gender: '母',
   source: '',
   birth_date: '',
-  in_date: new Date().toISOString().split('T')[0],
+  in_date: dayjs().format('YYYY-MM-DD'),
   pen_id: undefined as number | undefined,
   sire_tag: '',
   dam_tag: '',

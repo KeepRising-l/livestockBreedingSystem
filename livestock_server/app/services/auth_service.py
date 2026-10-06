@@ -21,9 +21,10 @@ def login(db: Session, body: LoginIn) -> dict:
         (User.username == body.username) | (User.phone == body.username)
     ).first()
     if not user:
-        raise BizException("账号或手机号不存在", code=40001)
+        # 与"密码错误"返回同一文案同一 code，避免攻击者借错误差异枚举有效账号
+        raise BizException("账号或密码错误", code=40001)
     if not verify_password(body.password, user.password):
-        raise BizException("密码错误", code=40002)
+        raise BizException("账号或密码错误", code=40001)
     if user.status != 1:
         raise BizException("账号已被禁用", code=40003)
 

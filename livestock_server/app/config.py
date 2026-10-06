@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
 
+    # ===== CORS =====
+    # 额外放行的跨域来源（逗号分隔完整 origin，如 https://farm.example.com）；
+    # 留空则仅放行本机开发端口（localhost/127.0.0.1 任意端口）
+    CORS_ORIGINS: str = ""
+
     # ===== 超级管理员 =====
     SUPER_ADMIN_USERNAME: str = "admin"
     SUPER_ADMIN_PASSWORD: str = "admin123"
@@ -66,3 +71,12 @@ def get_settings() -> Settings:
 
 # 全局配置对象，其它模块直接 import 使用
 settings = get_settings()
+
+# 安全兜底：JWT 密钥仍是公开占位串时拒绝启动（占位串随 .env.example 公开分发，
+# 知道它即可伪造任意用户 token）
+_DEFAULT_JWT_SECRET = "change-this-to-a-random-string-at-least-32-chars"
+if settings.JWT_SECRET_KEY == _DEFAULT_JWT_SECRET:
+    raise RuntimeError(
+        "JWT_SECRET_KEY 仍是默认占位串，拒绝启动。"
+        "请在 .env 中设置随机密钥，生成方式：python -c \"import secrets; print(secrets.token_urlsafe(48))\""
+    )

@@ -19,7 +19,7 @@ pydantic==2.7.1                # FastAPI 自带依赖，这里固定版本
 pydantic-settings==2.2.1       # 读取 .env 配置
 
 # ===== 工具 =====
-python-multipart==0.0.9        # 表单/Form 解析（登录用）
+python-multipart==0.0.20       # 表单/Form 解析（登录用；0.0.9 有 CVE-2024-53981）
 python-dotenv==1.0.1           # 加载 .env 文件
 loguru==0.7.2                  # 好用的日志库
 APScheduler==3.10.4            # 定时任务（耳标清理、繁育预警等）

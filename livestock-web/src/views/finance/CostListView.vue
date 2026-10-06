@@ -86,6 +86,7 @@
 </template>
 
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import { ref, reactive, onMounted } from 'vue'
 import {
   getExpenseListApi, addExpenseApi, updateExpenseApi, deleteExpenseApi, type CostExpense,
@@ -138,7 +139,7 @@ async function loadExpenses() {
 }
 
 function today() {
-  return new Date().toISOString().slice(0, 10)
+  return dayjs().format('YYYY-MM-DD')
 }
 
 function handleAdd() {

@@ -7,6 +7,7 @@
 from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from loguru import logger
 
 from app.core.response import Result
 
@@ -44,7 +45,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 
 async def global_exception_handler(request: Request, exc: Exception):
-    """兜底异常处理，防止堆栈信息泄露给前端"""
+    """兜底异常处理：堆栈写入日志（不泄露给前端），返回统一错误文案"""
+    logger.opt(exception=exc).error(f"未处理异常 {request.method} {request.url.path}")
     return JSONResponse(
         status_code=200,
         content=Result.fail(msg="服务器内部错误", code=500).model_dump(),

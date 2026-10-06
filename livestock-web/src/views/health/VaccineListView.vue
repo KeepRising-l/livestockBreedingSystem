@@ -208,6 +208,7 @@
 </template>
 
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import {
   getVaccineListApi, addVaccineApi, updateVaccineApi, deleteVaccineApi,
@@ -253,7 +254,7 @@ const saving = ref(false)
 const formRef = ref<FormInstance>()
 const editId = ref(0)
 const form = reactive({
-  vaccine_date: new Date().toISOString().slice(0, 10),
+  vaccine_date: dayjs().format('YYYY-MM-DD'),
   ear_tag: '',
   species: speciesZh.value,
   vaccine_type: '',
@@ -275,7 +276,7 @@ const batchDialogVisible = ref(false)
 const batchSaving = ref(false)
 const batchFormRef = ref<FormInstance>()
 const batchForm = reactive({
-  vaccine_date: new Date().toISOString().slice(0, 10),
+  vaccine_date: dayjs().format('YYYY-MM-DD'),
   species: speciesZh.value,
   vaccine_type: '',
   vaccine_name: '',
@@ -379,7 +380,7 @@ function handleAdd() {
   isEdit.value = false
   editId.value = 0
   Object.assign(form, {
-    vaccine_date: new Date().toISOString().slice(0, 10),
+    vaccine_date: dayjs().format('YYYY-MM-DD'),
     ear_tag: '',
     species: speciesZh.value,
     vaccine_type: '',
@@ -393,7 +394,7 @@ function handleAdd() {
 
 function handleBatchAdd() {
   Object.assign(batchForm, {
-    vaccine_date: new Date().toISOString().slice(0, 10),
+    vaccine_date: dayjs().format('YYYY-MM-DD'),
     species: speciesZh.value,
     vaccine_type: '',
     vaccine_name: '',

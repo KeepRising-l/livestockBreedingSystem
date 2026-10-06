@@ -196,6 +196,7 @@
 </template>
 
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import {
   getMatingListApi, addMatingApi, updateMatingApi, deleteMatingApi, auditMatingApi,
@@ -241,7 +242,7 @@ const form = reactive({
   female_tag: '',
   male_tag: '',
   species: speciesZh.value,
-  mating_date: new Date().toISOString().slice(0, 10),
+  mating_date: dayjs().format('YYYY-MM-DD'),
   mating_type: '本交',
   semen_source: '',
   remark: '',
@@ -258,7 +259,7 @@ const checkDialogVisible = ref(false)
 const checkSaving = ref(false)
 const checkFormRef = ref<FormInstance>()
 const checkMatingId = ref(0)
-const checkForm = reactive({ pregnancy_check_date: new Date().toISOString().slice(0, 10), pregnancy_check_result: '阳性', remark: '' })
+const checkForm = reactive({ pregnancy_check_date: dayjs().format('YYYY-MM-DD'), pregnancy_check_result: '阳性', remark: '' })
 const checkRules: FormRules = {
   pregnancy_check_date: [{ required: true, message: '请选择孕检日期', trigger: 'change' }],
   pregnancy_check_result: [{ required: true, message: '请选择孕检结果', trigger: 'change' }],
@@ -373,7 +374,7 @@ function handleAdd() {
     female_tag: '',
     male_tag: '',
     species: speciesZh.value,
-    mating_date: new Date().toISOString().slice(0, 10),
+    mating_date: dayjs().format('YYYY-MM-DD'),
     mating_type: '本交',
     semen_source: '',
     remark: '',
@@ -434,7 +435,7 @@ async function handleDelete(id: number) {
 
 function handleCheck(row: MatingRecord) {
   checkMatingId.value = row.id
-  Object.assign(checkForm, { pregnancy_check_date: new Date().toISOString().slice(0, 10), pregnancy_check_result: '阳性', remark: '' })
+  Object.assign(checkForm, { pregnancy_check_date: dayjs().format('YYYY-MM-DD'), pregnancy_check_result: '阳性', remark: '' })
   checkDialogVisible.value = true
 }
 

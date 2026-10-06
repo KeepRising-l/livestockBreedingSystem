@@ -129,6 +129,7 @@
 </template>
 
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import { ref, reactive, onMounted, watch } from 'vue'
 import {
   getBirthListApi, addBirthApi, updateBirthApi, deleteBirthApi,
@@ -167,7 +168,7 @@ const form = reactive({
   female_tag: '',
   mating_id: undefined as number | undefined,
   species: speciesZh.value,
-  birth_date: new Date().toISOString().slice(0, 10),
+  birth_date: dayjs().format('YYYY-MM-DD'),
   total_count: 1,
   alive_count: 1,
   dead_count: 0,
@@ -245,7 +246,7 @@ function handleAdd() {
     female_tag: '',
     mating_id: undefined,
     species: speciesZh.value,
-    birth_date: new Date().toISOString().slice(0, 10),
+    birth_date: dayjs().format('YYYY-MM-DD'),
     total_count: 1,
     alive_count: 1,
     dead_count: 0,

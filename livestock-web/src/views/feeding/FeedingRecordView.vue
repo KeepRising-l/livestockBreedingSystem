@@ -193,6 +193,7 @@
 </template>
 
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import {
   getFeedingRecordListApi, addFeedingRecordApi, updateFeedingRecordApi,
@@ -243,7 +244,7 @@ const formRef = ref<FormInstance>()
 const editId = ref(0)
 const editWasAudited = ref(false)
 const form = reactive({
-  feed_date: new Date().toISOString().slice(0, 10),
+  feed_date: dayjs().format('YYYY-MM-DD'),
   time_period: '早',
   pen_id: undefined as number | undefined,
   plan_id: undefined as number | undefined,
@@ -356,7 +357,7 @@ function handleAdd() {
   editId.value = 0
   editWasAudited.value = false
   Object.assign(form, {
-    feed_date: new Date().toISOString().slice(0, 10),
+    feed_date: dayjs().format('YYYY-MM-DD'),
     time_period: '早',
     pen_id: undefined,
     plan_id: undefined,

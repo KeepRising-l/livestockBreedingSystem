@@ -1,6 +1,9 @@
 """
 认证路由
 """
+import time
+from collections import defaultdict
+
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
@@ -15,6 +18,28 @@ from app.services import auth_service
 from app.modules.system import service as system_service
 
 router = APIRouter()
+
+# 登录防爆破（进程内限流，uvicorn 单 worker 部署下有效；多 worker 需改用 Redis）
+_LOGIN_FAIL_LIMIT = 5       # 窗口内允许的最大失败次数
+_LOGIN_FAIL_WINDOW = 900    # 窗口时长（秒）
+_login_fails: dict[str, list[float]] = defaultdict(list)
+
+
+def _login_rate_key(ip: str | None, username: str) -> str:
+    return f"{ip or 'unknown'}:{username}"
+
+
+def _check_login_rate(key: str) -> None:
+    now = time.time()
+    fails = _login_fails.get(key)
+    if fails:
+        _login_fails[key] = [t for t in fails if now - t < _LOGIN_FAIL_WINDOW]
+        if len(_login_fails[key]) >= _LOGIN_FAIL_LIMIT:
+            raise BizException("失败次数过多，请 15 分钟后再试", code=42901)
+
+
+def _record_login_fail(key: str) -> None:
+    _login_fails[key].append(time.time())
 
 
 def _parse_ua(ua: str) -> tuple[str, str]:
@@ -49,14 +74,18 @@ def _parse_ua(ua: str) -> tuple[str, str]:
 def login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
     ip = request.client.host if request.client else None
     browser, os = _parse_ua(request.headers.get("user-agent", ""))
+    rate_key = _login_rate_key(ip, body.username)
+    _check_login_rate(rate_key)
     try:
         token = auth_service.login(db, body)
     except BizException as e:
+        _record_login_fail(rate_key)
         system_service.record_login_log(
             db, body.username, ip=ip, browser=browser, os=os,
             status=0, msg=str(e.msg)[:200],
         )
         raise
+    _login_fails.pop(rate_key, None)  # 登录成功清零失败计数
     system_service.record_login_log(
         db, body.username, ip=ip, browser=browser, os=os,
         status=1, msg="登录成功",

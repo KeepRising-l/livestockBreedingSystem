@@ -134,6 +134,7 @@
 </template>
 
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import { ref, reactive, onMounted, watch } from 'vue'
 import { getAlertListApi, addAlertApi, handleAlertApi, type BreedingAlert } from '@/api/breeding'
 import { ALERT_TYPE_MAP, ALERT_STATUS_MAP } from '@/utils/constants'
@@ -163,7 +164,7 @@ const addFormRef = ref<FormInstance>()
 const addForm = reactive({
   alert_type: '',
   animal_tag: '',
-  alert_date: new Date().toISOString().slice(0, 10),
+  alert_date: dayjs().format('YYYY-MM-DD'),
   alert_content: '',
 })
 const addRules: FormRules = {
@@ -237,7 +238,7 @@ function handleAdd() {
   Object.assign(addForm, {
     alert_type: '',
     animal_tag: '',
-    alert_date: new Date().toISOString().slice(0, 10),
+    alert_date: dayjs().format('YYYY-MM-DD'),
     alert_content: '',
   })
   addDialogVisible.value = true

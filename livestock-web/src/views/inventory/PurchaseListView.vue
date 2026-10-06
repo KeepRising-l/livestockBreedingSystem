@@ -174,6 +174,7 @@
 </template>
 
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import { ref, reactive, computed, onMounted } from 'vue'
 import {
   getPurchaseListApi, addPurchaseApi, updatePurchaseApi,
@@ -214,7 +215,7 @@ const form = reactive({
   production_date: '',
   expiry_date: '',
   supplier: '',
-  purchase_date: new Date().toISOString().slice(0, 10),
+  purchase_date: dayjs().format('YYYY-MM-DD'),
   remark: '',
 })
 const totalCost = computed(() => {
@@ -288,7 +289,7 @@ function handleAdd() {
     material_type: '饲料', material_name: '', batch_no: '',
     quantity: undefined, unit: 'kg', cost_price: undefined,
     production_date: '', expiry_date: '', supplier: '',
-    purchase_date: new Date().toISOString().slice(0, 10), remark: '',
+    purchase_date: dayjs().format('YYYY-MM-DD'), remark: '',
   })
   dialogVisible.value = true
 }

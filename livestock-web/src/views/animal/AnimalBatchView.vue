@@ -172,6 +172,7 @@
 </template>
 
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { batchCreateAnimalApi, importAnimalsApi } from '@/api/animal'
@@ -205,7 +206,7 @@ const form = reactive({
   count: 1,
   source: '',
   birth_date: '',
-  in_date: new Date().toISOString().split('T')[0],
+  in_date: dayjs().format('YYYY-MM-DD'),
   remark: '',
 })
 
@@ -288,10 +289,10 @@ async function handleFileChange(uploadFile: any) {
       // 出生日期必填：留空/格式错误/晚于今天的行都拒绝导入
       if (!birth) errs.push(`第 ${rowNum} 行：出生日期必填（用于自动计算日龄和生长阶段）`)
       else if (!dateRe.test(birth)) errs.push(`第 ${rowNum} 行：出生日期格式应为 YYYY-MM-DD`)
-      else if (birth > new Date().toISOString().split('T')[0]) errs.push(`第 ${rowNum} 行：出生日期不能晚于今天`)
+      else if (birth > dayjs().format('YYYY-MM-DD')) errs.push(`第 ${rowNum} 行：出生日期不能晚于今天`)
       if (inDate && !dateRe.test(inDate)) errs.push(`第 ${rowNum} 行：入栏日期格式应为 YYYY-MM-DD`)
       const valid = !!breed && ['公', '母'].includes(gender)
-        && !!birth && dateRe.test(birth) && birth <= new Date().toISOString().split('T')[0]
+        && !!birth && dateRe.test(birth) && birth <= dayjs().format('YYYY-MM-DD')
       return { row: rowNum, breed, gender, birth_date: birth, in_date: inDate, source, remark, valid }
     })
     parseErrors.value = errs

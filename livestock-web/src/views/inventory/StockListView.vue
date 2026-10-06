@@ -259,6 +259,7 @@
 </template>
 
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import { ref, reactive, computed, onMounted } from 'vue'
 import {
   getStockListApi, updateStockApi, deleteStockApi, increaseStockApi, addPurchaseApi,
@@ -339,7 +340,7 @@ const incForm = reactive({
   quantity: undefined as number | undefined,
   cost_price: undefined as number | undefined,
   unit: 'kg',
-  purchase_date: new Date().toISOString().slice(0, 10),
+  purchase_date: dayjs().format('YYYY-MM-DD'),
   batch_no: '', supplier: '',
   production_date: '', expiry_date: '', remark: '',
 })
@@ -372,7 +373,7 @@ function openIncrease() {
   Object.assign(incForm, {
     material_type: '饲料', material_name: '',
     quantity: undefined, cost_price: undefined, unit: 'kg',
-    purchase_date: new Date().toISOString().slice(0, 10),
+    purchase_date: dayjs().format('YYYY-MM-DD'),
     batch_no: '', supplier: '', production_date: '', expiry_date: '', remark: '',
   })
   loadStockOptions()
@@ -415,7 +416,7 @@ const applyForm = reactive({
   quantity: undefined as number | undefined,
   cost_price: undefined as number | undefined,
   unit: 'kg',
-  purchase_date: new Date().toISOString().slice(0, 10),
+  purchase_date: dayjs().format('YYYY-MM-DD'),
   batch_no: '', supplier: '', remark: '',
 })
 
@@ -448,7 +449,7 @@ function openApply() {
   Object.assign(applyForm, {
     material_type: '饲料', material_name: '',
     quantity: undefined, cost_price: undefined, unit: 'kg',
-    purchase_date: new Date().toISOString().slice(0, 10),
+    purchase_date: dayjs().format('YYYY-MM-DD'),
     batch_no: '', supplier: '', remark: '',
   })
   loadStockOptions()

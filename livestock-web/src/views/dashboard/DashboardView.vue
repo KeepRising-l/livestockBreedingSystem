@@ -108,6 +108,7 @@
 </template>
 
 <script setup lang="ts">
+import dayjs from 'dayjs'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -312,7 +313,7 @@ function handleExport() {
     ElMessage.warning('暂无数据可导出')
     return
   }
-  const today = new Date().toISOString().split('T')[0]
+  const today = dayjs().format('YYYY-MM-DD')
   exportToExcelAsync(`数据大屏报表_${today}.xlsx`, sheets, '正在生成大屏报表...')
 }
 

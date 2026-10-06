@@ -222,7 +222,7 @@ def init_db():
             )
             db.add(admin)
             db.commit()
-            print(f"[init] 已创建超级管理员：{settings.SUPER_ADMIN_USERNAME} / {settings.SUPER_ADMIN_PASSWORD}")
+            print(f"[init] 已创建超级管理员：{settings.SUPER_ADMIN_USERNAME}（密码取自配置项 SUPER_ADMIN_PASSWORD，不回显）")
 
         # 初始化字典数据（首次启动时）
         init_dict_data(db)
@@ -332,10 +332,12 @@ async def oper_log_middleware(request: Request, call_next):
 
 # CORS 跨域配置
 # allow_origin_regex：开发期本机 Vite dev server 端口不固定（5173 被占用会自动递增到 5174 等），
-# 用正则放行 localhost/127.0.0.1 任意端口，避免第二实例（用户端）预检请求 400
+# 用正则放行 localhost/127.0.0.1 任意端口，避免第二实例（用户端）预检请求 400。
+# 生产部署通过 .env 的 CORS_ORIGINS 追加正式域名（逗号分隔）。
+_cors_extra = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", *_cors_extra],
     allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
     allow_credentials=True,
     allow_methods=["*"],

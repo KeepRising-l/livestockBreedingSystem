@@ -70,11 +70,15 @@ http.interceptors.response.use(
     }
     const { data } = response
     if (data.code !== 200) {
-      if (data.code === 401) {
-        removeToken()
-        window.location.href = '/login'
-        return Promise.reject(new Error('未登录或 token 已过期'))
+    if (data.code === 401) {
+      removeToken()
+      // 未在登录页才跳转（避免登录接口自身 401 时循环刷新）；带上回跳地址，登录后回到原页面
+      if (!window.location.pathname.startsWith('/login')) {
+        const current = window.location.pathname + window.location.search
+        window.location.href = `/login?redirect=${encodeURIComponent(current)}`
       }
+      return Promise.reject(new Error('未登录或 token 已过期'))
+    }
       ElMessage.error(data.msg || '请求失败')
       return Promise.reject(new Error(data.msg))
     }
