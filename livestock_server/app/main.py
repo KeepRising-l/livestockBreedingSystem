@@ -10,8 +10,10 @@ FastAPI 应用入口
 import json
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from loguru import logger
+from starlette.concurrency import run_in_threadpool
 
 from app.config import settings
 from app.core.exceptions import (
@@ -40,8 +42,9 @@ def _ensure_sys_role_perms(db):
             db.execute(text("ALTER TABLE sys_role ADD COLUMN perms TEXT"))
             db.commit()
             print("[init] 已为 sys_role 表补充 perms 列")
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[init] sys_role.perms 迁移跳过（非 MySQL 或已迁移）：{e}")
+        db.rollback()
 
 
 def _ensure_stock_unit_price(db):
@@ -258,6 +261,42 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, global_exception_handler)
 
 
+def _resolve_oper_title(request: Request) -> str:
+    """按 path+method 匹配具体路由，取 OpenAPI summary 作为中文操作名；匹配不到退回原始 URL"""
+    try:
+        from starlette.routing import Match
+        scope = request.scope
+        for rr in app.routes:
+            if getattr(rr, "summary", None) and rr.matches(scope)[0] == Match.FULL:
+                return rr.summary
+    except Exception:
+        pass
+    return request.url.path
+
+
+def _write_oper_log(request: Request, method: str, user_id: int, status: int, error_msg: str | None) -> None:
+    """oper_log 落库（同步，供线程池调用）：查用户名 + 写库"""
+    db = SessionLocal()
+    try:
+        user_name = None
+        u = db.query(User).filter(User.id == user_id).first()
+        user_name = u.username if u else None
+        record_oper_log(
+            db,
+            title=_resolve_oper_title(request),
+            business_type={"POST": "add", "PUT": "update", "DELETE": "delete"}.get(method, "other"),
+            method=method,
+            oper_url=request.url.path,
+            oper_user_id=user_id,
+            oper_name=user_name,
+            oper_ip=request.client.host if request.client else None,
+            status=status,
+            error_msg=error_msg,
+        )
+    finally:
+        db.close()
+
+
 @app.middleware("http")
 async def oper_log_middleware(request: Request, call_next):
     """操作日志中间件：记录 POST/PUT/DELETE 写请求到 oper_log 表"""
@@ -267,7 +306,7 @@ async def oper_log_middleware(request: Request, call_next):
         return await call_next(request)
 
     # 从 token 解析当前用户
-    user_id, user_name = None, None
+    user_id = None
     auth = request.headers.get("authorization", "")
     try:
         parts = auth.split()
@@ -280,55 +319,38 @@ async def oper_log_middleware(request: Request, call_next):
 
     response = await call_next(request)
 
-    # 从响应体判断业务成败（BizException 也返回 HTTP 200，需看 body 的 code）
+    # 缓存响应体后再回放：BaseHTTPMiddleware 的流式响应没有 .body 属性（原实现恒取到 None，
+    # 导致所有操作日志一律记成功），必须显式读出才能判断业务 code
+    body_bytes = b""
+    async for chunk in response.body_iterator:
+        if isinstance(chunk, str):
+            body_bytes += chunk.encode("utf-8")
+        else:
+            body_bytes += chunk
+
     status, error_msg = 1, None
     try:
-        body = getattr(response, "body", None)
-        if body:
-            data = json.loads(body)
-            if data.get("code", 200) != 200:
-                status = 0
-                error_msg = str(data.get("msg", ""))[:200]
+        data = json.loads(body_bytes)
+        if data.get("code", 200) != 200:
+            status = 0
+            error_msg = str(data.get("msg", ""))[:200]
     except Exception:
         pass
 
     if user_id is not None:
+        # 同步 DB 操作放入线程池，避免阻塞事件循环
         try:
-            db = SessionLocal()
-            try:
-                if user_name is None:
-                    u = db.query(User).filter(User.id == user_id).first()
-                    user_name = u.username if u else None
-                # 中文操作名：遍历 app.routes 按 path+method 匹配到具体路由，取它的 OpenAPI summary
-                # （如「个体入栏」「审核疫苗记录」）；匹配不到则退回原始 URL，让日志可读且不丢信息。
-                # 写接口低频，逐条匹配 100+ 路由开销可忽略。
-                oper_title = path
-                try:
-                    from starlette.routing import Match
-                    scope = request.scope
-                    for rr in app.routes:
-                        if getattr(rr, "summary", None) and rr.matches(scope)[0] == Match.FULL:
-                            oper_title = rr.summary
-                            break
-                except Exception:
-                    pass
-                record_oper_log(
-                    db,
-                    title=oper_title,
-                    business_type={"POST": "add", "PUT": "update", "DELETE": "delete"}.get(method, "other"),
-                    method=method,
-                    oper_url=path,
-                    oper_user_id=user_id,
-                    oper_name=user_name,
-                    oper_ip=request.client.host if request.client else None,
-                    status=status,
-                    error_msg=error_msg,
-                )
-            finally:
-                db.close()
+            await run_in_threadpool(_write_oper_log, request, method, user_id, status, error_msg)
         except Exception:
-            pass
-    return response
+            logger.warning(f"oper_log 落库失败 {method} {path}")
+
+    # 用缓存的响应体重建返回体（header 透传，保持 CORS 等语义）
+    return Response(
+        content=body_bytes,
+        status_code=response.status_code,
+        headers=dict(response.headers),
+        media_type=response.media_type,
+    )
 
 # CORS 跨域配置
 # allow_origin_regex：开发期本机 Vite dev server 端口不固定（5173 被占用会自动递增到 5174 等），
