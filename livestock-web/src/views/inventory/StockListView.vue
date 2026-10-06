@@ -266,20 +266,20 @@ import {
   type MaterialStock,
 } from '@/api/inventory'
 import { useAuthStore } from '@/stores/auth'
+import { usePagedList } from '@/composables/usePagedList'
 import { MATERIAL_TYPE_OPTIONS, MATERIAL_UNIT_OPTIONS, STOCK_STATUS_MAP } from '@/utils/constants'
 import { type TagProps, ElMessage, type FormInstance, type FormRules } from 'element-plus'
 
 const authStore = useAuthStore()
 const canEdit = computed(() => authStore.userType !== 3)
 
-const list = ref<MaterialStock[]>([])
-const loading = ref(false)
-const pageNum = ref(1)
-const pageSize = ref(10)
-const total = ref(0)
-
-const query = reactive<{ material_type: string; material_name: string; status: string; is_shortage: number | undefined }>({
-  material_type: '', material_name: '', status: '', is_shortage: undefined,
+const {
+  list, loading, pageNum, pageSize, total, query, loadData, search, resetSearch,
+} = usePagedList<MaterialStock, {
+  material_type: string; material_name: string; status: string; is_shortage: number | undefined
+}>({
+  fetch: getStockListApi,
+  query: { material_type: '', material_name: '', status: '', is_shortage: undefined },
 })
 
 // 下拉选项：已有物资（供"增加库存 / 申请添加"选择）
@@ -306,27 +306,6 @@ function typeColor(t: string): TagProps['type'] {
 }
 function statusColor(s: string): TagProps['type'] {
   return ({ '正常': 'success', '即将过期': 'warning', '已过期': 'danger' } as Record<string, TagProps['type']>)[s] || 'info'
-}
-
-function search() { pageNum.value = 1; loadData() }
-function resetSearch() {
-  query.material_type = ''; query.material_name = ''; query.status = ''; query.is_shortage = undefined
-  search()
-}
-
-async function loadData() {
-  loading.value = true
-  try {
-    const params: any = { pageNum: pageNum.value, pageSize: pageSize.value }
-    if (query.material_type) params.material_type = query.material_type
-    if (query.material_name) params.material_name = query.material_name
-    if (query.status) params.status = query.status
-    if (query.is_shortage !== undefined) params.is_shortage = query.is_shortage
-    const res = await getStockListApi(params)
-    const data = res.data as any
-    list.value = data.list || []
-    total.value = data.total || 0
-  } catch {} finally { loading.value = false }
 }
 
 // ============ 增加库存（管理端） ============

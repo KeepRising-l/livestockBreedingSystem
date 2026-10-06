@@ -177,6 +177,7 @@ import {
   type MaterialConsume, type MaterialStock,
 } from '@/api/inventory'
 import { useAuthStore } from '@/stores/auth'
+import { usePagedList } from '@/composables/usePagedList'
 import {
   MATERIAL_TYPE_OPTIONS, MATERIAL_UNIT_OPTIONS,
   AUDIT_STATUS_MAP, CONSUME_MODULE_OPTIONS,
@@ -186,18 +187,27 @@ import { type TagProps, ElMessage, type FormInstance, type FormRules } from 'ele
 const authStore = useAuthStore()
 const canAudit = computed(() => authStore.userType !== 3)
 
-const list = ref<MaterialConsume[]>([])
-const loading = ref(false)
-const pageNum = ref(1)
-const pageSize = ref(10)
-const total = ref(0)
+const {
+  list, loading, pageNum, pageSize, total, query, loadData, search, resetSearch: resetQuery,
+} = usePagedList<MaterialConsume, {
+  material_type: string; material_name: string
+  consume_date_start: string; consume_date_end: string
+  audit_status: string; related_module: string
+}>({
+  fetch: getConsumeListApi,
+  query: {
+    material_type: '', material_name: '',
+    consume_date_start: '', consume_date_end: '',
+    audit_status: '', related_module: '',
+  },
+})
 
 const dateRange = ref<string[]>([])
-const query = reactive({
-  material_type: '', material_name: '',
-  consume_date_start: '', consume_date_end: '',
-  audit_status: '', related_module: '',
-})
+// 日期范围选择器独立于 query，重置时一并清空
+function resetSearch() {
+  dateRange.value = []
+  resetQuery()
+}
 
 const stockOptions = ref<MaterialStock[]>([])
 
@@ -250,32 +260,6 @@ function onDateChange(val: string[] | null) {
     query.consume_date_end = ''
   }
   search()
-}
-
-function search() { pageNum.value = 1; loadData() }
-function resetSearch() {
-  dateRange.value = []
-  query.material_type = ''; query.material_name = ''
-  query.consume_date_start = ''; query.consume_date_end = ''
-  query.audit_status = ''; query.related_module = ''
-  search()
-}
-
-async function loadData() {
-  loading.value = true
-  try {
-    const params: any = { pageNum: pageNum.value, pageSize: pageSize.value }
-    if (query.material_type) params.material_type = query.material_type
-    if (query.material_name) params.material_name = query.material_name
-    if (query.consume_date_start) params.consume_date_start = query.consume_date_start
-    if (query.consume_date_end) params.consume_date_end = query.consume_date_end
-    if (query.audit_status) params.audit_status = query.audit_status
-    if (query.related_module) params.related_module = query.related_module
-    const res = await getConsumeListApi(params)
-    const data = res.data as any
-    list.value = data.list || []
-    total.value = data.total || 0
-  } catch {} finally { loading.value = false }
 }
 
 async function loadStockOptions() {

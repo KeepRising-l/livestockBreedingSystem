@@ -181,24 +181,34 @@ import {
   deletePurchaseApi, auditPurchaseApi, type MaterialPurchase,
 } from '@/api/inventory'
 import { useAuthStore } from '@/stores/auth'
+import { usePagedList } from '@/composables/usePagedList'
 import { MATERIAL_TYPE_OPTIONS, MATERIAL_UNIT_OPTIONS, AUDIT_STATUS_MAP } from '@/utils/constants'
 import { type TagProps, ElMessage, type FormInstance, type FormRules } from 'element-plus'
 
 const authStore = useAuthStore()
 const canAudit = computed(() => authStore.userType !== 3)
 
-const list = ref<MaterialPurchase[]>([])
-const loading = ref(false)
-const pageNum = ref(1)
-const pageSize = ref(10)
-const total = ref(0)
+const {
+  list, loading, pageNum, pageSize, total, query, loadData, search, resetSearch: resetQuery,
+} = usePagedList<MaterialPurchase, {
+  material_type: string; material_name: string
+  purchase_date_start: string; purchase_date_end: string
+  audit_status: string
+}>({
+  fetch: getPurchaseListApi,
+  query: {
+    material_type: '', material_name: '',
+    purchase_date_start: '', purchase_date_end: '',
+    audit_status: '',
+  },
+})
 
 const dateRange = ref<string[]>([])
-const query = reactive({
-  material_type: '', material_name: '',
-  purchase_date_start: '', purchase_date_end: '',
-  audit_status: '',
-})
+// 日期范围选择器独立于 query，重置时一并清空
+function resetSearch() {
+  dateRange.value = []
+  resetQuery()
+}
 
 const dialogVisible = ref(false)
 const isEdit = ref(false)
@@ -257,30 +267,6 @@ function onDateChange(val: string[] | null) {
   search()
 }
 
-function search() { pageNum.value = 1; loadData() }
-function resetSearch() {
-  dateRange.value = []
-  query.material_type = ''; query.material_name = ''
-  query.purchase_date_start = ''; query.purchase_date_end = ''
-  query.audit_status = ''
-  search()
-}
-
-async function loadData() {
-  loading.value = true
-  try {
-    const params: any = { pageNum: pageNum.value, pageSize: pageSize.value }
-    if (query.material_type) params.material_type = query.material_type
-    if (query.material_name) params.material_name = query.material_name
-    if (query.purchase_date_start) params.purchase_date_start = query.purchase_date_start
-    if (query.purchase_date_end) params.purchase_date_end = query.purchase_date_end
-    if (query.audit_status) params.audit_status = query.audit_status
-    const res = await getPurchaseListApi(params)
-    const data = res.data as any
-    list.value = data.list || []
-    total.value = data.total || 0
-  } catch {} finally { loading.value = false }
-}
 
 function handleAdd() {
   isEdit.value = false
