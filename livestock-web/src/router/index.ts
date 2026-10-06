@@ -119,27 +119,29 @@ router.onError((error, to) => {
   }
 })
 
-router.beforeEach(async (to, _from, next) => {
+/**
+ * 全局前置守卫（导出以便单元测试；返回目标路径字符串表示重定向，undefined 表示放行）
+ * 登录态 + RBAC + 多畜种（P3-6 A）：畜种校验 + 员工按权限模块校验
+ */
+export async function authGuard(
+  to: import('vue-router').RouteLocationNormalized,
+): Promise<string | void> {
   document.title = (to.meta.title as string) || '智能养殖信息管理系统'
   const token = getToken()
 
   if (to.meta.noAuth) {
     // 如果已登录且访问登录页，重定向到首页
     if (token && to.name === 'Login') {
-      next('/dashboard')
-      return
+      return '/dashboard'
     }
-    next()
     return
   }
 
   if (!token) {
-    next('/login')
-    return
+    return '/login'
   }
 
   const auth = useAuthStore()
-  // RBAC + 多畜种（P3-6 A）：畜种校验 + 员工按权限模块校验
   try {
     // 1) 畜种校验：业务页面 /:species/... 的畜种必须属于当前养殖场可选畜种
     const sp = to.params.species as string | undefined
@@ -148,8 +150,7 @@ router.beforeEach(async (to, _from, next) => {
         await auth.loadFarmInfo()
       }
       if (auth.livestockTypes.length > 0 && !auth.speciesRouteList.includes(sp)) {
-        next('/404')
-        return
+        return '/404'
       }
     }
     // 2) 员工权限：模块 = 路径第二段（:species/模块/...），根路径取第一段；auth:false 的基础页面（个人中心等）不校验
@@ -160,15 +161,14 @@ router.beforeEach(async (to, _from, next) => {
       const segments = to.path.replace(/^\//, '').split('/')
       const perm = segments.length >= 3 ? segments[1] : segments[0]
       if (perm && !auth.perms.includes(perm)) {
-        next('/403')
-        return
+        return '/403'
       }
     }
   } catch {
-    // 权限校验异常时放行，由页面接口自行拦截
+    // 权限校验异常时放行，由页面接口自行拦截（后端有真鉴权兜底）
   }
+}
 
-  next()
-})
+router.beforeEach((to) => authGuard(to))
 
 export default router
