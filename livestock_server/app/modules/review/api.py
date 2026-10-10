@@ -12,12 +12,14 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.core.response import Result
 from app.core.deps import get_current_user
+from app.core.perms import require_perms
 from app.core.exceptions import BizException
 from app.models.user import User
 from app.modules.review import service as review_service
 from app.modules.review.schema import ReviewAuditIn, ReviewItemOut
 
-router = APIRouter()
+# 模块级权限：审核是场主职责，员工角色默认不含该模块
+router = APIRouter(dependencies=[Depends(require_perms("review"))])
 
 
 def _require_farm(current_user: User) -> int:

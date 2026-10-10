@@ -25,75 +25,78 @@ from app.modules.system.schema import (
 )
 
 
-# ========== 字典类型 CRUD ==========
-def list_dict_type(db: Session, query: DictTypeQuery) -> dict:
-    q = db.query(DictType).filter(DictType.deleted == False)
-    if query.dict_name:
-        q = q.filter(DictType.dict_name.like(f"%{query.dict_name}%"))
-    if query.dict_type:
-        q = q.filter(DictType.dict_type.like(f"%{query.dict_type}%"))
-    if query.status is not None:
-        q = q.filter(DictType.status == query.status)
+# [2026-10-10 下线] 字典类型 CRUD 已停用。
+#   保留：get_dict_data_by_type（业务下拉用）、init_dict_data（启动初始化，直接写 ORM，不依赖本段）。
+# # ========== 字典类型 CRUD ==========
+# def list_dict_type(db: Session, query: DictTypeQuery) -> dict:
+#     q = db.query(DictType).filter(DictType.deleted == False)
+#     if query.dict_name:
+#         q = q.filter(DictType.dict_name.like(f"%{query.dict_name}%"))
+#     if query.dict_type:
+#         q = q.filter(DictType.dict_type.like(f"%{query.dict_type}%"))
+#     if query.status is not None:
+#         q = q.filter(DictType.status == query.status)
+#
+#     total = q.count()
+#     items = q.order_by(DictType.id).offset(
+#         (query.pageNum - 1) * query.pageSize
+#     ).limit(query.pageSize).all()
+#     return {"list": items, "total": total, "pageNum": query.pageNum, "pageSize": query.pageSize}
+#
+#
+# def add_dict_type(db: Session, body: DictTypeIn) -> DictType:
+#     exists = db.query(DictType).filter(
+#         DictType.dict_type == body.dict_type, DictType.deleted == False
+#     ).first()
+#     if exists:
+#         raise BizException(f"字典类型 {body.dict_type} 已存在", code=40032)
+#     t = DictType(**body.model_dump())
+#     db.add(t)
+#     db.commit()
+#     return t
+#
+#
+# def update_dict_type(db: Session, type_id: int, body: DictTypeUpdateIn) -> DictType:
+#     t = db.query(DictType).filter(DictType.id == type_id, DictType.deleted == False).first()
+#     if not t:
+#         raise BizException("字典类型不存在", code=40033)
+#     data = body.model_dump(exclude_unset=True)
+#     for k, v in data.items():
+#         setattr(t, k, v)
+#     db.commit()
+#     return t
+#
+#
+# def delete_dict_type(db: Session, type_id: int) -> None:
+#     t = db.query(DictType).filter(DictType.id == type_id, DictType.deleted == False).first()
+#     if not t:
+#         raise BizException("字典类型不存在", code=40033)
+#     # 检查是否有关联字典数据
+#     cnt = db.query(DictData).filter(
+#         DictData.dict_type == t.dict_type, DictData.deleted == False
+#     ).count()
+#     if cnt > 0:
+#         raise BizException(f"该字典类型下有 {cnt} 条数据，无法删除", code=40034)
+#     t.deleted = True
+#     db.commit()
 
-    total = q.count()
-    items = q.order_by(DictType.id).offset(
-        (query.pageNum - 1) * query.pageSize
-    ).limit(query.pageSize).all()
-    return {"list": items, "total": total, "pageNum": query.pageNum, "pageSize": query.pageSize}
 
-
-def add_dict_type(db: Session, body: DictTypeIn) -> DictType:
-    exists = db.query(DictType).filter(
-        DictType.dict_type == body.dict_type, DictType.deleted == False
-    ).first()
-    if exists:
-        raise BizException(f"字典类型 {body.dict_type} 已存在", code=40032)
-    t = DictType(**body.model_dump())
-    db.add(t)
-    db.commit()
-    return t
-
-
-def update_dict_type(db: Session, type_id: int, body: DictTypeUpdateIn) -> DictType:
-    t = db.query(DictType).filter(DictType.id == type_id, DictType.deleted == False).first()
-    if not t:
-        raise BizException("字典类型不存在", code=40033)
-    data = body.model_dump(exclude_unset=True)
-    for k, v in data.items():
-        setattr(t, k, v)
-    db.commit()
-    return t
-
-
-def delete_dict_type(db: Session, type_id: int) -> None:
-    t = db.query(DictType).filter(DictType.id == type_id, DictType.deleted == False).first()
-    if not t:
-        raise BizException("字典类型不存在", code=40033)
-    # 检查是否有关联字典数据
-    cnt = db.query(DictData).filter(
-        DictData.dict_type == t.dict_type, DictData.deleted == False
-    ).count()
-    if cnt > 0:
-        raise BizException(f"该字典类型下有 {cnt} 条数据，无法删除", code=40034)
-    t.deleted = True
-    db.commit()
-
-
-# ========== 字典数据 CRUD ==========
-def list_dict_data(db: Session, query: DictDataQuery) -> dict:
-    q = db.query(DictData).filter(DictData.deleted == False)
-    if query.dict_type:
-        q = q.filter(DictData.dict_type == query.dict_type)
-    if query.dict_label:
-        q = q.filter(DictData.dict_label.like(f"%{query.dict_label}%"))
-    if query.status is not None:
-        q = q.filter(DictData.status == query.status)
-
-    total = q.count()
-    items = q.order_by(DictData.dict_type, DictData.dict_sort).offset(
-        (query.pageNum - 1) * query.pageSize
-    ).limit(query.pageSize).all()
-    return {"list": items, "total": total, "pageNum": query.pageNum, "pageSize": query.pageSize}
+# [2026-10-10 下线] 字典数据「列表」查询已停用。
+# # ========== 字典数据 CRUD ==========
+# def list_dict_data(db: Session, query: DictDataQuery) -> dict:
+#     q = db.query(DictData).filter(DictData.deleted == False)
+#     if query.dict_type:
+#         q = q.filter(DictData.dict_type == query.dict_type)
+#     if query.dict_label:
+#         q = q.filter(DictData.dict_label.like(f"%{query.dict_label}%"))
+#     if query.status is not None:
+#         q = q.filter(DictData.status == query.status)
+#
+#     total = q.count()
+#     items = q.order_by(DictData.dict_type, DictData.dict_sort).offset(
+#         (query.pageNum - 1) * query.pageSize
+#     ).limit(query.pageSize).all()
+#     return {"list": items, "total": total, "pageNum": query.pageNum, "pageSize": query.pageSize}
 
 
 def get_dict_data_by_type(db: Session, dict_type: str) -> list:
@@ -106,36 +109,37 @@ def get_dict_data_by_type(db: Session, dict_type: str) -> list:
     return items
 
 
-def add_dict_data(db: Session, body: DictDataIn) -> DictData:
-    # 校验字典类型存在
-    t = db.query(DictType).filter(
-        DictType.dict_type == body.dict_type, DictType.deleted == False
-    ).first()
-    if not t:
-        raise BizException(f"字典类型 {body.dict_type} 不存在", code=40035)
-    d = DictData(**body.model_dump())
-    db.add(d)
-    db.commit()
-    return d
-
-
-def update_dict_data(db: Session, data_id: int, body: DictDataUpdateIn) -> DictData:
-    d = db.query(DictData).filter(DictData.id == data_id, DictData.deleted == False).first()
-    if not d:
-        raise BizException("字典数据不存在", code=40036)
-    data = body.model_dump(exclude_unset=True)
-    for k, v in data.items():
-        setattr(d, k, v)
-    db.commit()
-    return d
-
-
-def delete_dict_data(db: Session, data_id: int) -> None:
-    d = db.query(DictData).filter(DictData.id == data_id, DictData.deleted == False).first()
-    if not d:
-        raise BizException("字典数据不存在", code=40036)
-    d.deleted = True
-    db.commit()
+# [2026-10-10 下线] 字典数据 增/改/删 已停用。
+# def add_dict_data(db: Session, body: DictDataIn) -> DictData:
+#     # 校验字典类型存在
+#     t = db.query(DictType).filter(
+#         DictType.dict_type == body.dict_type, DictType.deleted == False
+#     ).first()
+#     if not t:
+#         raise BizException(f"字典类型 {body.dict_type} 不存在", code=40035)
+#     d = DictData(**body.model_dump())
+#     db.add(d)
+#     db.commit()
+#     return d
+#
+#
+# def update_dict_data(db: Session, data_id: int, body: DictDataUpdateIn) -> DictData:
+#     d = db.query(DictData).filter(DictData.id == data_id, DictData.deleted == False).first()
+#     if not d:
+#         raise BizException("字典数据不存在", code=40036)
+#     data = body.model_dump(exclude_unset=True)
+#     for k, v in data.items():
+#         setattr(d, k, v)
+#     db.commit()
+#     return d
+#
+#
+# def delete_dict_data(db: Session, data_id: int) -> None:
+#     d = db.query(DictData).filter(DictData.id == data_id, DictData.deleted == False).first()
+#     if not d:
+#         raise BizException("字典数据不存在", code=40036)
+#     d.deleted = True
+#     db.commit()
 
 
 # ========== 字典初始化 ==========
@@ -446,68 +450,70 @@ def delete_role(db: Session, role_id: int) -> None:
     db.commit()
 
 
-# ============================================================
-# 菜单管理（RBAC，P3-4 用）
-# ============================================================
-
-def list_menus(db: Session, query: MenuQuery) -> list:
-    """返回菜单树（含 children）"""
-    q = db.query(SysMenu).filter(SysMenu.deleted == False)
-    if query.menu_name:
-        q = q.filter(SysMenu.menu_name.like(f"%{query.menu_name}%"))
-    if query.status is not None:
-        q = q.filter(SysMenu.status == query.status)
-    menus = q.order_by(SysMenu.sort, SysMenu.id).all()
-
-    nodes: dict[int, dict] = {}
-    for m in menus:
-        nodes[m.id] = {
-            "id": m.id, "parent_id": m.parent_id, "menu_name": m.menu_name,
-            "menu_type": m.menu_type, "path": m.path, "component": m.component,
-            "perms": m.perms, "icon": m.icon, "sort": m.sort,
-            "visible": m.visible, "status": m.status, "children": [],
-        }
-    roots = []
-    for m in menus:
-        node = nodes[m.id]
-        if m.parent_id and m.parent_id in nodes:
-            nodes[m.parent_id]["children"].append(node)
-        else:
-            roots.append(node)
-    return roots
-
-
-def add_menu(db: Session, body: MenuIn) -> SysMenu:
-    menu = SysMenu(**body.model_dump())
-    db.add(menu)
-    db.commit()
-    return menu
-
-
-def update_menu(db: Session, menu_id: int, body: MenuUpdateIn) -> SysMenu:
-    menu = db.query(SysMenu).filter(SysMenu.id == menu_id, SysMenu.deleted == False).first()
-    if not menu:
-        raise BizException("菜单不存在", code=40046)
-    data = body.model_dump(exclude_unset=True)
-    if "parent_id" in data and data["parent_id"] == menu.id:
-        raise BizException("父菜单不能是自身", code=40047)
-    for k, v in data.items():
-        setattr(menu, k, v)
-    db.commit()
-    return menu
-
-
-def delete_menu(db: Session, menu_id: int) -> None:
-    menu = db.query(SysMenu).filter(SysMenu.id == menu_id, SysMenu.deleted == False).first()
-    if not menu:
-        raise BizException("菜单不存在", code=40046)
-    child_cnt = db.query(SysMenu).filter(
-        SysMenu.parent_id == menu_id, SysMenu.deleted == False
-    ).count()
-    if child_cnt > 0:
-        raise BizException(f"该菜单下有 {child_cnt} 个子菜单，请先删除子菜单", code=40048)
-    menu.deleted = True
-    db.commit()
+# [2026-10-10 下线] 菜单 CRUD 已停用。
+#   保留：get_user_menus（登录返回菜单）/ init_rbac_data（RBAC 预置数据）—— 二者依赖 SysMenu。
+# # ============================================================
+# # 菜单管理（RBAC，P3-4 用）
+# # ============================================================
+#
+# def list_menus(db: Session, query: MenuQuery) -> list:
+#     """返回菜单树（含 children）"""
+#     q = db.query(SysMenu).filter(SysMenu.deleted == False)
+#     if query.menu_name:
+#         q = q.filter(SysMenu.menu_name.like(f"%{query.menu_name}%"))
+#     if query.status is not None:
+#         q = q.filter(SysMenu.status == query.status)
+#     menus = q.order_by(SysMenu.sort, SysMenu.id).all()
+#
+#     nodes: dict[int, dict] = {}
+#     for m in menus:
+#         nodes[m.id] = {
+#             "id": m.id, "parent_id": m.parent_id, "menu_name": m.menu_name,
+#             "menu_type": m.menu_type, "path": m.path, "component": m.component,
+#             "perms": m.perms, "icon": m.icon, "sort": m.sort,
+#             "visible": m.visible, "status": m.status, "children": [],
+#         }
+#     roots = []
+#     for m in menus:
+#         node = nodes[m.id]
+#         if m.parent_id and m.parent_id in nodes:
+#             nodes[m.parent_id]["children"].append(node)
+#         else:
+#             roots.append(node)
+#     return roots
+#
+#
+# def add_menu(db: Session, body: MenuIn) -> SysMenu:
+#     menu = SysMenu(**body.model_dump())
+#     db.add(menu)
+#     db.commit()
+#     return menu
+#
+#
+# def update_menu(db: Session, menu_id: int, body: MenuUpdateIn) -> SysMenu:
+#     menu = db.query(SysMenu).filter(SysMenu.id == menu_id, SysMenu.deleted == False).first()
+#     if not menu:
+#         raise BizException("菜单不存在", code=40046)
+#     data = body.model_dump(exclude_unset=True)
+#     if "parent_id" in data and data["parent_id"] == menu.id:
+#         raise BizException("父菜单不能是自身", code=40047)
+#     for k, v in data.items():
+#         setattr(menu, k, v)
+#     db.commit()
+#     return menu
+#
+#
+# def delete_menu(db: Session, menu_id: int) -> None:
+#     menu = db.query(SysMenu).filter(SysMenu.id == menu_id, SysMenu.deleted == False).first()
+#     if not menu:
+#         raise BizException("菜单不存在", code=40046)
+#     child_cnt = db.query(SysMenu).filter(
+#         SysMenu.parent_id == menu_id, SysMenu.deleted == False
+#     ).count()
+#     if child_cnt > 0:
+#         raise BizException(f"该菜单下有 {child_cnt} 个子菜单，请先删除子菜单", code=40048)
+#     menu.deleted = True
+#     db.commit()
 
 
 # ============================================================

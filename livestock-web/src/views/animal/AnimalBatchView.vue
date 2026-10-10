@@ -251,8 +251,9 @@ async function handleSubmit() {
   }
 }
 
-function downloadTemplate() {
-  downloadImportTemplate()
+async function downloadTemplate() {
+  // xlsx 已改为惰性加载，这里必须 await
+  await downloadImportTemplate()
 }
 
 async function handleFileChange(uploadFile: any) {

@@ -69,8 +69,10 @@
         </template>
         <el-menu-item index="/system/user">用户管理</el-menu-item>
         <el-menu-item index="/system/role">角色管理</el-menu-item>
+        <!-- 菜单管理 / 字典管理：无实际使用价值，已隐藏入口（页面组件与后端接口保留，未删除）
         <el-menu-item index="/system/menu">菜单管理</el-menu-item>
         <el-menu-item index="/system/dict">字典管理</el-menu-item>
+        -->
         <el-menu-item index="/system/log">日志管理</el-menu-item>
         <el-menu-item index="/system/notice">通知公告</el-menu-item>
       </el-sub-menu>
@@ -245,6 +247,10 @@ function modulesOf(sp: string): ModuleDef[] {
   height: 100%;
   display: flex;
   flex-direction: column;
+  /* 隔离重排/重绘范围：菜单展开时整棵子树的布局变化不再波及外部容器，
+     浏览器需要重新计算的区域被限制在侧边栏内。
+     侧边栏本来就是 overflow:hidden，所以 paint 裁剪不会带来副作用 */
+  contain: layout paint;
 }
 
 /* 品牌区：HUD 徽标 + 全息渐变文字 */
@@ -285,6 +291,16 @@ function modulesOf(sp: string): ModuleDef[] {
 
 .side-menu {
   border-right: none;
+}
+
+/* 子菜单展开/收起走的是 max-height 过渡，时长取 --el-transition-duration（默认 0.3s）。
+   max-height 不是合成属性、走不了 GPU，动画期间每帧都要重新布局整棵子树 —— 菜单树越大
+   掉帧越明显（3 畜种 × 9 模块时尤其突出）。这里把时长压到 0.12s：
+   过渡动画仍然保留、观感基本一致，但每帧重排的时间窗口缩短约 60%。 */
+.side-menu :deep(.el-collapse-transition-enter-active),
+.side-menu :deep(.el-collapse-transition-leave-active) {
+  transition: max-height 0.12s ease-in-out, padding-top 0.12s ease-in-out,
+    padding-bottom 0.12s ease-in-out;
 }
 
 /* 菜单内图标在激活态下发光 */

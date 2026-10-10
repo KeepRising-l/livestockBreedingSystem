@@ -16,11 +16,13 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.core.response import Result
 from app.core.deps import get_current_user
+from app.core.perms import require_perms
 from app.core.exceptions import BizException
 from app.models.user import User
 from app.modules.statistics import service as statistics_service
 
-router = APIRouter()
+# 模块级权限：统计口径（含财务统计）仅超管/场主，员工角色默认不含该模块
+router = APIRouter(dependencies=[Depends(require_perms("statistics"))])
 
 
 def _require_farm(current_user: User) -> int:

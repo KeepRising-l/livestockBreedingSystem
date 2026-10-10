@@ -20,7 +20,7 @@ engine = create_engine(
     pool_recycle=3600,
     pool_size=10,
     max_overflow=20,
-    echo=(settings.APP_ENV == "dev"),  # 开发环境打印 SQL
+    echo=settings.DB_ECHO,  # 需要观察 SQL 时在 .env 里把 DB_ECHO 设为 true
 )
 
 # 会话工厂

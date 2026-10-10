@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.core.response import Result
 from app.core.deps import get_current_user
+from app.core.perms import require_perms
 from app.core.exceptions import BizException
 from app.models.user import User
 from app.modules.salary import service as salary_service
@@ -17,7 +18,9 @@ from app.modules.salary.schema import (
     SalaryConfigIn, SalaryConfigUpdateIn, SalaryConfigOut, SalaryConfigQuery,
 )
 
-router = APIRouter()
+# 模块级权限：薪资「配置」挂在前端「养殖场管理」下（farm/salary），故用 farm 权限，
+# 与 finance 模块下的薪资「记录」（finance/salary）区分开
+router = APIRouter(dependencies=[Depends(require_perms("farm"))])
 
 
 def _check_owner(current_user: User):

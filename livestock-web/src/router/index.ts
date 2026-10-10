@@ -71,10 +71,13 @@ const routes: RouteRecordRaw[] = [
       { path: ':species/statistics/material', name: 'StatisticsMaterial', component: () => import('@/views/statistics/MaterialStatsView.vue'), meta: { title: '物资消耗统计' } },
       { path: ':species/statistics/finance', name: 'StatisticsFinance', component: () => import('@/views/statistics/FinanceStatsView.vue'), meta: { title: '财务统计' } },
       // 系统管理（跨畜种，仅超管）
-      { path: 'system/dict', name: 'SystemDict', component: () => import('@/views/system/DictListView.vue'), meta: { title: '字典管理' } },
+      // 字典管理：无实际使用价值，已下线（页面组件保留）。
+      // 注意：字典“查询”接口 /system/dict/data/query/{dictType} 被 useSpecies / VaccineListView 复用，接口层未动
+      // { path: 'system/dict', name: 'SystemDict', component: () => import('@/views/system/DictListView.vue'), meta: { title: '字典管理' } },
       { path: 'system/user', name: 'SystemUser', component: () => import('@/views/system/UserListView.vue'), meta: { title: '用户管理' } },
       { path: 'system/role', name: 'SystemRole', component: () => import('@/views/system/RoleListView.vue'), meta: { title: '角色管理' } },
-      { path: 'system/menu', name: 'SystemMenu', component: () => import('@/views/system/MenuListView.vue'), meta: { title: '菜单管理' } },
+      // 菜单管理：本系统侧边栏菜单为前端静态配置（layouts/components/Sidebar.vue），该页面属实无用，已下线
+      // { path: 'system/menu', name: 'SystemMenu', component: () => import('@/views/system/MenuListView.vue'), meta: { title: '菜单管理' } },
       { path: 'system/log', name: 'SystemLog', component: () => import('@/views/system/LogListView.vue'), meta: { title: '日志管理' } },
       { path: 'system/notice', name: 'SystemNotice', component: () => import('@/views/system/NoticeListView.vue'), meta: { title: '通知公告' } },
     ],

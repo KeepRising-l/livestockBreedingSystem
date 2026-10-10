@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.core.response import Result
 from app.core.deps import get_current_user
+from app.core.perms import require_perms
 from app.core.exceptions import BizException
 from app.models.user import User
 from app.modules.finance import service as finance_service
@@ -25,7 +26,8 @@ from app.modules.finance.schema import (
     ProfitSummaryOut, SalaryGenerateIn, SalaryRecordOut, SalaryRecordQuery,
 )
 
-router = APIRouter()
+# 模块级权限：销售/成本/利润/薪资记录 均属「销售财务」模块，员工角色默认不含该模块
+router = APIRouter(dependencies=[Depends(require_perms("finance"))])
 
 
 def _check_owner(current_user: User):

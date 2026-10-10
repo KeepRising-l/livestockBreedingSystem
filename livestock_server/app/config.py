@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     DB_USER: str = "root"
     DB_PASSWORD: str = ""
     DB_NAME: str = "livestock_db"
+    # 是否把 SQLAlchemy 执行的每条 SQL 打到控制台（调试用），默认关闭。
+    # 之前是 APP_ENV == "dev" 就无条件全量打印：日志刷屏，且 Windows 终端输出本身很慢，
+    # 请求里 SQL 一多体感就"卡"。需要看 SQL 时在 .env 里设 DB_ECHO=true。
+    DB_ECHO: bool = False
 
     # ===== Redis =====
     REDIS_HOST: str = "127.0.0.1"

@@ -744,7 +744,9 @@ html.tech-light {
     margin: 2px 8px;
     height: 42px;
     line-height: 42px;
-    transition: background-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+    /* 去掉 box-shadow 过渡：它和 background/color 不同，属于昂贵属性，
+       激活项切换时会逐帧重绘阴影；省掉后视觉几乎无差别，但少一份逐帧开销 */
+    transition: background-color 0.25s ease, color 0.25s ease;
 
     &:hover {
       background: rgba(15, 168, 201, 0.12) !important;
