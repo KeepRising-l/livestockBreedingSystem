@@ -21,6 +21,24 @@ export interface VaccineRecord {
   create_time: string | null
 }
 
+/** 批量防疫-按圈舍选择：圈舍内单头在栏畜禽 */
+export interface VaccinePenAnimal {
+  ear_tag: string
+  breed: string | null
+  gender: string | null
+  growth_stage: string | null
+  status: string
+}
+
+/** 批量防疫-按圈舍选择：按圈舍分组的在栏畜禽 */
+export interface VaccinePenGroup {
+  pen_id: number
+  pen_code: string
+  species: string | null
+  current_count: number
+  animals: VaccinePenAnimal[]
+}
+
 export interface MedicalRecord {
   id: number
   farm_id: number
@@ -44,6 +62,11 @@ export interface MedicalRecord {
 }
 
 // ============ 防疫记录 ============
+
+/** 批量防疫-按圈舍选择：当前养殖场在栏畜禽（按圈舍分组，仅需 health 权限） */
+export function getVaccinePenAnimalsApi(params: { species?: string }) {
+  return http.get('/health/vaccine/pen-animals', { params })
+}
 
 export function getVaccineListApi(params: {
   vaccine_date_start?: string

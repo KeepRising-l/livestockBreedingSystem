@@ -2,7 +2,7 @@
   <div>
     <div class="flex-between mb-16">
       <h2 class="page-title">饲喂记录<template v-if="speciesZh">（{{ speciesZh }}）</template></h2>
-      <el-button type="primary" @click="handleAdd">
+      <el-button type="primary" @click="handleBatchAdd">
         <el-icon><Plus /></el-icon> 提交饲喂记录
       </el-button>
     </div>
@@ -177,6 +177,123 @@
       </template>
     </el-dialog>
 
+    <!-- 批量提交弹窗：可多选圈舍，一次按圈舍生成多条饲喂记录 -->
+    <el-dialog v-model="batchVisible" title="提交饲喂记录" width="1000px" top="6vh">
+      <el-form :model="batchForm" label-width="90px" size="default">
+        <el-row :gutter="12">
+          <el-col :span="8">
+            <el-form-item label="饲喂日期" required>
+              <el-date-picker v-model="batchForm.feed_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="时段" required>
+              <el-radio-group v-model="batchForm.time_period">
+                <el-radio v-for="o in FEED_TIME_PERIOD_OPTIONS" :key="o.value" :label="o.value">{{ o.label }}</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="投喂状态">
+              <el-radio-group v-model="batchForm.status">
+                <el-radio label="未投喂">未投喂</el-radio>
+                <el-radio label="已投喂">已投喂</el-radio>
+                <el-radio label="已跳过">已跳过</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="12">
+          <el-col :span="16">
+            <el-form-item label="饲喂方案">
+              <el-select
+                v-model="batchForm.plan_id" placeholder="选择方案后自动带出投喂重量" clearable filterable
+                style="width: 100%" @change="applyPlanToRows"
+              >
+                <el-option
+                  v-for="p in planOptions" :key="p.id"
+                  :label="`${p.plan_name}（单只 精${p.concentrate_weight ?? '-'}/青贮${p.silage_weight ?? '-'}/干草${p.hay_weight ?? '-'} kg）`"
+                  :value="p.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="备注">
+              <el-input v-model="batchForm.remark" placeholder="选填" clearable />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="选择圈舍" required>
+          <el-select
+            v-model="batchPenIds" multiple filterable collapse-tags collapse-tags-tooltip
+            placeholder="可多选圈舍，选中后自动生成对应饲喂行" style="width: 100%"
+            @change="syncBatchRows"
+          >
+            <el-option
+              v-for="p in penOptions" :key="p.id"
+              :label="`${p.pen_code}（${p.pen_type}）存栏 ${p.current_count}/${p.capacity}`"
+              :value="p.id"
+            />
+          </el-select>
+        </el-form-item>
+      </el-form>
+
+      <el-alert
+        type="info" :closable="false" class="mb-8"
+        title="投喂头数默认取该圈舍实际存栏；重量为整圈合计，默认 = 方案单只重量 × 存栏头数，仍可用加减调整。同一天同一时段已有记录的圈舍会自动跳过。"
+      />
+
+      <el-table :data="batchRows" size="small" border max-height="330" empty-text="请先选择圈舍">
+        <el-table-column label="圈舍" width="110">
+          <template #default="{ row }">{{ row.pen_code }}（{{ row.pen_type }}）</template>
+        </el-table-column>
+        <el-table-column label="饲喂头数" width="120">
+          <template #default="{ row }">
+            <el-input-number
+              v-model="row.animal_count" :min="0" :max="9999" size="small"
+              controls-position="right" style="width: 100%" @change="onRowCountChange(row as BatchRow)"
+            />
+          </template>
+        </el-table-column>
+        <el-table-column label="精料(kg)" width="150">
+          <template #default="{ row }">
+            <el-input-number
+              v-model="row.actual_concentrate" :min="0" :precision="2" :step="1" size="small"
+              controls-position="right" style="width: 100%"
+            />
+          </template>
+        </el-table-column>
+        <el-table-column label="青贮(kg)" width="150">
+          <template #default="{ row }">
+            <el-input-number
+              v-model="row.actual_silage" :min="0" :precision="2" :step="1" size="small"
+              controls-position="right" style="width: 100%"
+            />
+          </template>
+        </el-table-column>
+        <el-table-column label="干草(kg)" width="150">
+          <template #default="{ row }">
+            <el-input-number
+              v-model="row.actual_hay" :min="0" :precision="2" :step="1" size="small"
+              controls-position="right" style="width: 100%"
+            />
+          </template>
+        </el-table-column>
+        <el-table-column label="默认值来源" min-width="160">
+          <template #default>
+            <span class="plan-hint">{{ planHint }}</span>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <template #footer>
+        <span class="footer-left">已选 {{ batchRows.length }} 个圈舍，将生成 {{ batchRows.length }} 条记录</span>
+        <el-button @click="batchVisible = false">取消</el-button>
+        <el-button type="primary" :loading="batchSaving" @click="handleBatchSave">批量提交</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 审核弹窗 -->
     <el-dialog v-model="auditDialogVisible" :title="`审核 - ${auditAction}`" width="420px">
       <el-form :model="auditForm" label-width="80px">
@@ -196,7 +313,7 @@
 import dayjs from 'dayjs'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import {
-  getFeedingRecordListApi, addFeedingRecordApi, updateFeedingRecordApi,
+  getFeedingRecordListApi, batchAddFeedingRecordApi, updateFeedingRecordApi,
   deleteFeedingRecordApi, auditFeedingRecordApi, type FeedingRecord,
 } from '@/api/feeding'
 import { getFeedingPlanListApi, type FeedingPlan } from '@/api/feeding'
@@ -344,7 +461,7 @@ async function loadPlanOptions() {
 }
 
 function onPlanChange(planId: number | undefined) {
-  // 选了方案不自动填实际值，只做提示
+  // 编辑单条记录时只做提示；批量弹窗里选方案会自动回填重量
   if (!planId) return
   const p = planOptions.value.find(x => x.id === planId)
   if (p) {
@@ -352,23 +469,137 @@ function onPlanChange(planId: number | undefined) {
   }
 }
 
-function handleAdd() {
-  isEdit.value = false
-  editId.value = 0
-  editWasAudited.value = false
-  Object.assign(form, {
+// ============ 批量提交（多圈舍一次生成多条） ============
+interface BatchRow {
+  pen_id: number
+  pen_code: string
+  pen_type: string
+  animal_count: number
+  actual_concentrate: number
+  actual_silage: number
+  actual_hay: number
+}
+
+const batchVisible = ref(false)
+const batchSaving = ref(false)
+const batchPenIds = ref<number[]>([])
+const batchRows = ref<BatchRow[]>([])
+const batchForm = reactive({
+  feed_date: dayjs().format('YYYY-MM-DD'),
+  time_period: '早',
+  plan_id: undefined as number | undefined,
+  status: '已投喂',
+  remark: '',
+})
+
+const currentPlan = computed(() => planOptions.value.find(p => p.id === batchForm.plan_id))
+const planHint = computed(() => {
+  const p = currentPlan.value
+  if (!p) return '未选方案，手动填写重量'
+  return `方案单只：精${p.concentrate_weight ?? 0} / 青贮${p.silage_weight ?? 0} / 干草${p.hay_weight ?? 0} kg`
+})
+
+/** 整圈重量 = 方案单只重量 × 存栏头数（方案里是按 kg/只·次 配置的） */
+function calcBatchWeight(perAnimal: number | null | undefined, count: number): number {
+  if (!perAnimal || !count) return 0
+  return Math.round(perAnimal * count * 100) / 100
+}
+
+function fillRowWeights(row: BatchRow) {
+  const p = currentPlan.value
+  row.actual_concentrate = calcBatchWeight(p?.concentrate_weight, row.animal_count)
+  row.actual_silage = calcBatchWeight(p?.silage_weight, row.animal_count)
+  row.actual_hay = calcBatchWeight(p?.hay_weight, row.animal_count)
+}
+
+/** 换方案：按当前头数重算所有行的默认重量 */
+function applyPlanToRows() {
+  batchRows.value.forEach(fillRowWeights)
+}
+
+/** 改头数：该行重量跟着按比例重算 */
+function onRowCountChange(row: BatchRow) {
+  fillRowWeights(row)
+}
+
+/** 圈舍多选变化：保留已填过的行，新增的行按存栏和方案生成默认值 */
+function syncBatchRows() {
+  const existed = new Map(batchRows.value.map(r => [r.pen_id, r]))
+  batchRows.value = batchPenIds.value
+    .map(id => {
+      const old = existed.get(id)
+      if (old) return old
+      const pen = penOptions.value.find(x => x.id === id)
+      if (!pen) return null
+      const row: BatchRow = {
+        pen_id: pen.id,
+        pen_code: pen.pen_code,
+        pen_type: pen.pen_type,
+        // 饲喂头数默认绑定圈舍实际存栏
+        animal_count: Number(pen.current_count || 0),
+        actual_concentrate: 0,
+        actual_silage: 0,
+        actual_hay: 0,
+      }
+      fillRowWeights(row)
+      return row
+    })
+    .filter((r): r is BatchRow => r !== null)
+}
+
+function handleBatchAdd() {
+  Object.assign(batchForm, {
     feed_date: dayjs().format('YYYY-MM-DD'),
     time_period: '早',
-    pen_id: undefined,
     plan_id: undefined,
-    actual_concentrate: undefined,
-    actual_silage: undefined,
-    actual_hay: undefined,
-    animal_count: undefined,
-    status: '未投喂',
+    status: '已投喂',
     remark: '',
   })
-  dialogVisible.value = true
+  batchPenIds.value = []
+  batchRows.value = []
+  batchVisible.value = true
+}
+
+async function handleBatchSave() {
+  if (!batchRows.value.length) {
+    ElMessage.warning('请先选择圈舍')
+    return
+  }
+  if (!batchForm.feed_date) {
+    ElMessage.warning('请选择饲喂日期')
+    return
+  }
+  batchSaving.value = true
+  try {
+    const payload: any = {
+      feed_date: batchForm.feed_date,
+      time_period: batchForm.time_period,
+      status: batchForm.status,
+      items: batchRows.value.map(r => ({
+        pen_id: r.pen_id,
+        animal_count: r.animal_count,
+        actual_concentrate: r.actual_concentrate || undefined,
+        actual_silage: r.actual_silage || undefined,
+        actual_hay: r.actual_hay || undefined,
+      })),
+    }
+    if (batchForm.plan_id) payload.plan_id = batchForm.plan_id
+    if (batchForm.remark) payload.remark = batchForm.remark
+    const res = await batchAddFeedingRecordApi(payload)
+    const data = res.data as any
+    ElMessage.success((res as any).msg || `提交成功 ${data?.created ?? 0} 条`)
+    if (data?.skipped?.length) {
+      ElMessage.warning(
+        `已跳过：${data.skipped.map((s: any) => `${s.pen_code || s.pen_id}（${s.reason}）`).join('；')}`,
+      )
+    }
+    batchVisible.value = false
+    loadData()
+  } catch {
+    // handled by interceptor
+  } finally {
+    batchSaving.value = false
+  }
 }
 
 function handleEdit(row: FeedingRecord) {
@@ -391,19 +622,15 @@ function handleEdit(row: FeedingRecord) {
 }
 
 async function handleSave() {
+  // 该弹窗只用于「编辑已有记录」；新增走批量提交（可一次选多个圈舍）
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
   saving.value = true
   try {
     const payload: any = { ...form }
     if (!payload.plan_id) delete payload.plan_id
-    if (isEdit.value) {
-      await updateFeedingRecordApi(editId.value, payload)
-      ElMessage.success(editWasAudited.value ? '修改成功，已重置为待审核，需重新审核' : '修改成功')
-    } else {
-      await addFeedingRecordApi(payload)
-      ElMessage.success('提交成功，等待审核')
-    }
+    await updateFeedingRecordApi(editId.value, payload)
+    ElMessage.success(editWasAudited.value ? '修改成功，已重置为待审核，需重新审核' : '修改成功')
     dialogVisible.value = false
     loadData()
   } catch {
@@ -472,4 +699,7 @@ watch(species, () => {
 
 .feed-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 18px; }
 .feed-field-label { font-size: 13px; color: #5b7d95; padding-left: 2px; }
+.mb-8 { margin-bottom: 8px; }
+.plan-hint { font-size: 12px; color: #6b8ba4; }
+.footer-left { float: left; line-height: 32px; font-size: 13px; color: #6b8ba4; }
 </style>

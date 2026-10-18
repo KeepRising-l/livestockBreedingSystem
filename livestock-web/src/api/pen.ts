@@ -38,6 +38,34 @@ export function addPenApi(params: {
   return http.post('/pen/add', params)
 }
 
+/** 批量添加中被跳过的编号及原因 */
+export interface PenBatchSkipped {
+  code: string
+  reason: string
+}
+
+/** 批量添加结果 */
+export interface PenBatchAddResult {
+  created: number
+  created_codes: string[]
+  skipped: PenBatchSkipped[]
+}
+
+export function batchAddPenApi(params: {
+  species?: string
+  pen_type: string
+  capacity: number
+  remark?: string
+  /** 编号列表（优先使用，前端预览后可手工编辑） */
+  codes?: string[]
+  /** 编号前缀 + 起始序号 + 数量（codes 为空时由服务端生成，如 A/1/12 -> A01~A12） */
+  prefix?: string
+  start_no?: number
+  count?: number
+}) {
+  return http.post('/pen/batch-add', params)
+}
+
 export function updatePenApi(id: number, params: Partial<PenInfo>) {
   return http.put(`/pen/update/${id}`, params)
 }

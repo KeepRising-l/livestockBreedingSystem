@@ -91,10 +91,22 @@ export interface HealthStats {
   }
 }
 
+export interface MaterialNameDist {
+  name: string
+  /** 库存数量 */
+  value: number
+  unit: string
+  /** 库存金额 = 数量 × 单价 */
+  amount: number
+  type: string
+}
+
 export interface MaterialStats {
   stock_count: number
   type_dist: NameValue[]
   status_dist: NameValue[]
+  /** 各物资库存量分布（按物资名称，含单位与金额） */
+  name_dist: MaterialNameDist[]
   shortage_count: number
   expired_count: number
   expiring_count: number

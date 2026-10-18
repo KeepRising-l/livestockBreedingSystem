@@ -2,9 +2,14 @@
   <div>
     <div class="flex-between mb-16">
       <h2 class="page-title">圈舍管理<template v-if="speciesZh">（{{ speciesZh }}）</template></h2>
-      <el-button type="primary" @click="handleAdd" v-if="canEdit">
-        <el-icon><Plus /></el-icon> 新增圈舍
-      </el-button>
+      <div v-if="canEdit">
+        <el-button @click="handleBatchAdd">
+          <el-icon><Plus /></el-icon> 批量添加
+        </el-button>
+        <el-button type="primary" @click="handleAdd">
+          <el-icon><Plus /></el-icon> 新增圈舍
+        </el-button>
+      </div>
     </div>
 
     <!-- 搜索栏 -->
@@ -107,17 +112,66 @@
         <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 批量添加弹窗 -->
+    <el-dialog v-model="batchDialogVisible" title="批量添加圈舍" width="560px">
+      <el-form :model="batchForm" :rules="batchFormRules" ref="batchFormRef" label-width="100px">
+        <el-form-item label="所属畜种" prop="species">
+          <el-select v-model="batchForm.species" placeholder="请选择" style="width: 100%">
+            <el-option v-for="s in SPECIES_OPTIONS" :key="s.value" :label="s.label" :value="s.value" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="圈舍类型" prop="pen_type">
+          <el-select v-model="batchForm.pen_type" placeholder="请选择" style="width: 100%">
+            <el-option v-for="(label, key) in PEN_TYPE_MAP" :key="key" :label="label" :value="key" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="容量" prop="capacity">
+          <el-input-number v-model="batchForm.capacity" :min="1" :max="999" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="编号前缀" prop="prefix">
+          <el-input v-model="batchForm.prefix" placeholder="字母，如 A" maxlength="10" />
+        </el-form-item>
+        <el-form-item label="起始序号" prop="start_no">
+          <el-input-number v-model="batchForm.start_no" :min="1" :max="999999" style="width: 100%" />
+          <div class="tip">序号统一补 2 位，如 1 → 01</div>
+        </el-form-item>
+        <el-form-item label="数量" prop="count">
+          <el-input-number v-model="batchForm.count" :min="1" :max="BATCH_MAX_COUNT" style="width: 100%" />
+          <div class="tip">单次最多添加 {{ BATCH_MAX_COUNT }} 个圈舍</div>
+        </el-form-item>
+        <el-form-item label="编号列表" prop="codesText">
+          <el-input
+            v-model="batchForm.codesText"
+            type="textarea"
+            :rows="6"
+            placeholder="每行一个编号，也可用空格、逗号分隔"
+          />
+          <div class="tip">已按「前缀 + 起始序号」生成，可直接编辑；修改上方规则会重新生成（共 {{ batchCodeCount }} 个编号）</div>
+        </el-form-item>
+        <el-form-item label="备注" prop="remark">
+          <el-input v-model="batchForm.remark" type="textarea" :rows="2" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="batchDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="batchSaving" @click="handleBatchSave">确定添加</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { getPenListApi, addPenApi, updatePenApi, deletePenApi, type PenInfo } from '@/api/pen'
+import {
+  getPenListApi, addPenApi, updatePenApi, deletePenApi, batchAddPenApi,
+  type PenInfo, type PenBatchAddResult, type PenBatchSkipped,
+} from '@/api/pen'
 import { useAuthStore } from '@/stores/auth'
 import { PEN_TYPE_MAP, SPECIES_OPTIONS } from '@/utils/constants'
 import { useSpecies } from '@/composables/useSpecies'
-import { type TagProps, ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { type TagProps, ElMessage, type FormInstance, type FormItemRule, type FormRules } from 'element-plus'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -152,6 +206,145 @@ const formRules: FormRules = {
   pen_type: [{ required: true, message: '请选择圈舍类型', trigger: 'change' }],
   species: [{ required: true, message: '请选择所属畜种', trigger: 'change' }],
   capacity: [{ required: true, message: '请输入容量', trigger: 'blur' }],
+}
+
+// ===== 批量添加 =====
+const BATCH_MAX_COUNT = 50
+const BATCH_CODE_RE = /^[A-Za-z]+\d{1,6}$/
+const BATCH_PREFIX_RE = /^[A-Za-z]{1,10}$/
+
+const batchDialogVisible = ref(false)
+const batchSaving = ref(false)
+const batchFormRef = ref<FormInstance>()
+
+const batchForm = reactive({
+  species: '牛' as string,
+  pen_type: 'A',
+  capacity: 12,
+  prefix: 'A',
+  start_no: 1,
+  count: 10,
+  codesText: '',
+  remark: '',
+})
+
+/** 按「前缀 + 起始序号 + 数量」生成编号，序号统一补 2 位 */
+function generateBatchCodes(): string[] {
+  const prefix = batchForm.prefix.trim()
+  if (!BATCH_PREFIX_RE.test(prefix)) return []
+  const count = Math.max(0, Math.min(BATCH_MAX_COUNT, Number(batchForm.count) || 0))
+  const start = Number(batchForm.start_no) || 1
+  return Array.from({ length: count }, (_, i) => `${prefix}${String(start + i).padStart(2, '0')}`)
+}
+
+/** 解析编号列表：支持换行、空格、中英文逗号/分号分隔 */
+function parseBatchCodes(): string[] {
+  return batchForm.codesText
+    .split(/[\s,，;；]+/)
+    .map((code) => code.trim())
+    .filter(Boolean)
+}
+
+const batchCodeCount = computed(() => parseBatchCodes().length)
+
+/** 规则变化时重新生成预览；用户手工编辑的内容会被覆盖（弹窗内有提示） */
+function syncBatchCodes() {
+  batchForm.codesText = generateBatchCodes().join('\n')
+}
+
+watch(
+  () => [batchForm.prefix, batchForm.start_no, batchForm.count],
+  () => syncBatchCodes(),
+)
+
+const validateBatchCodes: FormItemRule['validator'] = (_rule, _value, callback) => {
+  const codes = parseBatchCodes()
+  if (!codes.length) {
+    callback(new Error('请填写要创建的圈舍编号'))
+    return
+  }
+  if (codes.length > BATCH_MAX_COUNT) {
+    callback(new Error(`单次最多添加 ${BATCH_MAX_COUNT} 个圈舍`))
+    return
+  }
+  const invalid = codes.find((code) => code.length > 20 || !BATCH_CODE_RE.test(code))
+  if (invalid) {
+    callback(new Error(`编号「${invalid}」格式不正确，应为字母前缀 + 数字序号，如 A01`))
+    return
+  }
+  callback()
+}
+
+const batchFormRules: FormRules = {
+  species: [{ required: true, message: '请选择所属畜种', trigger: 'change' }],
+  pen_type: [{ required: true, message: '请选择圈舍类型', trigger: 'change' }],
+  capacity: [{ required: true, message: '请输入容量', trigger: 'blur' }],
+  prefix: [
+    { required: true, message: '请输入编号前缀', trigger: 'blur' },
+    { pattern: BATCH_PREFIX_RE, message: '编号前缀只能是 1~10 位字母，如 A', trigger: 'blur' },
+  ],
+  start_no: [{ required: true, message: '请输入起始序号', trigger: 'blur' }],
+  count: [{ required: true, message: '请输入数量', trigger: 'blur' }],
+  codesText: [{ validator: validateBatchCodes, trigger: 'blur' }],
+}
+
+function handleBatchAdd() {
+  batchForm.species = speciesZh.value
+  batchForm.pen_type = 'A'
+  batchForm.capacity = 12
+  batchForm.prefix = 'A'
+  batchForm.start_no = 1
+  batchForm.count = 10
+  batchForm.remark = ''
+  syncBatchCodes()
+  batchDialogVisible.value = true
+  nextTick(() => batchFormRef.value?.clearValidate())
+}
+
+function formatBatchSkipped(skipped: PenBatchSkipped[]): string {
+  const detail = skipped.slice(0, 3).map((item) => `${item.code}：${item.reason}`).join('；')
+  return skipped.length > 3 ? `${detail} 等 ${skipped.length} 条` : detail
+}
+
+async function handleBatchSave() {
+  const valid = await batchFormRef.value?.validate().catch(() => false)
+  if (!valid) return
+  const codes = parseBatchCodes()
+  batchSaving.value = true
+  try {
+    const res = await batchAddPenApi({
+      species: batchForm.species,
+      pen_type: batchForm.pen_type,
+      capacity: batchForm.capacity,
+      remark: batchForm.remark,
+      codes,
+    })
+    const data = res.data as PenBatchAddResult
+    const created = data?.created || 0
+    const skipped = data?.skipped || []
+    if (!created) {
+      // 一条都没建成时保留弹窗，方便按提示调整编号后重试
+      ElMessage.warning({
+        message: `未创建圈舍，跳过 ${skipped.length} 条：${formatBatchSkipped(skipped)}`,
+        duration: 6000,
+      })
+      return
+    }
+    if (skipped.length) {
+      ElMessage.warning({
+        message: `成功 ${created} 条，跳过 ${skipped.length} 条：${formatBatchSkipped(skipped)}`,
+        duration: 6000,
+      })
+    } else {
+      ElMessage.success(`成功添加 ${created} 个圈舍`)
+    }
+    batchDialogVisible.value = false
+    await loadData()
+  } catch {
+    // handled by interceptor
+  } finally {
+    batchSaving.value = false
+  }
 }
 
 function search() {
@@ -275,4 +468,5 @@ onMounted(loadData)
 .mt-16 { margin-top: 16px; }
 .text-right { text-align: right; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
+.tip { color: #6b8ba4; font-size: 12px; margin-top: 4px; line-height: 1.6; }
 </style>

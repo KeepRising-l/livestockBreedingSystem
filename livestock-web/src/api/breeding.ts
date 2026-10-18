@@ -8,9 +8,20 @@ export interface BreedAnimal {
   species: string
   breed: string
   gender: string
+  /** 繁育模块展示口径：繁育期 / 妊娠 */
   growth_stage: string | null
   physio_status: string | null
   status: string
+  /** 日龄：按出生日期实时计算 */
+  age_days?: number | null
+  /** 档案真实生长阶段：按出生日期实时计算（如育肥期），妊娠个体不被"妊娠"覆盖 */
+  real_growth_stage?: string | null
+  birth_date?: string | null
+  in_date?: string | null
+  out_date?: string | null
+  pen_id?: number | null
+  source?: string | null
+  remark?: string | null
 }
 
 /** 公畜档案（缺口4：健康档案 + 配种统计） */

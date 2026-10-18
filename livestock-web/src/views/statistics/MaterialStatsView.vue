@@ -26,8 +26,8 @@
       </el-col>
       <el-col :span="12">
         <el-card>
-          <template #header>库存状态分布</template>
-          <v-chart v-if="statusOption" :option="statusOption" style="height: 300px" autoresize />
+          <template #header>各物资库存量分布</template>
+          <v-chart v-if="materialOption" :option="materialOption" style="height: 300px" autoresize />
           <el-empty v-else description="暂无数据" />
         </el-card>
       </el-col>
@@ -82,7 +82,43 @@ function pieOption(data: { name: string; value: number }[] | undefined) {
 }
 
 const typeOption = computed(() => pieOption(stats.value?.type_dist))
-const statusOption = computed(() => pieOption(stats.value?.status_dist))
+
+// 各物资库存量分布：横向条形图（数量），tooltip 里补单位与库存金额
+const materialOption = computed(() => {
+  const rows = stats.value?.name_dist
+  if (!rows || !rows.length) return null
+  const sorted = [...rows].sort((a, b) => a.value - b.value)  // 升序，最大的排最上面
+  return {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter: (params: any[]) => {
+        const p = params[0]
+        const row = sorted[p.dataIndex]
+        return `${row.name}（${row.type}）<br/>库存量：${row.value} ${row.unit}`
+          + `<br/>库存金额：${row.amount.toFixed(2)} 元`
+      },
+    },
+    grid: { left: 8, right: 56, top: 8, bottom: 8, containLabel: true },
+    xAxis: { type: 'value', splitLine: { lineStyle: { type: 'dashed' } } },
+    yAxis: {
+      type: 'category',
+      data: sorted.map((r) => r.name),
+      axisTick: { show: false },
+      axisLabel: { width: 90, overflow: 'truncate' },
+    },
+    series: [{
+      type: 'bar',
+      data: sorted.map((r) => r.value),
+      barMaxWidth: 16,
+      itemStyle: { color: '#2b7fff', borderRadius: [0, 4, 4, 0] },
+      label: {
+        show: true, position: 'right', color: '#5b7d95', fontSize: 11,
+        formatter: (p: any) => `${p.value} ${sorted[p.dataIndex].unit}`,
+      },
+    }],
+  }
+})
 
 const consumeTrendOption = computed(() => {
   const t = stats.value?.consume_trend

@@ -146,11 +146,25 @@ class CostExpenseQuery(BaseModel):
 # ============ 利润汇总 ============
 
 class ProfitSummaryOut(BaseModel):
-    """利润汇总返回（时间段）"""
+    """
+    利润汇总返回（时间段）
+
+    口径：饲养总成本 = 进货支出 + 物资消耗 + 人工薪资 + 其他成本；
+    盈利金额（净利润）= 销售金额 - 饲养总成本；利润率 = 盈利金额 / 销售金额 × 100。
+    人工薪资只统计「已发放」的薪资记录，待发放金额单列 labor_pending（不计入成本）。
+    total_cost / total_profit / net_profit 为兼容旧页面的等价字段。
+    """
     order_count: int = 0
     animal_count: int = 0
     total_amount: float = 0
+    purchase_cost: float = 0
+    consume_cost: float = 0
+    labor_cost: float = 0
+    labor_pending: float = 0
+    other_cost: float = 0
+    breeding_cost: float = 0
     total_cost: float = 0
+    profit: float = 0
     total_profit: float = 0
     profit_rate: float = 0
     expense_amount: float = 0

@@ -20,6 +20,7 @@ from app.modules.inventory.schema import AuditActionIn
 from app.modules.health import service as health_service
 from app.modules.health.schema import (
     VaccineRecordIn, VaccineBatchIn, VaccineRecordUpdateIn, VaccineRecordOut, VaccineRecordQuery,
+    VaccinePenGroupOut,
     MedicalRecordIn, MedicalRecordUpdateIn, MedicalRecordOut, MedicalRecordQuery,
 )
 
@@ -61,6 +62,24 @@ def list_vaccines(
     result = health_service.list_vaccines(db, current_user.farm_id, query)
     result["list"] = [VaccineRecordOut.model_validate(r) for r in result["list"]]
     return Result.ok(data=result)
+
+
+@router.get("/vaccine/pen-animals", summary="按圈舍分组的在栏畜禽（批量防疫选择圈舍用）")
+def list_vaccine_pen_animals(
+    species: str = Query(None, description="畜种：牛/羊/猪，不传返回全部"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    批量防疫弹窗「按圈舍选择」的数据源。
+
+    仅使用 health 模块权限（router 级 require_perms("health")），兽医等员工无需 pen 权限；
+    只返回有在栏畜禽的圈舍，已出栏/死亡动物不返回。
+    """
+    if not current_user.farm_id:
+        raise BizException("当前用户未关联养殖场", code=40300)
+    groups = health_service.list_vaccine_pen_animals(db, current_user.farm_id, species)
+    return Result.ok(data=[VaccinePenGroupOut.model_validate(g) for g in groups])
 
 
 @router.get("/vaccine/{record_id}", summary="防疫记录详情")

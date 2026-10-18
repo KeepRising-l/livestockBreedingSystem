@@ -80,8 +80,9 @@
           </template>
         </el-table-column>
         <el-table-column prop="remark" label="备注" min-width="120" show-overflow-tooltip />
-        <el-table-column label="操作" width="220" fixed="right">
+        <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
+            <el-button link type="primary" size="small" @click.stop="handleDetail(row as MaterialConsume)">详情</el-button>
             <el-button link type="warning" size="small" @click.stop="handleEdit(row as MaterialConsume)" v-if="row.audit_status === '待审核'">编辑</el-button>
             <el-button link type="success" size="small" @click.stop="handleAudit(row as MaterialConsume, '通过')" v-if="canAudit && row.audit_status === '待审核'">通过</el-button>
             <el-button link type="danger" size="small" @click.stop="handleAudit(row as MaterialConsume, '驳回')" v-if="canAudit && row.audit_status === '待审核'">驳回</el-button>
@@ -153,6 +154,38 @@
       </template>
     </el-dialog>
 
+    <!-- 详情弹窗（所有行可见，只读） -->
+    <el-dialog v-model="detailDialogVisible" title="领用记录详情" width="720px">
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="物资类型">
+          <el-tag :type="typeColor(detailRow.material_type || '')" size="small">{{ detailRow.material_type || '-' }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="物资名称">{{ detailRow.material_name || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="领用人">{{ detailRow.consumer_name || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="批次号">{{ detailRow.batch_no || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="数量">{{ detailRow.quantity ?? '-' }}</el-descriptions-item>
+        <el-descriptions-item label="单位">{{ detailRow.unit || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="领用单价">{{ detailRow.unit_price ?? '-' }} 元</el-descriptions-item>
+        <el-descriptions-item label="领用日期">{{ detailRow.consume_date || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="关联模块">
+          <el-tag v-if="detailRow.related_module" type="info" size="small">{{ detailRow.related_module }}</el-tag>
+          <span v-else>-</span>
+        </el-descriptions-item>
+        <el-descriptions-item label="状态">
+          <el-tag :type="consumeStatusColor(detailRow.status || '')" size="small">{{ detailRow.status || '-' }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="审核状态">
+          <el-tag :type="auditColor(detailRow.audit_status || '')" size="small">{{ detailRow.audit_status || '-' }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="关联业务ID">{{ detailRow.related_id ?? '-' }}</el-descriptions-item>
+        <el-descriptions-item label="备注" :span="2">{{ detailRow.remark || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="创建时间" :span="2">{{ formatDateTime(detailRow.create_time) }}</el-descriptions-item>
+      </el-descriptions>
+      <template #footer>
+        <el-button @click="detailDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 审核弹窗 -->
     <el-dialog v-model="auditDialogVisible" :title="`审核 - ${auditAction}`" width="420px">
       <el-form :model="auditForm" label-width="80px">
@@ -182,6 +215,7 @@ import {
   MATERIAL_TYPE_OPTIONS, MATERIAL_UNIT_OPTIONS,
   AUDIT_STATUS_MAP, CONSUME_MODULE_OPTIONS,
 } from '@/utils/constants'
+import { formatDateTime } from '@/utils/format'
 import { type TagProps, ElMessage, type FormInstance, type FormRules } from 'element-plus'
 
 const authStore = useAuthStore()
@@ -240,6 +274,15 @@ const auditAction = ref('通过')
 const auditSaving = ref(false)
 const auditRecordId = ref(0)
 const auditForm = reactive({ remark: '' })
+
+// ========== 详情（只读，所有行可见） ==========
+const detailDialogVisible = ref(false)
+const detailRow = ref<Partial<MaterialConsume>>({})
+
+function handleDetail(row: MaterialConsume) {
+  detailRow.value = row
+  detailDialogVisible.value = true
+}
 
 function typeColor(t: string): TagProps['type'] {
   return ({ '饲料': 'success', '疫苗': 'warning', '兽药': 'danger' } as Record<string, TagProps['type']>)[t] || 'info'

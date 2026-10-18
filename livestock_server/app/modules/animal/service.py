@@ -61,6 +61,15 @@ GESTATION_DAYS = {"牛": 280, "羊": 150, "猪": 114}
 # 母畜生理状态（正常/发情/妊娠/泌乳/休情/淘汰），默认"正常"
 PHYSIO_STATUSES = ("正常", "发情", "妊娠", "泌乳", "休情", "淘汰")
 
+# 占用圈舍的档案状态（与 pen/health/statistics/scheduler 的存栏口径保持一致）：
+# 只有这几个状态算"在栏"，已出栏/死亡不再占圈舍容量
+OCCUPYING_STATUSES = ("在栏", "种用", "隔离", "待出栏")
+
+
+def is_occupying(status: str) -> bool:
+    """该档案状态是否占用圈舍容量"""
+    return status in OCCUPYING_STATUSES
+
 
 def calc_age_days(birth_date: date, ref_date: date = None) -> int:
     """计算日龄"""
@@ -321,6 +330,10 @@ def update_animal(db: Session, farm_id: int, animal_id: int, body: AnimalUpdateI
     """
     fid = get_effective_farm_id(db, farm_id)
     a = get_animal(db, fid, animal_id)
+    was_occupying = is_occupying(a.status)
+    # 本次修改后的状态（用于判断改完是否还占用圈舍容量）
+    next_status = body.status if body.status is not None else a.status
+    will_occupy = is_occupying(next_status)
 
     # 处理圈舍变更
     if body.pen_id is not None and body.pen_id != a.pen_id:
@@ -329,7 +342,7 @@ def update_animal(db: Session, farm_id: int, animal_id: int, body: AnimalUpdateI
         ).first()
         if not new_pen:
             raise BizException("目标圈舍不存在", code=40029)
-        if (new_pen.current_count or 0) >= new_pen.capacity:
+        if will_occupy and (new_pen.current_count or 0) >= new_pen.capacity:
             raise BizException(
                 f"目标圈舍 {new_pen.pen_code} 已满（{new_pen.current_count}/{new_pen.capacity}）",
                 code=40030,
@@ -338,8 +351,8 @@ def update_animal(db: Session, farm_id: int, animal_id: int, body: AnimalUpdateI
         target_species = body.species if body.species is not None else a.species
         ensure_pen_species_match(new_pen, target_species)
         claim_pen_species(new_pen, target_species)
-        # 旧圈舍存栏-1
-        if a.pen_id:
+        # 旧圈舍存栏-1（只有原先"占用容量"的档案才需要扣，已出栏/死亡本来就不占）
+        if a.pen_id and was_occupying:
             old_pen = db.query(Pen).filter(Pen.id == a.pen_id).first()
             if old_pen and (old_pen.current_count or 0) > 0:
                 old_pen.current_count -= 1
@@ -354,7 +367,26 @@ def update_animal(db: Session, farm_id: int, animal_id: int, body: AnimalUpdateI
             raise BizException(f"耳标 {new_ear_tag} 已存在", code=40031)
         a.pen_id = new_pen.id
         a.ear_tag = new_ear_tag
-        new_pen.current_count = (new_pen.current_count or 0) + 1
+        # 只有占用容量的状态才计入新圈舍存栏（已出栏/死亡不占位）
+        if will_occupy:
+            new_pen.current_count = (new_pen.current_count or 0) + 1
+
+    # 未转舍、但状态在「占用容量」与「不占用容量」之间切换时，同步圈舍存栏数。
+    # 否则在档案编辑里把状态改成「已出栏 / 死亡」后，圈舍存栏会一直虚高，
+    # 后续自动分圈找不到空位、容量校验误报「已满」。
+    elif a.pen_id and was_occupying != will_occupy:
+        pen = db.query(Pen).filter(Pen.id == a.pen_id).first()
+        if pen:
+            if will_occupy:
+                if (pen.current_count or 0) >= pen.capacity:
+                    raise BizException(
+                        f"圈舍 {pen.pen_code} 已满（{pen.current_count}/{pen.capacity}），"
+                        f"无法把该档案恢复为「{next_status}」",
+                        code=40030,
+                    )
+                pen.current_count = (pen.current_count or 0) + 1
+            elif (pen.current_count or 0) > 0:
+                pen.current_count -= 1
 
     # 处理出生日期/畜种变更 → 重算生长阶段
     if body.birth_date is not None or body.species is not None:
@@ -406,7 +438,7 @@ def remove_from_pen(db: Session, farm_id: int, animal_id: int) -> Animal:
     if not a.pen_id:
         raise BizException("该档案当前不在圈舍中", code=40033)
     old_pen = db.query(Pen).filter(Pen.id == a.pen_id).first()
-    if old_pen and (old_pen.current_count or 0) > 0:
+    if old_pen and is_occupying(a.status) and (old_pen.current_count or 0) > 0:
         old_pen.current_count -= 1
     a.pen_id = None
     db.commit()
@@ -610,43 +642,58 @@ def import_create(db: Session, farm_id: int, body: AnimalImportIn) -> dict:
     }
 
 
+def move_to_history(db: Session, a: Animal, delete_time: date = None,
+                    release_capacity: bool = None) -> AnimalHistory:
+    """
+    把一头畜禽档案转入历史记录表并逻辑删除（**不提交事务**，由调用方统一 commit）。
+
+    动作：写一条 AnimalHistory 快照 → 档案 deleted=True → 所在圈舍存栏 -1。
+    出栏销售（finance.sale_out）和批量删除共用这一份实现，避免两处各写一遍
+    导致「圈舍存栏减了两次」或「历史快照字段漏拷」。
+
+    参数 release_capacity：
+      - None（默认）：按档案当前状态判断——只有占用容量的状态（在栏/种用/隔离/待出栏）
+        才扣减圈舍存栏；已出栏/死亡的档案本来就没占位，再扣就会把别人的存栏扣掉。
+      - True/False：调用方显式指定是否扣减（出栏销售场景里状态刚被改成「已出栏」，
+        需要按调用前的状态决定，此时显式传 True）。
+    """
+    if release_capacity is None:
+        release_capacity = is_occupying(a.status)
+    history = AnimalHistory(
+        farm_id=a.farm_id,
+        ear_tag=a.ear_tag,
+        species=a.species,
+        breed=a.breed,
+        pen_id=a.pen_id,
+        gender=a.gender,
+        birth_date=a.birth_date,
+        in_date=a.in_date,
+        out_date=a.out_date,
+        growth_stage=a.growth_stage,
+        physio_status=a.physio_status,
+        status=a.status,
+        source=a.source,
+        sire_tag=a.sire_tag,
+        dam_tag=a.dam_tag,
+        remark=a.remark,
+        delete_time=delete_time or date.today(),
+    )
+    db.add(history)
+    # 逻辑删除档案
+    a.deleted = True
+    # 圈舍存栏数减 1（圈舍腾出）
+    if a.pen_id and release_capacity:
+        pen = db.query(Pen).filter(Pen.id == a.pen_id).first()
+        if pen and (pen.current_count or 0) > 0:
+            pen.current_count -= 1
+    return history
+
+
 def batch_delete(db: Session, farm_id: int, ids: list[int]):
     """批量删除：转入历史记录表"""
     fid = get_effective_farm_id(db, farm_id)
-    today = date.today()
-    clean_deadline = today + timedelta(days=180)  # 半年后清除
-
     for animal_id in ids:
-        a = get_animal(db, fid, animal_id)
-        # 转入历史
-        history = AnimalHistory(
-            farm_id=a.farm_id,
-            ear_tag=a.ear_tag,
-            species=a.species,
-            breed=a.breed,
-            pen_id=a.pen_id,
-            gender=a.gender,
-            birth_date=a.birth_date,
-            in_date=a.in_date,
-            out_date=a.out_date,
-            growth_stage=a.growth_stage,
-            physio_status=a.physio_status,
-            status=a.status,
-            source=a.source,
-            sire_tag=a.sire_tag,
-            dam_tag=a.dam_tag,
-            remark=a.remark,
-            delete_time=today,
-        )
-        db.add(history)
-        # 逻辑删除档案
-        a.deleted = True
-        # 圈舍存栏数减1
-        if a.pen_id:
-            pen = db.query(Pen).filter(Pen.id == a.pen_id).first()
-            if pen and pen.current_count > 0:
-                pen.current_count -= 1
-
+        move_to_history(db, get_animal(db, fid, animal_id))
     db.commit()
     return {"deleted": len(ids)}
 
@@ -714,6 +761,13 @@ def restore_animal(db: Session, farm_id: int, history_id: int) -> Animal:
         )
 
     # 校验原圈舍是否还存在且容量充足
+    # 恢复的含义是「撤销移除，回到圈舍里」：占位状态恢复为「在栏」；
+    # 如果原档案是出栏销售转历史的（状态已出栏、圈舍已腾出），
+    # 恢复后必须重新回到在栏并重新占用圈舍容量，否则会出现
+    # 「档案在栏但圈舍存栏不增」或「状态仍显示已出栏却出现在档案列表」的矛盾。
+    if not is_occupying(animal.status):
+        animal.status = "在栏"
+        animal.out_date = None
     if animal.pen_id:
         pen = db.query(Pen).filter(Pen.id == animal.pen_id, Pen.deleted == False).first()
         if not pen:

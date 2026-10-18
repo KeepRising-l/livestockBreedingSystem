@@ -50,14 +50,10 @@ def list_candidates(
     current_user: User = Depends(get_current_user),
 ):
     _check_owner(current_user)
-    animals = finance_service.list_sale_candidates(
+    # service 层已按出生日期实时算出生长阶段 / 日龄（与档案管理页一致）
+    data = finance_service.list_sale_candidates(
         db, current_user.farm_id, species=species, growth_stage=growth_stage, keyword=keyword
     )
-    data = [{
-        "id": a.id, "ear_tag": a.ear_tag, "species": a.species, "breed": a.breed,
-        "gender": a.gender, "pen_id": a.pen_id, "in_date": a.in_date,
-        "growth_stage": a.growth_stage, "status": a.status,
-    } for a in animals]
     return Result.ok(data=data)
 
 

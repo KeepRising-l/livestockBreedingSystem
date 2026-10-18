@@ -16,7 +16,7 @@ from app.core.perms import require_perms
 from app.core.exceptions import BizException
 from app.models.user import User
 from app.modules.review import service as review_service
-from app.modules.review.schema import ReviewAuditIn, ReviewItemOut
+from app.modules.review.schema import ReviewAuditIn, ReviewBatchAuditIn, ReviewItemOut
 
 # 模块级权限：审核是场主职责，员工角色默认不含该模块
 router = APIRouter(dependencies=[Depends(require_perms("review"))])
@@ -74,3 +74,23 @@ def audit_record(body: ReviewAuditIn, db: Session = Depends(get_db),
     _check_owner(current_user)
     result = review_service.audit(db, current_user.farm_id, body, current_user.id)
     return Result.ok(data=result, msg=f"已{body.audit_status}")
+
+
+@router.post("/batch-audit", summary="一键批量审核（当前所有待审核记录）")
+def batch_audit(
+    body: ReviewBatchAuditIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """把当前待审核记录一次性全部通过/驳回；单条失败不影响其它条"""
+    _check_owner(current_user)
+    result = review_service.batch_audit(
+        db, current_user.farm_id, body.business_type,
+        body.audit_status, body.remark, current_user.id,
+    )
+    if result["success"] == 0 and result["failed"] == 0:
+        return Result.ok(data=result, msg="当前没有待审核记录")
+    msg = f"已批量{body.audit_status} {result['success']} 条"
+    if result["failed"]:
+        msg += f"，{result['failed']} 条失败"
+    return Result.ok(data=result, msg=msg)

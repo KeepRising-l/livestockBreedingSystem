@@ -98,6 +98,29 @@ export function addFeedingRecordApi(params: Partial<FeedingRecord>) {
   return http.post('/feeding/record/add', params)
 }
 
+/** 批量提交里的单个圈舍明细 */
+export interface FeedingRecordBatchItem {
+  pen_id: number
+  actual_concentrate?: number
+  actual_silage?: number
+  actual_hay?: number
+  animal_count?: number
+  status?: string
+  remark?: string
+}
+
+/** 批量提交：一次按多个圈舍生成多条饲喂记录（同日同时段已有记录的圈舍会被跳过） */
+export function batchAddFeedingRecordApi(params: {
+  feed_date: string
+  time_period: string
+  plan_id?: number
+  status?: string
+  remark?: string
+  items: FeedingRecordBatchItem[]
+}) {
+  return http.post('/feeding/record/batch-add', params)
+}
+
 export function updateFeedingRecordApi(id: number, params: Partial<FeedingRecord>) {
   return http.put(`/feeding/record/update/${id}`, params)
 }

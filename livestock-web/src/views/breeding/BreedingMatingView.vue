@@ -82,8 +82,9 @@
           <template #default="{ row }">{{ row.pregnancy_check_result || '-' }}</template>
         </el-table-column>
         <el-table-column prop="remark" label="备注" min-width="100" show-overflow-tooltip />
-        <el-table-column label="操作" width="230" fixed="right">
+        <el-table-column label="操作" width="300" fixed="right">
           <template #default="{ row }">
+            <el-button link type="primary" size="small" @click.stop="handleDetail(row as MatingRecord)">详情</el-button>
             <template v-if="canAudit && row.audit_status === '待审核'">
               <el-button link type="success" size="small" @click.stop="handleAudit(row as MatingRecord, '通过')">通过</el-button>
               <el-button link type="danger" size="small" @click.stop="handleAudit(row as MatingRecord, '驳回')">驳回</el-button>
@@ -121,6 +122,33 @@
       <template #footer>
         <el-button @click="auditDialogVisible = false">取消</el-button>
         <el-button :type="auditAction === '通过' ? 'success' : 'danger'" :loading="auditSaving" @click="confirmAudit">确认{{ auditAction }}</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 详情弹窗（所有行可见，只读） -->
+    <el-dialog v-model="detailDialogVisible" title="配种记录详情" width="720px">
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="配种日期">{{ detailRow.mating_date || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="母畜耳标">{{ detailRow.female_tag || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="公畜耳标">{{ detailRow.male_tag || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="畜种">{{ detailRow.species || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="配种方式">{{ detailRow.mating_type || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="精液来源">{{ detailRow.semen_source || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="审核状态">
+          <el-tag :type="auditColor(detailRow.audit_status || '')" size="small">{{ detailRow.audit_status || '-' }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="状态">
+          <el-tag :type="statusColor(detailRow.status || '')" size="small">{{ detailRow.status || '-' }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="预产期">{{ detailRow.expected_birth_date || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="剩余天数">{{ remainDaysText(detailRow.remain_days) }}</el-descriptions-item>
+        <el-descriptions-item label="孕检日期">{{ detailRow.pregnancy_check_date || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="孕检结果">{{ detailRow.pregnancy_check_result || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="备注" :span="2">{{ detailRow.remark || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="创建时间" :span="2">{{ formatDateTime(detailRow.create_time) }}</el-descriptions-item>
+      </el-descriptions>
+      <template #footer>
+        <el-button @click="detailDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
 
@@ -206,6 +234,7 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import { SPECIES_OPTIONS, MATING_TYPE_OPTIONS, MATING_STATUS_MAP, PREGNANCY_RESULT_OPTIONS, AUDIT_STATUS_MAP } from '@/utils/constants'
 import { useSpecies } from '@/composables/useSpecies'
+import { formatDateTime } from '@/utils/format'
 import { type TagProps, ElMessage, type FormInstance, type FormRules } from 'element-plus'
 
 const authStore = useAuthStore()
@@ -275,6 +304,12 @@ function auditColor(s: string): TagProps['type'] {
   return m[s] || 'info'
 }
 
+/** 剩余天数展示：为空 -，负数显示「已到期」 */
+function remainDaysText(v: number | null | undefined): string {
+  if (v === null || v === undefined) return '-'
+  return v >= 0 ? `${v}天` : '已到期'
+}
+
 // ========== 审核 ==========
 const auditDialogVisible = ref(false)
 const auditSaving = ref(false)
@@ -304,6 +339,15 @@ async function confirmAudit() {
   } finally {
     auditSaving.value = false
   }
+}
+
+// ========== 详情（只读，所有行可见） ==========
+const detailDialogVisible = ref(false)
+const detailRow = ref<Partial<MatingRecord>>({})
+
+function handleDetail(row: MatingRecord) {
+  detailRow.value = row
+  detailDialogVisible.value = true
 }
 
 function onDateChange(val: string[] | null) {

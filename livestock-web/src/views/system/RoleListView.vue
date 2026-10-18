@@ -41,7 +41,9 @@
             <el-tag :type="row.status === 1 ? 'success' : 'danger'">{{ row.status === 1 ? '正常' : '停用' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="create_time" label="创建时间" min-width="160" />
+        <el-table-column prop="create_time" label="创建时间" min-width="170">
+          <template #default="{ row }">{{ formatDateTime(row.create_time) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="140" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="handleEdit(row as RoleInfo)">编辑</el-button>
@@ -99,6 +101,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { getRoleListApi, addRoleApi, updateRoleApi, deleteRoleApi, type RoleInfo } from '@/api/system'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { formatDateTime } from '@/utils/format'
 
 const roles = ref<RoleInfo[]>([])
 const loading = ref(false)

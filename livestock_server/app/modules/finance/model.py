@@ -23,7 +23,11 @@ class SaleOrder(BasePO):
     __tablename__ = "sale_order"
 
     farm_id = Column(Integer, nullable=False, index=True, comment="养殖场ID")
-    order_no = Column(String(32), nullable=False, unique=True, comment="订单编号：SO+yyyyMMdd+流水")
+    # 订单编号按养殖场独立编号（各场当天流水互不影响），因此不能建全局唯一约束，
+    # 否则 A 场与 B 场同一天出栏会撞号（IntegrityError）。唯一性由
+    # service.sale_out 在 farm_id 范围内保证；索引保留用于按编号检索。
+    order_no = Column(String(32), nullable=False, index=True,
+                      comment="订单编号：SO+yyyyMMdd+流水（场内唯一）")
     customer = Column(String(100), nullable=False, index=True, comment="客户名称")
     customer_phone = Column(String(20), nullable=True, comment="客户电话")
     animal_count = Column(Integer, nullable=False, default=0, comment="销售数量")

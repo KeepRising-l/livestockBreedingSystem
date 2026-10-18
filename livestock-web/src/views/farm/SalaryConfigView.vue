@@ -42,7 +42,9 @@
             <span v-else class="muted">-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="create_time" label="创建时间" min-width="160" />
+        <el-table-column prop="create_time" label="创建时间" min-width="170">
+          <template #default="{ row }">{{ formatDateTime(row.create_time) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="130" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="handleEdit(row as SalaryConfig)">编辑</el-button>
@@ -108,6 +110,7 @@ import {
   type SalaryConfig,
 } from '@/api/farm'
 import { POST_MAP, DEFAULT_SALARY_MAP } from '@/utils/constants'
+import { formatDateTime } from '@/utils/format'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 
 const configs = ref<SalaryConfig[]>([])

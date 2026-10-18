@@ -7,8 +7,10 @@
    提交后进「待审核」，场主/超管审核通过才把母畜置为「妊娠」（与饲喂记录同一套审核口径）
 3. 孕检：阳性→成功怀孕；阴性→配种失败，母畜恢复"繁育期"
 4. 产犊：存活率自动计算，母畜生长阶段恢复"繁育期"
-5. 预警：P2 定时任务自动生成，此处仅提供列表/详情/处理（已处理/已忽略）与手动补录；
-   配种相关预警只统计「已审核通过」的记录
+5. 预警：规则统一收敛在本模块 ensure_alerts()，列表接口按需生成 + 每日 00:10 定时任务兜底；
+   此处提供列表/详情/处理（已处理/已忽略）与手动补录，配种相关预警只统计「已审核通过」的记录
+6. 母畜/公畜列表返回的 growth_stage 为繁育展示口径（繁育期/妊娠），
+   real_growth_stage 为按出生日期实时计算的档案真实阶段（如育肥期）
 """
 from datetime import date, datetime, timedelta
 from typing import Optional
@@ -18,7 +20,13 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import BizException
 from app.modules.animal.model import Animal
-from app.modules.animal.service import BREEDABLE_AGE, GESTATION_DAYS, PHYSIO_STATUSES
+from app.modules.animal.service import (
+    BREEDABLE_AGE,
+    GESTATION_DAYS,
+    PHYSIO_STATUSES,
+    determine_growth_stage,
+    to_animal_out,
+)
 from app.modules.breeding.model import MatingRecord, BirthRecord, BreedingAlert, BreedingMale
 from app.modules.breeding.schema import (
     MatingIn, MatingUpdateIn, PregnancyCheckIn, MatingQuery,
@@ -35,6 +43,11 @@ PREGNANCY_RESULTS = {"阳性", "阴性"}
 ALERT_TYPES = {"孕检", "临产", "未发情"}
 ALERT_HANDLE_STATUSES = {"已处理", "已忽略"}
 MALE_HEALTH_STATUSES = {"健康", "亚健康", "淘汰"}
+
+# 预警规则常量（天）：列表接口按需生成与每日定时任务共用，避免规则双份维护
+PREGNANCY_CHECK_DAYS = 60   # 配种后满 60 天 → 孕检提醒
+BIRTH_REMIND_DAYS = 15      # 预产期前 15 天（含已逾期）→ 临产提醒
+HEAT_REMIND_DAYS = 60       # 产犊后满 60 天仍无配种 → 未发情提醒
 
 
 # ============================================================
@@ -80,6 +93,27 @@ def list_breed_animals(
     total = q.count()
     items = q.order_by(Animal.ear_tag.asc()).offset((page_num - 1) * page_size).limit(page_size).all()
     return {"list": items, "total": total, "pageNum": page_num, "pageSize": page_size}
+
+
+def breed_animal_out(a: Animal) -> dict:
+    """
+    组装母畜/公畜列表返回字段（繁育模块口径）。
+
+    为什么不能直接返回 ORM 的 growth_stage：该列只在入栏时写一次 + 每日 00:05 刷新，
+    会长期陈旧（例如 373 日龄的牛被存成"生长期"）。繁育档案展示口径与档案真实阶段拆开：
+    - age_days：按出生日期实时计算；
+    - growth_stage：繁育展示口径 —— 已确认妊娠显示"妊娠"，其余达到可繁育日龄的显示"繁育期"；
+    - real_growth_stage：档案真实生长阶段，按出生日期实时计算（妊娠个体也保留如"育肥期"）。
+    """
+    data = to_animal_out(a).model_dump()
+    age_days = data.get("age_days")
+    data["real_growth_stage"] = (
+        determine_growth_stage(a.species, age_days) if age_days is not None else None
+    )
+    data["growth_stage"] = (
+        "妊娠" if (a.growth_stage == "妊娠" or a.physio_status == "妊娠") else "繁育期"
+    )
+    return data
 
 
 def _get_animal(db: Session, farm_id: int, ear_tag: str) -> Animal:
@@ -139,15 +173,8 @@ def update_male_health(db: Session, farm_id: int, ear_tag: str, body: MaleHealth
 
 
 def _male_out(db: Session, a: Animal, profile: Optional[BreedingMale]) -> dict:
-    """组装公畜返回：档案基础字段 + 健康档案 + 配种统计"""
-    d = {
-        "id": a.id, "farm_id": a.farm_id, "ear_tag": a.ear_tag, "species": a.species,
-        "breed": a.breed, "pen_id": a.pen_id, "gender": a.gender,
-        "birth_date": a.birth_date, "in_date": a.in_date, "out_date": a.out_date,
-        "growth_stage": a.growth_stage, "physio_status": a.physio_status,
-        "status": a.status, "source": a.source, "remark": a.remark,
-        "create_time": a.create_time,
-    }
+    """组装公畜返回：档案基础字段（含实时日龄/繁育口径阶段） + 健康档案 + 配种统计"""
+    d = breed_animal_out(a)
     # 健康档案（无则默认健康，使用年限起点回退出生日期）
     health_status = profile.health_status if profile else "健康"
     use_start = profile.use_start_date if profile else a.birth_date
@@ -548,11 +575,166 @@ def delete_birth(db: Session, farm_id: int, record_id: int):
 
 
 # ============================================================
-# 繁育预警（P2 定时任务自动生成，此处列表/详情/处理）
+# 繁育预警（列表接口按需生成 + 每日定时任务兜底，规则统一在 ensure_alerts）
 # ============================================================
 
+def _alert_exists(db: Session, farm_id: int, animal_tag: str,
+                  alert_type: str, alert_date: date) -> bool:
+    """同养殖场 + 同耳标 + 同类型 + 同预警日期已存在则视为已生成（幂等）"""
+    return db.query(BreedingAlert).filter(
+        BreedingAlert.farm_id == farm_id,
+        BreedingAlert.animal_tag == animal_tag,
+        BreedingAlert.alert_type == alert_type,
+        BreedingAlert.alert_date == alert_date,
+    ).first() is not None
+
+
+def _notify_birth_alert(db: Session, farm_id: int, alert: BreedingAlert) -> None:
+    """
+    新建「临产」预警后，给本养殖场所有启用的场主推送站内消息（不 commit）。
+
+    仅在 ensure_alerts 真正新建预警时调用，因此重复打开页面不会重复推送；
+    send_message 在函数内导入，避免 breeding 与 system 模块之间形成顶层循环依赖。
+    """
+    from app.models.user import User
+    from app.modules.system.service import send_message
+
+    owners = db.query(User).filter(
+        User.farm_id == farm_id,
+        User.user_type == 2,  # 养殖场主
+        User.status == 1,
+        User.deleted == False,
+    ).all()
+    for owner in owners:
+        send_message(
+            db,
+            farm_id=farm_id,
+            receiver_user_id=owner.id,
+            title=f"临产预警：耳标 {alert.animal_tag}",
+            content=alert.alert_content,
+            related_module="breeding",
+            related_id=alert.id,
+            message_type="系统提醒",
+        )
+
+
+def ensure_alerts(db: Session, farm_id: int) -> int:
+    """
+    按需生成指定养殖场的繁育预警（幂等），返回本次新建条数。
+
+    规则（与每日 00:10 定时任务共用，只有这一份实现）：
+    1. 孕检：已审核通过、状态「待孕检」、配种日期 <= 今天 - 60 天；
+    2. 临产：已审核通过、状态「成功怀孕」、预产期非空且 <= 今天 + 15 天
+       （不再限制 >= 今天，已过预产期的也要提醒，内容区分剩余/逾期）；
+       新建临产预警时同步给本场场主发站内消息（顶栏铃铛未读角标）；
+    3. 未发情：产犊已满 60 天，且产犊之后没有审核通过的配种记录。
+
+    幂等键：farm_id + animal_tag + alert_type + alert_date（今天）。
+    生成成功后内部提交；生成失败直接抛给调用方，由调用方 rollback 并决定是否影响主流程。
+    """
+    today = date.today()
+    created = 0
+    # 同一批次内同耳标同类型只生成一条（多胎次/多条历史配种记录时不重复）
+    created_keys: set[tuple[str, str]] = set()
+
+    def add_once(alert_type: str, animal_tag: str, related_id: Optional[int],
+                 alert_content: str) -> None:
+        nonlocal created
+        key = (animal_tag, alert_type)
+        if key in created_keys:
+            return
+        if _alert_exists(db, farm_id, animal_tag, alert_type, today):
+            return
+        # 同耳标同类型还有「待处理」的预警时不再重复生成：
+        # 否则同一条临产提醒会在预产期前 15 天里每天堆一条，预警列表全是重复行、
+        # 顶栏铃铛也会天天响。处理（已处理/已忽略）之后才会再生成新的提醒。
+        already_pending = db.query(BreedingAlert.id).filter(
+            BreedingAlert.farm_id == farm_id,
+            BreedingAlert.animal_tag == animal_tag,
+            BreedingAlert.alert_type == alert_type,
+            BreedingAlert.status == "待处理",
+            BreedingAlert.deleted == False,
+        ).first()
+        if already_pending:
+            return
+        rec = BreedingAlert(
+            farm_id=farm_id,
+            alert_type=alert_type,
+            animal_tag=animal_tag,
+            related_id=related_id,
+            alert_date=today,
+            alert_content=alert_content,
+            status="待处理",
+        )
+        db.add(rec)
+        db.flush()  # 先拿到预警 id，站内消息 related_id 需要
+        created_keys.add(key)
+        created += 1
+        # 只有真正新建的临产预警才推送站内消息，重复调用不会重复发
+        if alert_type == "临产":
+            _notify_birth_alert(db, farm_id, rec)
+
+    # 1. 孕检提醒：配种后满 60 天仍未孕检
+    check_line = today - timedelta(days=PREGNANCY_CHECK_DAYS)
+    matings = db.query(MatingRecord).filter(
+        MatingRecord.farm_id == farm_id,
+        MatingRecord.deleted == False,
+        MatingRecord.audit_status == "通过",  # 未审核/驳回的记录不算数
+        MatingRecord.status == "待孕检",
+        MatingRecord.mating_date <= check_line,
+    ).all()
+    for m in matings:
+        add_once(
+            "孕检", m.female_tag, m.id,
+            f"耳标 {m.female_tag} 配种已满 {PREGNANCY_CHECK_DAYS} 天，请尽快安排孕检（配种日期 {m.mating_date}）",
+        )
+
+    # 2. 临产提醒：预产期距今天 <= 15 天；已逾期同样提醒（此前 >= today 导致逾期个体永远不产生预警）
+    remind_line = today + timedelta(days=BIRTH_REMIND_DAYS)
+    pregnant = db.query(MatingRecord).filter(
+        MatingRecord.farm_id == farm_id,
+        MatingRecord.deleted == False,
+        MatingRecord.audit_status == "通过",
+        MatingRecord.status == "成功怀孕",
+        MatingRecord.expected_birth_date.isnot(None),
+        MatingRecord.expected_birth_date <= remind_line,
+    ).all()
+    for m in pregnant:
+        remain = (m.expected_birth_date - today).days
+        if remain >= 0:
+            content = f"预产期 {m.expected_birth_date}，剩余 {remain} 天，请提前准备接产"
+        else:
+            content = f"预产期 {m.expected_birth_date}，已逾期 {abs(remain)} 天，请立即处理"
+        add_once("临产", m.female_tag, m.id, content)
+
+    # 3. 未发情提醒：产犊后满 60 天仍无下一次审核通过的配种记录
+    heat_line = today - timedelta(days=HEAT_REMIND_DAYS)
+    births = db.query(BirthRecord).filter(
+        BirthRecord.farm_id == farm_id,
+        BirthRecord.deleted == False,
+        BirthRecord.birth_date <= heat_line,
+    ).all()
+    for b in births:
+        later_mating = db.query(MatingRecord).filter(
+            MatingRecord.farm_id == farm_id,
+            MatingRecord.female_tag == b.female_tag,
+            MatingRecord.deleted == False,
+            MatingRecord.audit_status == "通过",
+            MatingRecord.mating_date >= b.birth_date,
+        ).first()
+        if later_mating:
+            continue
+        add_once(
+            "未发情", b.female_tag, b.id,
+            f"耳标 {b.female_tag} 产犊已满 {HEAT_REMIND_DAYS} 天仍未配种，请关注发情情况（产犊日期 {b.birth_date}）",
+        )
+
+    db.commit()
+    return created
+
+
 def add_alert(db: Session, farm_id: int, body: AlertIn, user_id: int) -> BreedingAlert:
-    """手动新增预警（供补录/测试，定时任务生成走同一函数）"""
+    """手动新增预警（仅补录/测试；自动生成走 ensure_alerts，暂不推送站内消息）"""
     if body.alert_type not in ALERT_TYPES:
         raise BizException(f"预警类型只能是：{'/'.join(sorted(ALERT_TYPES))}", code=40130)
     rec = BreedingAlert(

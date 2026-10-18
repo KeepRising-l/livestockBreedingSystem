@@ -11,13 +11,15 @@
 - 根据生长阶段判定应入哪类圈舍（A/B/C/D）
 - 在该类型 + 该畜种下找有空位的圈舍，按编号排序，依次分配
 """
+import re
+
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import BizException
 from app.core.utils import get_effective_farm_id
 from app.modules.pen.model import Pen
-from app.modules.pen.schema import PenAddIn, PenUpdateIn
+from app.modules.pen.schema import PenAddIn, PenBatchAddIn, PenUpdateIn
 
 
 # 生长阶段 -> 圈舍类型映射
@@ -45,11 +47,24 @@ SPECIES_ALLOWED = ("牛", "羊", "猪")
 # 耳标里的畜种位：牛=1 / 羊=2 / 猪=3（耳标共 5 位：畜种位 + 圈舍编号数字2位 + 序号2位）
 SPECIES_TAG_DIGIT = {"牛": "1", "羊": "2", "猪": "3"}
 
+# 批量添加单次数量上限
+BATCH_MAX_COUNT = 50
+# 编号格式：字母前缀 + 数字序号（如 A01；也允许 A1、A001 这类手工写法）
+PEN_CODE_PATTERN = re.compile(r"^[A-Za-z]+\d{1,6}$")
+# 编号前缀：纯字母
+PEN_CODE_PREFIX_PATTERN = re.compile(r"^[A-Za-z]{1,10}$")
+
 
 def validate_species(species: str, code: int = 40016):
     """校验畜种取值；None / 空串表示"待归属"，放行"""
     if species and species not in SPECIES_ALLOWED:
         raise BizException(f"畜种只能是：{'/'.join(SPECIES_ALLOWED)}", code=code)
+
+
+def validate_pen_type(pen_type: str):
+    """校验圈舍类型；单条新增与批量新增共用同一份规则"""
+    if pen_type not in ("A", "B", "C", "D"):
+        raise BizException("圈舍类型必须是 A/B/C/D", code=40011)
 
 
 def pen_tag_number(pen_code: str) -> str:
@@ -155,8 +170,7 @@ def _pen_code_scope_label(species: str) -> str:
 def add_pen(db: Session, farm_id: int, body: PenAddIn) -> Pen:
     """新增圈舍"""
     fid = get_effective_farm_id(db, farm_id)
-    if body.pen_type not in ("A", "B", "C", "D"):
-        raise BizException("圈舍类型必须是 A/B/C/D", code=40011)
+    validate_pen_type(body.pen_type)
     species = (body.species or "").strip() or None
     validate_species(species)
     code = (body.pen_code or "").strip()
@@ -185,6 +199,98 @@ def add_pen(db: Session, farm_id: int, body: PenAddIn) -> Pen:
     db.add(pen)
     db.commit()
     return pen
+
+
+def _batch_code_format_error(code: str) -> str:
+    """批量添加的编号格式校验，返回错误文案；空串表示通过"""
+    if not code:
+        return "圈舍编号不能为空"
+    if len(code) > 20:
+        return "圈舍编号不能超过 20 个字符"
+    if not PEN_CODE_PATTERN.match(code):
+        return "圈舍编号格式应为「字母前缀 + 数字序号」，如 A01"
+    return ""
+
+
+def generate_batch_codes(prefix: str, start_no: int, count: int) -> list[str]:
+    """按「前缀 + 起始序号 + 数量」生成编号，序号统一补 2 位：A/1/12 -> A01~A12"""
+    return [f"{prefix}{start_no + i:02d}" for i in range(count)]
+
+
+def _resolve_batch_codes(body: PenBatchAddIn) -> list[str]:
+    """
+    确定本次要创建的编号列表：
+    - 传了 codes 就直接用（前端预览后允许用户手工调整，以用户编辑结果为准）
+    - 否则按 prefix + start_no + count 由服务端生成
+    """
+    codes = [c.strip() for c in (body.codes or []) if c and c.strip()]
+    if codes:
+        if len(codes) > BATCH_MAX_COUNT:
+            raise BizException(
+                f"批量添加最多 {BATCH_MAX_COUNT} 条，本次提交 {len(codes)} 条", code=40023
+            )
+        return codes
+
+    if body.prefix is None or body.start_no is None or body.count is None:
+        raise BizException("请提供圈舍编号列表，或提供编号前缀、起始序号和数量", code=40024)
+    prefix = (body.prefix or "").strip()
+    if not PEN_CODE_PREFIX_PATTERN.match(prefix):
+        raise BizException("编号前缀只能是 1~10 位字母，如 A", code=40025)
+    if body.start_no < 1 or body.start_no > 999999:
+        raise BizException("起始序号必须在 1~999999 之间", code=40024)
+    if body.count < 1 or body.count > BATCH_MAX_COUNT:
+        raise BizException(f"批量数量必须在 1~{BATCH_MAX_COUNT} 之间", code=40023)
+    return generate_batch_codes(prefix, body.start_no, body.count)
+
+
+def batch_add_pens(db: Session, farm_id: int, body: PenBatchAddIn) -> dict:
+    """
+    批量新增圈舍：逐条复用 add_pen 的校验与落库逻辑，不复制一份规则。
+
+    - 公共字段（畜种 / 类型 / 容量）先整体校验，参数错了直接报业务错误
+    - 编号逐条校验格式、同畜种内重复、耳标数字冲突：不合法的跳过并记录原因，
+      不影响其它编号，从而支持「成功 N 条，跳过 M 条」
+    - add_pen 内部按条提交；单条失败后回滚，避免脏会话影响后续编号
+    """
+    fid = get_effective_farm_id(db, farm_id)
+    validate_pen_type(body.pen_type)
+    species = (body.species or "").strip() or None
+    validate_species(species)
+    if body.capacity is None or body.capacity < 1:
+        raise BizException("容量必须大于 0", code=40026)
+    codes = _resolve_batch_codes(body)
+
+    created_codes: list[str] = []
+    skipped: list[dict] = []
+    for code in codes:
+        reason = _batch_code_format_error(code)
+        if reason:
+            skipped.append({"code": code, "reason": reason})
+            continue
+        try:
+            pen = add_pen(db, fid, PenAddIn(
+                pen_code=code,
+                pen_type=body.pen_type,
+                species=species,
+                capacity=body.capacity,
+                remark=body.remark,
+            ))
+        except BizException as exc:
+            # 校验失败都发生在写库前，回滚一次清掉可能残留的会话状态
+            db.rollback()
+            skipped.append({"code": code, "reason": exc.msg})
+            continue
+        except Exception:
+            # 未知异常（如数据库约束冲突）：回滚本条后向上抛，交给全局处理器
+            db.rollback()
+            raise
+        created_codes.append(pen.pen_code)
+
+    return {
+        "created": len(created_codes),
+        "created_codes": created_codes,
+        "skipped": skipped,
+    }
 
 
 def update_pen(db: Session, farm_id: int, pen_id: int, body: PenUpdateIn) -> Pen:

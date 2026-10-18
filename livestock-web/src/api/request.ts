@@ -1,5 +1,5 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
-import { getToken, getSelectedFarmId, removeToken } from '@/utils/token'
+import { getToken, getSelectedFarmId, removeToken, removeSelectedFarmId } from '@/utils/token'
 import { ElMessage } from 'element-plus'
 
 const http = axios.create({
@@ -79,9 +79,21 @@ http.interceptors.response.use(
       }
       return Promise.reject(new Error('未登录或 token 已过期'))
     }
+      // 超管农场上下文失效（未选择 / 已删除 / 不存在）：清理本地缓存的选择并重载，
+      // 由 store 重新拉取农场列表后选定可用农场。用会话级标记保证一次失效只自动恢复一次，
+      // 避免"没有任何农场"时无限重载；恢复成功后由下面的成功分支清除标记。
+      if (data.code === 40302 && !sessionStorage.getItem('farm-ctx-reset')) {
+        sessionStorage.setItem('farm-ctx-reset', '1')
+        removeSelectedFarmId()
+        ElMessage.error(data.msg || '请先选择养殖场')
+        setTimeout(() => window.location.reload(), 300)
+        return Promise.reject(new Error(data.msg))
+      }
       ElMessage.error(data.msg || '请求失败')
       return Promise.reject(new Error(data.msg))
     }
+    // 请求成功：农场上下文有效，清除自动恢复标记
+    sessionStorage.removeItem('farm-ctx-reset')
     return data
   },
   (error: AxiosError) => {

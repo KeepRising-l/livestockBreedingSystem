@@ -400,6 +400,23 @@ def material_stats(db: Session, farm_id: int) -> dict:
 
     type_dist = _dist(stocks, lambda s: s.material_type)
     status_dist = _dist(stocks, lambda s: s.status)
+
+    # 各物资库存量分布（按物资名称聚合：数量 + 库存金额），替代原先无区分度的状态饼图
+    name_agg: dict[str, dict] = {}
+    for s in stocks:
+        item = name_agg.setdefault(s.material_name, {
+            "name": s.material_name, "value": 0.0,
+            "unit": s.unit or "", "amount": 0.0, "type": s.material_type,
+        })
+        qty = float(s.quantity or 0)
+        item["value"] += qty
+        item["amount"] += qty * float(s.unit_price or 0)
+    name_dist = sorted(
+        ({**v, "value": round(v["value"], 2), "amount": round(v["amount"], 2)}
+         for v in name_agg.values()),
+        key=lambda x: x["value"], reverse=True,
+    )
+
     shortage_count = sum(1 for s in stocks if s.is_shortage == 1)
     expired_count = sum(1 for s in stocks if s.status == "已过期")
     expiring_count = sum(1 for s in stocks if s.status == "即将过期")
@@ -429,6 +446,7 @@ def material_stats(db: Session, farm_id: int) -> dict:
         "stock_count": len(stocks),
         "type_dist": type_dist,
         "status_dist": status_dist,
+        "name_dist": name_dist,
         "shortage_count": shortage_count,
         "expired_count": expired_count,
         "expiring_count": expiring_count,

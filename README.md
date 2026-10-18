@@ -42,7 +42,16 @@ livestockBreedingSystem/
 │   │   │   └── system/        # 系统字典
 │   │   ├── schemas/           # 全局 DTO
 │   │   └── services/          # 全局服务
+│   ├── tests/                 # 后端 pytest 回归测试（SQLite 内存库，不连开发/生产库）
+│   │   ├── conftest.py        # 夹具：内存库 + TestClient + 依赖覆盖
+│   │   ├── test_farm_context.py        # 超管农场上下文 / 租户隔离
+│   │   ├── test_inventory_audit.py     # 库存审核原子性（顺序语义）
+│   │   ├── test_feeding_cost_allocation.py  # 单只饲料成本分摊
+│   │   ├── test_smoke.py               # 端到端冒烟链路
+│   │   └── test_concurrency_mysql.py   # MySQL 真并发（需 TEST_MYSQL_URL，默认跳过）
 │   ├── requirements.txt
+│   ├── requirements-dev.txt   # 测试依赖（pytest / httpx）
+│   ├── pytest.ini
 │   └── seed_data.py           # 测试数据脚本
 ├── livestock-web/             # 前端（Vue3）
 │   ├── src/
@@ -104,6 +113,41 @@ python init_sunshine_data.py   # 阳光牧场完整演示数据（清库重建�
 python seed_missing_tables.py  # 仅补齐空表：公畜档案/公告/站内消息/档案历史（不清库，可重复执行）
 ```
 
+## 🧪 测试
+
+### 后端回归测试（推荐先跑这个）
+
+用 SQLite 内存库运行，**不连接开发/生产数据库**，可重复执行：
+
+```bash
+cd livestock_server
+pip install -r requirements.txt -r requirements-dev.txt
+
+python -m pytest tests/ -v        # 全量回归：农场上下文 / 库存审核 / 成本分摊 / 冒烟链路
+python quick_test.py              # 快速冒烟（= pytest tests/test_smoke.py）
+```
+
+覆盖范围：超管农场上下文与租户隔离、库存审核的原子性与重复审核、单只饲料成本分摊、
+入栏/圈舍/饲喂/审核/库存/出栏销售端到端链路。失败用例返回非零退出码，可直接接入 CI。
+
+**并发测试（需自备 MySQL 测试库）**：SQLite 无法代表生产数据库的并发语义，
+真并发用例单独放在 `tests/test_concurrency_mysql.py`，默认跳过；指定专用测试库后运行
+（严禁指向开发/生产库，该库会被反复建表清理）：
+
+```bash
+cd livestock_server
+TEST_MYSQL_URL="mysql+pymysql://root:密码@127.0.0.1:3306/livestock_test?charset=utf8mb4" \
+  python -m pytest tests/test_concurrency_mysql.py -v
+```
+
+### 前端测试
+
+```bash
+cd livestock-web
+npm test          # Vitest 单元测试
+npm run build     # vue-tsc 类型检查 + 生产构建
+```
+
 ## 👤 默认账号
 
 | 角色 | 账号 | 密码 | 说明 |
@@ -115,7 +159,8 @@ python seed_missing_tables.py  # 仅补齐空表：公畜档案/公告/站内消
 
 - [使用说明书](docs/使用说明书.md) —— 安装部署 + 逐模块操作说明 + 业务规则 + 常见问题
 - [技术详解（小白版）](docs/技术详解.md) —— 每个功能背后用了什么技术，面向零基础讲解
-- 设计文档：BRD / PRD / HDD / LLD / [API](docs/API-智能养殖信息管理系统.md) / [DBD](docs/DBD-智能养殖信息管理系统.md)
+- [API 接口文档](docs/API-智能养殖信息管理系统.md) —— 接口字段、错误码、请求头约定（运行时另有 `/docs` 自动生成）
+- [数据库迁移指南](docs/migrations.md) —— Alembic 日常流程与环境接入
 
 ## 📄 License
 

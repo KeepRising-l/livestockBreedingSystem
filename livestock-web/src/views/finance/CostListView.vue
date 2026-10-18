@@ -33,7 +33,9 @@
           <template #default="{ row }"><span v-if="row.voucher_no">{{ row.voucher_no }}</span><span v-else class="muted">-</span></template>
         </el-table-column>
         <el-table-column prop="remark" label="备注" min-width="180" />
-        <el-table-column prop="create_time" label="创建时间" min-width="160" />
+        <el-table-column prop="create_time" label="创建时间" min-width="170">
+          <template #default="{ row }">{{ formatDateTime(row.create_time) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="130" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="handleEdit(row as CostExpense)">编辑</el-button>
@@ -92,6 +94,7 @@ import {
   getExpenseListApi, addExpenseApi, updateExpenseApi, deleteExpenseApi, type CostExpense,
 } from '@/api/finance'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { formatDateTime } from '@/utils/format'
 
 const EXPENSE_TYPES = ['饲料', '兽药', '疫苗', '人工', '水电', '其他']
 

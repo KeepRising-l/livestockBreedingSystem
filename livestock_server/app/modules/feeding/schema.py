@@ -4,7 +4,7 @@
 入参/出参/查询数据模型。
 """
 from datetime import date, datetime
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel, Field
 
@@ -101,6 +101,31 @@ class FeedingRecordUpdateIn(BaseModel):
     animal_count: Optional[int] = None
     status: Optional[str] = None
     remark: Optional[str] = None
+
+
+class FeedingRecordBatchItemIn(BaseModel):
+    """批量提交里单个圈舍的一条饲喂记录"""
+    pen_id: int = Field(..., description="圈舍ID")
+    actual_concentrate: Optional[float] = Field(None, ge=0, description="实际精料重量（整圈合计 kg）")
+    actual_silage: Optional[float] = Field(None, ge=0, description="实际青贮重量（整圈合计 kg）")
+    actual_hay: Optional[float] = Field(None, ge=0, description="实际干草重量（整圈合计 kg）")
+    animal_count: Optional[int] = Field(None, ge=0, description="饲喂头数")
+    status: Optional[str] = Field(None, description="投喂状态，缺省用批次的统一值")
+    remark: Optional[str] = Field(None, max_length=255)
+
+
+class FeedingRecordBatchIn(BaseModel):
+    """
+    批量提交饲喂记录：一次提交按多个圈舍生成多条记录
+
+    日期/时段/方案对整批统一，每个圈舍一条明细；同一天同一时段同一圈舍已有记录会被跳过。
+    """
+    feed_date: date = Field(..., description="饲喂日期")
+    time_period: str = Field(..., description="时段：早/晚")
+    plan_id: Optional[int] = Field(None, description="关联饲喂方案ID（整批共用）")
+    status: str = Field("未投喂", description="投喂状态：未投喂/已投喂/已跳过")
+    remark: Optional[str] = Field(None, max_length=255)
+    items: List[FeedingRecordBatchItemIn] = Field(..., min_length=1, description="每个圈舍一条")
 
 
 class FeedingRecordOut(BaseModel):

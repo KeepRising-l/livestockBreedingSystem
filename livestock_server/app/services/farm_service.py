@@ -15,13 +15,10 @@ def list_all_farms(db: Session) -> list[Farm]:
 
 
 def get_farm_info(db: Session, farm_id: int) -> Farm:
-    """获取养殖场信息。farm_id 为 0 时 fallback 到第一个养殖场"""
-    farm = None
-    if farm_id:
-        farm = db.query(Farm).filter(Farm.id == farm_id, Farm.deleted == False).first()
-    if not farm:
-        # 超管或未关联养殖场时，返回第一个养殖场
-        farm = db.query(Farm).filter(Farm.deleted == False).order_by(Farm.id).first()
+    """获取养殖场信息（严格模式：farm_id 无效或农场不存在时抛业务错误，不回退到首个农场）"""
+    if not farm_id:
+        raise BizException("请先选择目标养殖场", code=40302)
+    farm = db.query(Farm).filter(Farm.id == farm_id, Farm.deleted == False).first()
     if not farm:
         raise BizException("养殖场不存在", code=40006)
     return farm

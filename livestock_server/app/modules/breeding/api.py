@@ -5,7 +5,7 @@
 - 配种记录：新增（自动算预产期，提交进待审核）、列表、详情、修改、删除、孕检登记、
   审核（场主/超管，通过后才把母畜置为妊娠 —— 与饲喂记录同一套审核口径）
 - 产犊记录：新增（存活率自动算）、列表、详情、修改、删除
-- 繁育预警：列表、详情、手动新增、处理（已处理/已忽略）
+- 繁育预警：列表（按需生成当天预警并推送临产站内消息）、详情、手动新增、处理（已处理/已忽略）
 
 说明：繁育日常记录（配种/产犊/预警）所有登录用户可提交，归属校验统一在 service 层按 farm_id 过滤；
       审核类动作（配种记录审核）限场主/超管。
@@ -13,6 +13,7 @@
 from datetime import date
 
 from fastapi import APIRouter, Depends, Query
+from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -63,7 +64,8 @@ def list_females(
     result = breeding_service.list_breed_animals(
         db, farm_id, "母", species, keyword, physio_status, pageNum, pageSize
     )
-    result["list"] = [AnimalOut.model_validate(a) for a in result["list"]]
+    # 显式组装：growth_stage 用繁育口径，并补 age_days / real_growth_stage
+    result["list"] = [breeding_service.breed_animal_out(a) for a in result["list"]]
     return Result.ok(data=result)
 
 
@@ -263,6 +265,13 @@ def list_alerts(
     current_user: User = Depends(get_current_user),
 ):
     farm_id = _require_farm(current_user)
+    # 按需生成：打开预警页面即可看到当天预警，不再依赖 00:10 定时任务常驻。
+    # 生成失败只记日志，不能影响列表查询（try 内已提交，失败时回滚本场本次生成）。
+    try:
+        breeding_service.ensure_alerts(db, farm_id)
+    except Exception as e:
+        db.rollback()
+        logger.warning(f"繁育预警按需生成失败（farm_id={farm_id}）：{e}")
     query = AlertQuery(
         alert_type=alert_type, species=species, animal_tag=animal_tag, status=status,
         alert_date_start=alert_date_start, alert_date_end=alert_date_end,

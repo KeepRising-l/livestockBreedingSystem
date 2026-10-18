@@ -19,12 +19,15 @@ from app.modules.feeding.model import FeedingPlan, FeedingRecord
 from app.modules.pen.model import Pen
 from app.modules.feeding.schema import (
     FeedingPlanIn, FeedingPlanUpdateIn, FeedingPlanQuery,
-    FeedingRecordIn, FeedingRecordUpdateIn, FeedingRecordQuery,
+    FeedingRecordIn, FeedingRecordBatchIn, FeedingRecordUpdateIn, FeedingRecordQuery,
     AuditActionIn,
 )
 
 # 支持的畜种编码
 SPECIES_CODES = {"cattle": "牛", "sheep": "羊", "pig": "猪"}
+# 时段与投喂状态取值（与前端下拉/单选一致）
+FEED_TIME_PERIODS = ("早", "晚")
+FEED_RECORD_STATUSES = ("未投喂", "已投喂", "已跳过")
 
 
 # ============================================================
@@ -277,6 +280,91 @@ def add_record(db: Session, farm_id: int, body: FeedingRecordIn, user_id: int) -
     db.add(rec)
     db.commit()
     return rec
+
+
+def add_records_batch(db: Session, farm_id: int, body: FeedingRecordBatchIn, user_id: int) -> dict:
+    """
+    批量提交饲喂记录：一次提交按多个圈舍生成多条记录。
+
+    规则与单条提交一致：
+    - 日期/时段/方案对整批统一，每个圈舍一条明细
+    - 同一天同一时段同一圈舍已有记录 → 跳过（不报错，返回 skipped 让前端提示）
+    - 圈舍不存在/不属于本场 → 跳过
+    - 成本按实际重量 × 方案单价 / 1000 计算（与单条提交同一个函数）
+    """
+    if body.time_period not in FEED_TIME_PERIODS:
+        raise BizException(f"时段只能是：{'/'.join(FEED_TIME_PERIODS)}", code=40047)
+    if body.status not in FEED_RECORD_STATUSES:
+        raise BizException(f"投喂状态只能是：{'/'.join(FEED_RECORD_STATUSES)}", code=40048)
+
+    pen_ids = [it.pen_id for it in body.items]
+    if len(set(pen_ids)) != len(pen_ids):
+        raise BizException("本次提交中同一圈舍出现了多次，请检查", code=40049)
+
+    pens = {
+        p.id: p for p in db.query(Pen).filter(
+            Pen.id.in_(pen_ids), Pen.farm_id == farm_id, Pen.deleted == False
+        ).all()
+    }
+    plan = get_plan(db, farm_id, body.plan_id) if body.plan_id else None
+
+    # 已有记录的圈舍（同日同时段），一次性查出来，避免逐条查库
+    existed = {
+        r[0] for r in db.query(FeedingRecord.pen_id).filter(
+            FeedingRecord.farm_id == farm_id,
+            FeedingRecord.feed_date == body.feed_date,
+            FeedingRecord.time_period == body.time_period,
+            FeedingRecord.pen_id.in_(pen_ids),
+            FeedingRecord.deleted == False,
+        ).all()
+    }
+
+    created = 0
+    skipped = []
+    for item in body.items:
+        pen = pens.get(item.pen_id)
+        if not pen:
+            skipped.append({"pen_id": item.pen_id, "pen_code": None, "reason": "圈舍不存在或不属于当前养殖场"})
+            continue
+        if item.pen_id in existed:
+            skipped.append({
+                "pen_id": pen.id, "pen_code": pen.pen_code,
+                "reason": f"{body.feed_date} {body.time_period} 已有饲喂记录",
+            })
+            continue
+        status = item.status or body.status
+        if status not in FEED_RECORD_STATUSES:
+            raise BizException(f"投喂状态只能是：{'/'.join(FEED_RECORD_STATUSES)}", code=40048)
+
+        db.add(FeedingRecord(
+            farm_id=farm_id,
+            feed_date=body.feed_date,
+            time_period=body.time_period,
+            pen_id=pen.id,
+            pen_type=pen.pen_type,
+            plan_id=body.plan_id,
+            plan_concentrate=plan.concentrate_weight if plan else None,
+            plan_silage=plan.silage_weight if plan else None,
+            plan_hay=plan.hay_weight if plan else None,
+            actual_concentrate=item.actual_concentrate,
+            actual_silage=item.actual_silage,
+            actual_hay=item.actual_hay,
+            animal_count=item.animal_count,
+            feed_cost=_calc_feed_cost(
+                item.actual_concentrate, plan.concentrate_price if plan else None,
+                item.actual_silage, plan.silage_price if plan else None,
+                item.actual_hay, plan.hay_price if plan else None,
+            ),
+            status=status,
+            audit_status="待审核",
+            operator_user_id=user_id,
+            feed_time=datetime.now() if status == "已投喂" else None,
+            remark=item.remark or body.remark,
+        ))
+        created += 1
+
+    db.commit()
+    return {"created": created, "skipped": skipped}
 
 
 def update_record(db: Session, farm_id: int, record_id: int, body: FeedingRecordUpdateIn) -> FeedingRecord:

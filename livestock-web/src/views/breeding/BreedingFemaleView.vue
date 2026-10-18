@@ -36,7 +36,13 @@
         <el-table-column prop="ear_tag" label="耳标" width="100" />
         <el-table-column prop="species" label="畜种" width="70" />
         <el-table-column prop="breed" label="品种" min-width="120" />
-        <el-table-column prop="growth_stage" label="生长阶段" width="90" />
+        <el-table-column label="生长阶段" width="110">
+          <template #default="{ row }">
+            <el-tooltip :content="`档案生长阶段：${row.real_growth_stage || '-'}`" placement="top">
+              <span>{{ row.growth_stage || '-' }}</span>
+            </el-tooltip>
+          </template>
+        </el-table-column>
         <el-table-column label="生理状态" width="90">
           <template #default="{ row }">
             <el-tag v-if="row.physio_status" size="small" :type="physioTagType(row.physio_status)">{{ row.physio_status }}</el-tag>
@@ -49,6 +55,12 @@
         <el-table-column prop="status" label="状态" width="80" />
         <el-table-column prop="birth_date" label="出生日期" width="110">
           <template #default="{ row }">{{ row.birth_date || '-' }}</template>
+        </el-table-column>
+        <el-table-column label="日龄" width="90">
+          <template #default="{ row }">
+            <span v-if="row.age_days !== null && row.age_days !== undefined">{{ row.age_days }} 天</span>
+            <span v-else>-</span>
+          </template>
         </el-table-column>
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">

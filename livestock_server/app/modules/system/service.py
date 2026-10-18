@@ -688,7 +688,7 @@ ROLE_PERMS = {
     "admin": RBAC_MODULES,
     "owner": [m for m in RBAC_MODULES if m != "system"],
     "feeder": ["dashboard", "pen", "animal", "feeding"],
-    "vet": ["dashboard", "pen", "animal", "health", "inventory"],
+    "vet": ["dashboard", "pen", "animal", "health"],
     "breeder": ["dashboard", "pen", "animal", "breeding"],
     "keeper": ["dashboard", "pen", "inventory"],
 }

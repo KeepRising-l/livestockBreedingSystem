@@ -16,7 +16,7 @@ from app.core.exceptions import BizException
 from app.models.user import User
 from app.modules.feeding.schema import (
     FeedingPlanIn, FeedingPlanUpdateIn, FeedingPlanOut, FeedingPlanQuery,
-    FeedingRecordIn, FeedingRecordUpdateIn, FeedingRecordOut, FeedingRecordQuery,
+    FeedingRecordIn, FeedingRecordBatchIn, FeedingRecordUpdateIn, FeedingRecordOut, FeedingRecordQuery,
     AuditActionIn,
 )
 from app.modules.feeding import service as feeding_service
@@ -134,6 +134,18 @@ def add_record(body: FeedingRecordIn, db: Session = Depends(get_db),
         raise BizException("当前用户未关联养殖场", code=40300)
     rec = feeding_service.add_record(db, current_user.farm_id, body, current_user.id)
     return Result.ok(data=FeedingRecordOut.model_validate(rec), msg="提交成功，等待审核")
+
+
+@router.post("/record/batch-add", summary="批量提交饲喂记录（多个圈舍一次生成多条，进入待审核）")
+def add_records_batch(body: FeedingRecordBatchIn, db: Session = Depends(get_db),
+                      current_user: User = Depends(get_current_user)):
+    if not current_user.farm_id:
+        raise BizException("当前用户未关联养殖场", code=40300)
+    data = feeding_service.add_records_batch(db, current_user.farm_id, body, current_user.id)
+    msg = f"提交成功 {data['created']} 条，等待审核"
+    if data["skipped"]:
+        msg += f"；{len(data['skipped'])} 个圈舍已跳过"
+    return Result.ok(data=data, msg=msg)
 
 
 @router.put("/record/update/{record_id}", summary="修改饲喂记录（仅待审核状态可改）")

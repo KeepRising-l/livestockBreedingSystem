@@ -5,16 +5,17 @@
 """
 from sqlalchemy.orm import Session
 
+from app.core.exceptions import BizException
+
 
 def get_effective_farm_id(db: Session, farm_id: int) -> int:
     """
-    获取有效的养殖场 ID。
+    获取有效的养殖场 ID（严格模式，不再回退到第一个农场）。
 
-    如果 farm_id 为 0 或 None（超管未选择时），自动 fallback 到第一个养殖场。
-    如果已指定 farm_id，直接返回。
+    farm_id 为 0 或 None（超管未选择养殖场等场景）时抛 40302 业务错误，
+    防止误读误写其他养殖场的数据。调用方应先通过 resolve_farm_id()
+    或登录用户的 farm_id 拿到有效 ID。
     """
-    if farm_id:
-        return farm_id
-    from app.models.farm import Farm
-    farm = db.query(Farm).filter(Farm.deleted == False).order_by(Farm.id).first()
-    return farm.id if farm else 0
+    if not farm_id:
+        raise BizException("请先选择目标养殖场", code=40302)
+    return farm_id

@@ -139,7 +139,7 @@
     <!-- 批量新增弹窗 -->
     <el-dialog v-model="batchDialogVisible" title="批量防疫（同一疫苗类型）" width="640px">
       <el-alert type="info" :closable="false" show-icon class="mb-16"
-        title="批量防疫为同一疫苗类型接种到多个耳标，系统会为每个耳标生成一条防疫记录" />
+        title="批量防疫为同一疫苗类型接种到多个耳标；可按圈舍批量带入，也可手动输入，系统会为每个耳标生成一条防疫记录" />
       <el-form :model="batchForm" :rules="batchRules" ref="batchFormRef" label-width="110px">
         <el-form-item label="防疫日期" prop="vaccine_date">
           <el-date-picker v-model="batchForm.vaccine_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
@@ -163,23 +163,62 @@
         <el-form-item label="下次接种日期">
           <el-date-picker v-model="batchForm.next_vaccine_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="耳标列表" prop="ear_tags">
+
+        <el-divider content-position="left">按圈舍选择</el-divider>
+        <el-form-item label="圈舍">
+          <el-select
+            v-model="selectedPenIds"
+            multiple
+            filterable
+            clearable
+            :loading="penLoading"
+            no-data-text="当前畜种暂无在栏圈舍"
+            placeholder="选择圈舍后自动带入该圈舍全部在栏耳标"
+            style="width: 100%"
+            @change="handlePenChange"
+          >
+            <el-option
+              v-for="p in penGroups"
+              :key="p.pen_id"
+              :label="`${p.pen_code}（${p.current_count} 头）`"
+              :value="p.pen_id"
+            />
+          </el-select>
+          <div class="pen-tip">可多选圈舍；取消某个圈舍时，只移除由该圈舍自动带入的耳标，手动添加的耳标会保留。</div>
+        </el-form-item>
+        <el-form-item label="手动添加耳标" prop="ear_tags">
           <el-select
             v-model="batchForm.ear_tags"
             multiple
             filterable
             allow-create
             default-first-option
+            collapse-tags
+            collapse-tags-tooltip
             placeholder="输入耳标后回车添加，可多选"
             style="width: 100%"
+            @remove-tag="handleEarTagRemove"
           >
             <el-option v-for="a in animalOptions" :key="a.ear_tag" :label="`${a.ear_tag} (${a.breed})`" :value="a.ear_tag" />
           </el-select>
         </el-form-item>
         <el-form-item label="已选耳标">
-          <div>
-            <el-tag v-for="tag in batchForm.ear_tags" :key="tag" class="mr-8" size="small" closable @close="removeEarTag(tag)">{{ tag }}</el-tag>
-            <span v-if="!batchForm.ear_tags.length" class="c-gray">暂未选择</span>
+          <div class="selected-tags">
+            <div class="selected-summary">
+              <span>
+                已选 <b>{{ batchForm.ear_tags.length }}</b> 头
+                <template v-if="batchForm.ear_tags.length">
+                  （圈舍带入 {{ penSourcedCount }} 头，手动 {{ manualSourcedCount }} 头）
+                </template>
+              </span>
+              <el-button link type="danger" size="small" :disabled="!batchForm.ear_tags.length" @click="clearSelectedEarTags">
+                清空已选
+              </el-button>
+            </div>
+            <div class="tag-wrap">
+              <el-tag v-for="tag in batchForm.ear_tags" :key="tag" class="mr-8 tag-item" size="small" closable @close="removeEarTag(tag)">{{ tag }}</el-tag>
+              <span v-if="!batchForm.ear_tags.length" class="c-gray">暂未选择</span>
+            </div>
           </div>
         </el-form-item>
         <el-form-item label="备注">
@@ -212,7 +251,8 @@ import dayjs from 'dayjs'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import {
   getVaccineListApi, addVaccineApi, updateVaccineApi, deleteVaccineApi,
-  auditVaccineApi, batchAddVaccineApi, type VaccineRecord,
+  auditVaccineApi, batchAddVaccineApi, getVaccinePenAnimalsApi,
+  type VaccineRecord, type VaccinePenGroup,
 } from '@/api/health'
 import { getAnimalListApi, type AnimalInfo } from '@/api/animal'
 import { queryDictDataByTypeApi } from '@/api/system'
@@ -293,6 +333,21 @@ const batchRules: FormRules = {
   ear_tags: [{ required: true, message: '请至少选择一个耳标', trigger: 'change' }],
 }
 
+// 批量防疫-按圈舍选择
+const penGroups = ref<VaccinePenGroup[]>([])
+const penLoading = ref(false)
+const selectedPenIds = ref<number[]>([])
+// 已生效的圈舍选择（@change 时对比新增/移除）
+let appliedPenIds = new Set<number>()
+// 耳标来源标记：key=耳标，value=带入该耳标的圈舍ID；无记录表示用户手动添加
+const earTagSources = reactive<Record<string, number>>({})
+
+// 已选耳标中由圈舍带入 / 手动添加的数量
+const penSourcedCount = computed(() =>
+  batchForm.ear_tags.filter(tag => earTagSources[tag] !== undefined).length
+)
+const manualSourcedCount = computed(() => batchForm.ear_tags.length - penSourcedCount.value)
+
 // 审核弹窗
 const auditDialogVisible = ref(false)
 const auditAction = ref('通过')
@@ -372,8 +427,71 @@ async function loadAnimalOptions() {
   }
 }
 
+async function loadPenGroups() {
+  penLoading.value = true
+  try {
+    const res = await getVaccinePenAnimalsApi({ species: speciesZh.value })
+    penGroups.value = (res.data as VaccinePenGroup[]) || []
+  } catch {
+    penGroups.value = []
+  } finally {
+    penLoading.value = false
+  }
+}
+
+// 把某个圈舍的全部在栏耳标并入已选；已存在的（含手动添加的）不重复添加、也不改来源
+function addTagsFromPen(pen: VaccinePenGroup) {
+  for (const animal of pen.animals) {
+    if (!batchForm.ear_tags.includes(animal.ear_tag)) {
+      batchForm.ear_tags.push(animal.ear_tag)
+      earTagSources[animal.ear_tag] = pen.pen_id
+    }
+  }
+}
+
+// 只移除来源为该圈舍的耳标，手动添加的耳标不动
+function removeTagsByPen(penId: number) {
+  const removing = batchForm.ear_tags.filter(tag => earTagSources[tag] === penId)
+  if (!removing.length) return
+  const removingSet = new Set(removing)
+  batchForm.ear_tags = batchForm.ear_tags.filter(tag => !removingSet.has(tag))
+  removing.forEach(tag => { delete earTagSources[tag] })
+}
+
+// 圈舍多选变化：新增圈舍自动带入耳标；取消圈舍回退该圈舍带入的耳标
+function handlePenChange(ids: number[]) {
+  const next = new Set(ids)
+  appliedPenIds.forEach(penId => {
+    if (!next.has(penId)) removeTagsByPen(penId)
+  })
+  next.forEach(penId => {
+    if (!appliedPenIds.has(penId)) {
+      const pen = penGroups.value.find(p => p.pen_id === penId)
+      if (pen) addTagsFromPen(pen)
+    }
+  })
+  appliedPenIds = next
+  batchFormRef.value?.clearValidate('ear_tags')
+}
+
 function removeEarTag(tag: string) {
   batchForm.ear_tags = batchForm.ear_tags.filter(x => x !== tag)
+  delete earTagSources[tag]
+  batchFormRef.value?.clearValidate('ear_tags')
+}
+
+// el-select 的下拉标签移除事件参数类型为 unknown，转成耳标字符串后统一处理
+function handleEarTagRemove(tag: unknown) {
+  removeEarTag(String(tag))
+}
+
+// 清空已选：耳标、圈舍选择和来源标记一起重置，避免界面状态不一致
+function clearSelectedEarTags() {
+  batchForm.ear_tags = []
+  selectedPenIds.value = []
+  appliedPenIds = new Set()
+  Object.keys(earTagSources).forEach(tag => { delete earTagSources[tag] })
+  batchFormRef.value?.clearValidate('ear_tags')
 }
 
 function handleAdd() {
@@ -403,7 +521,13 @@ function handleBatchAdd() {
     ear_tags: [],
     remark: '',
   })
+  // 重置按圈舍选择状态，并按当前畜种重新拉取在栏畜禽
+  selectedPenIds.value = []
+  appliedPenIds = new Set()
+  penGroups.value = []
+  Object.keys(earTagSources).forEach(tag => { delete earTagSources[tag] })
   batchDialogVisible.value = true
+  loadPenGroups()
 }
 
 function handleEdit(row: VaccineRecord) {
@@ -532,4 +656,10 @@ watch(species, () => {
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
 .mr-8 { margin-right: 8px; }
 .c-gray { color: #6b8ba4; }
+.pen-tip { margin-top: 4px; font-size: 12px; line-height: 1.5; color: #6b8ba4; }
+.selected-tags { width: 100%; }
+.selected-summary { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.selected-summary b { color: #0e2f47; }
+.tag-wrap { display: flex; flex-wrap: wrap; max-height: 128px; overflow-y: auto; }
+.tag-item { margin-bottom: 8px; }
 </style>

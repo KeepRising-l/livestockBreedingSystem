@@ -90,6 +90,24 @@ class VaccineRecordQuery(BaseModel):
     pageSize: int = 10
 
 
+class VaccinePenAnimalOut(BaseModel):
+    """批量防疫-按圈舍选择：圈舍内单头在栏畜禽"""
+    ear_tag: str
+    breed: Optional[str] = None
+    gender: Optional[str] = None
+    growth_stage: Optional[str] = None
+    status: str
+
+
+class VaccinePenGroupOut(BaseModel):
+    """批量防疫-按圈舍选择：按圈舍分组的在栏畜禽"""
+    pen_id: int
+    pen_code: str
+    species: Optional[str] = None
+    current_count: int = 0  # 本组实际在栏头数（与 animals 长度一致）
+    animals: List[VaccinePenAnimalOut] = Field(default_factory=list)
+
+
 # ============ 诊疗记录 ============
 
 class MedicalRecordIn(BaseModel):

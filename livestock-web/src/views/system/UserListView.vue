@@ -71,7 +71,9 @@
             <el-tag :type="row.status === 1 ? 'success' : 'danger'">{{ row.status === 1 ? '启用' : '禁用' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="create_time" label="创建时间" min-width="160" />
+        <el-table-column prop="create_time" label="创建时间" min-width="170">
+          <template #default="{ row }">{{ formatDateTime(row.create_time) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="210" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="handleEdit(row as UserInfo)">编辑</el-button>
@@ -190,6 +192,7 @@ import { getSystemUserListApi, addSystemUserApi, updateSystemUserApi, deleteSyst
 import { getRoleListApi, type RoleInfo } from '@/api/system'
 import { getFarmListApi, type FarmListItem } from '@/api/farm'
 import { USER_TYPE_MAP, POST_MAP } from '@/utils/constants'
+import { formatDateTime } from '@/utils/format'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 
 const users = ref<UserInfo[]>([])

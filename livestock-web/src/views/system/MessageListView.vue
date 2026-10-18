@@ -70,6 +70,7 @@ import {
   markMessageReadApi, markAllMessagesReadApi, type SysMessage,
 } from '@/api/system'
 import { useAuthStore } from '@/stores/auth'
+import { formatDateTime } from '@/utils/format'
 import { ElMessage } from 'element-plus'
 
 const list = ref<SysMessage[]>([])
@@ -83,8 +84,7 @@ const authStore = useAuthStore()
 const query = reactive<{ is_read: number | undefined }>({ is_read: undefined })
 
 function formatTime(t: string | null) {
-  if (!t) return '-'
-  return t.replace('T', ' ').slice(0, 19)
+  return formatDateTime(t)
 }
 
 function search() {

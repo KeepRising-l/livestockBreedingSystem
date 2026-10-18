@@ -74,9 +74,9 @@
         <el-table-column prop="source" label="来源" width="80">
           <template #default="{ row }">{{ row.source || '-' }}</template>
         </el-table-column>
-        <el-table-column prop="delete_time" label="删除日期" width="110">
+        <el-table-column prop="delete_time" label="删除日期" width="170">
           <template #default="{ row }">
-            <span style="color: #f56c6c;">{{ row.delete_time || '-' }}</span>
+            <span style="color: #f56c6c;">{{ formatDateTime(row.delete_time) }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="remark" label="备注" min-width="120" show-overflow-tooltip />
@@ -116,6 +116,7 @@ import { ref, reactive, onMounted, watch } from 'vue'
 import { getAnimalHistoryListApi, restoreAnimalApi, type AnimalHistoryInfo } from '@/api/animal'
 import { SPECIES_OPTIONS, GENDER_OPTIONS, ANIMAL_STATUS_MAP } from '@/utils/constants'
 import { useSpecies } from '@/composables/useSpecies'
+import { formatDateTime } from '@/utils/format'
 import { type TagProps, ElMessage } from 'element-plus'
 
 const { species, speciesZh } = useSpecies()

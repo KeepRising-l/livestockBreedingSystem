@@ -29,6 +29,14 @@ class ReviewAuditIn(BaseModel):
     remark: Optional[str] = Field(None, max_length=255, description="审核备注")
 
 
+class ReviewBatchAuditIn(BaseModel):
+    """一键批量审核（把当前所有待审核一次性审掉）"""
+    business_type: Optional[str] = Field(
+        None, description="业务类型；留空或 all 表示全部类型")
+    audit_status: str = Field("通过", description="目标审核状态：通过/驳回")
+    remark: Optional[str] = Field(None, max_length=255, description="审核备注")
+
+
 class ReviewCountsOut(BaseModel):
     """各类型待审核数量"""
     feeding: int = 0

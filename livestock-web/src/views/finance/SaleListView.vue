@@ -80,13 +80,16 @@
         </el-form-item>
       </el-form>
       <el-alert type="info" :closable="false" class="mb-16"
-        title="勾选要出售的畜禽并填写重量，勾选后自动计算该只销售额" />
+        title="勾选要出售的畜禽并填写重量，勾选后自动计算该只销售额；确认出栏后，这些畜禽档案会同步转入「档案管理 - 历史记录」并从档案列表移除，圈舍自动腾出。" />
       <el-table ref="candRef" :data="candidates" v-loading="candLoading" stripe max-height="320">
         <el-table-column type="selection" width="45" />
         <el-table-column prop="ear_tag" label="耳标" width="90" />
         <el-table-column prop="species" label="种类" width="70" />
         <el-table-column prop="breed" label="品种" width="110" />
-        <el-table-column prop="growth_stage" label="生长阶段" width="110" />
+        <el-table-column prop="growth_stage" label="生长阶段" width="100" />
+        <el-table-column prop="age_days" label="日龄" width="80">
+          <template #default="{ row }">{{ row.age_days ? `${row.age_days} 天` : '-' }}</template>
+        </el-table-column>
         <el-table-column prop="in_date" label="入栏日期" width="110" />
         <el-table-column label="销售重量kg" width="140">
           <template #default="{ row }">
@@ -121,8 +124,10 @@
           <el-table-column prop="labor_cost" label="人工成本" width="90" />
           <el-table-column prop="total_cost" label="总成本" width="90" />
           <el-table-column prop="sale_amount" label="销售额" width="90" />
-          <el-table-column prop="profit" label="利润" width="90">
-            <template #default="{ row }"><span class="profit">+{{ Number(row.profit).toFixed(2) }}</span></template>
+          <el-table-column prop="profit" label="利润" width="100">
+            <template #default="{ row }">
+              <span :class="Number(row.profit) >= 0 ? 'profit' : 'loss'">{{ Number(row.profit).toFixed(2) }}</span>
+            </template>
           </el-table-column>
           <el-table-column prop="profit_rate" label="利润率" width="80">
             <template #default="{ row }">{{ row.profit_rate }}%</template>
@@ -280,4 +285,5 @@ watch(species, () => {
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
 .amount { font-weight: 600; color: #e6a23c; }
 .profit { color: #67c23a; }
+.loss { color: #f56c6c; }
 </style>

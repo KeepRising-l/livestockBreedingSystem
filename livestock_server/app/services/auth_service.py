@@ -25,6 +25,10 @@ def login(db: Session, body: LoginIn) -> dict:
         raise BizException("账号或密码错误", code=40001)
     if not verify_password(body.password, user.password):
         raise BizException("账号或密码错误", code=40001)
+    # 已删除（离职/被移除）的账号不能再登录；文案与"账号或密码错误"保持一致，
+    # 避免通过登录响应差异探测某个账号是否曾经存在
+    if user.deleted:
+        raise BizException("账号或密码错误", code=40001)
     if user.status != 1:
         raise BizException("账号已被禁用", code=40003)
 

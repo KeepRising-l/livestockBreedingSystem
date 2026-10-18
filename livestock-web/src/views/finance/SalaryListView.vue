@@ -49,8 +49,8 @@
             <el-tag :type="row.status === '已发放' ? 'success' : 'warning'">{{ row.status }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="pay_time" label="发放时间" min-width="160">
-          <template #default="{ row }"><span v-if="row.pay_time">{{ row.pay_time }}</span><span v-else class="muted">-</span></template>
+        <el-table-column prop="pay_time" label="发放时间" min-width="180">
+          <template #default="{ row }"><span v-if="row.pay_time">{{ formatDateTime(row.pay_time) }}</span><span v-else class="muted">-</span></template>
         </el-table-column>
         <el-table-column label="操作" width="90" fixed="right">
           <template #default="{ row }">
@@ -77,6 +77,7 @@ import {
   getSalaryListApi, generateSalaryApi, paySalaryApi, type SalaryRecord,
 } from '@/api/finance'
 import { POST_MAP } from '@/utils/constants'
+import { formatDateTime } from '@/utils/format'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const salaries = ref<SalaryRecord[]>([])

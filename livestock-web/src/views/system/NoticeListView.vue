@@ -24,7 +24,9 @@
         <el-table-column prop="create_by" label="发布人" width="100">
           <template #default="{ row }">{{ row.create_by || '-' }}</template>
         </el-table-column>
-        <el-table-column prop="create_time" label="发布时间" min-width="160" />
+        <el-table-column prop="create_time" label="发布时间" min-width="170">
+          <template #default="{ row }">{{ formatDateTime(row.create_time) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="handleView(row as NoticeInfo)">详情</el-button>
@@ -84,7 +86,7 @@
         <el-descriptions-item label="标题">{{ viewData.notice_title }}</el-descriptions-item>
         <el-descriptions-item label="类型">{{ viewData.notice_type }}</el-descriptions-item>
         <el-descriptions-item label="发布人">{{ viewData.create_by || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="发布时间">{{ viewData.create_time || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="发布时间">{{ formatDateTime(viewData.create_time) }}</el-descriptions-item>
         <el-descriptions-item label="内容">
           <div class="notice-content">{{ viewData.notice_content || '-' }}</div>
         </el-descriptions-item>
@@ -97,6 +99,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { getNoticeListApi, addNoticeApi, updateNoticeApi, deleteNoticeApi, getNoticeApi, type NoticeInfo } from '@/api/system'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { formatDateTime } from '@/utils/format'
 
 const notices = ref<NoticeInfo[]>([])
 const loading = ref(false)

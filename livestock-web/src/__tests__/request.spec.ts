@@ -22,6 +22,7 @@ function deferred<T>() {
 
 beforeEach(() => {
   localStorage.clear()
+  sessionStorage.clear()
   window.history.replaceState(null, '', '/')
   vi.clearAllMocks()
 })
@@ -140,5 +141,60 @@ describe('响应拦截器', () => {
     })
     await expect(http.get('/thing')).rejects.toThrow()
     expect(ElMessage.error).toHaveBeenCalledWith('网络错误，请检查连接')
+  })
+})
+
+describe('超管农场上下文失效（40302）', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('清除本地缓存的选择农场并触发一次重载', async () => {
+    const reloadSpy = vi.fn()
+    // happy-dom 下 location.reload 不可写，直接替换 location 对象
+    Object.defineProperty(window, 'location', {
+      value: { ...window.location, reload: reloadSpy },
+      writable: true,
+      configurable: true,
+    })
+    localStorage.setItem('livestock_selected_farm_id', '9')
+    http.defaults.adapter = vi.fn(async (config) =>
+      ok(config, { code: 40302, msg: '请先选择目标养殖场（请求头 X-Farm-Id）', data: null }),
+    )
+
+    await expect(http.get('/animals')).rejects.toThrow('请先选择目标养殖场')
+    expect(localStorage.getItem('livestock_selected_farm_id')).toBeNull()
+    expect(ElMessage.error).toHaveBeenCalled()
+    vi.advanceTimersByTime(400)
+    expect(reloadSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('已自动恢复过一次后不再重载（防死循环）', async () => {
+    const reloadSpy = vi.fn()
+    Object.defineProperty(window, 'location', {
+      value: { ...window.location, reload: reloadSpy },
+      writable: true,
+      configurable: true,
+    })
+    sessionStorage.setItem('farm-ctx-reset', '1')
+    http.defaults.adapter = vi.fn(async (config) =>
+      ok(config, { code: 40302, msg: '请先选择目标养殖场（请求头 X-Farm-Id）', data: null }),
+    )
+
+    await expect(http.get('/animals')).rejects.toThrow('请先选择目标养殖场')
+    vi.advanceTimersByTime(400)
+    expect(reloadSpy).not.toHaveBeenCalled()
+  })
+
+  it('请求成功后清除恢复标记，后续失效仍能自动恢复', async () => {
+    sessionStorage.setItem('farm-ctx-reset', '1')
+    http.defaults.adapter = vi.fn(async (config) =>
+      ok(config, { code: 200, msg: 'ok', data: {} }),
+    )
+    await http.get('/thing')
+    expect(sessionStorage.getItem('farm-ctx-reset')).toBeNull()
   })
 })

@@ -11,7 +11,9 @@ from app.core.perms import require_perms
 from app.core.utils import get_effective_farm_id
 from app.models.user import User
 from app.modules.pen.model import Pen
-from app.modules.pen.schema import PenAddIn, PenUpdateIn, PenOut
+from app.modules.pen.schema import (
+    PenAddIn, PenBatchAddIn, PenBatchAddOut, PenUpdateIn, PenOut,
+)
 from app.modules.pen import service as pen_service
 
 router = APIRouter(dependencies=[Depends(require_perms("pen"))])
@@ -60,6 +62,26 @@ def add_pen(
     farm_id = resolve_farm_id(current_user, x_farm_id)
     pen = pen_service.add_pen(db, farm_id, body)
     return Result.ok(data=PenOut.model_validate(pen), msg="添加成功")
+
+
+@router.post("/batch-add", summary="批量新增圈舍")
+def batch_add_pens(
+    body: PenBatchAddIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    x_farm_id: int | None = Header(None, alias="X-Farm-Id"),
+):
+    """一次创建多个圈舍：成功部分落库，重复/不合法的编号跳过并返回原因"""
+    if current_user.user_type == 3:
+        return Result.fail(msg="员工无权操作", code=40301)
+    farm_id = resolve_farm_id(current_user, x_farm_id)
+    data = pen_service.batch_add_pens(db, farm_id, body)
+    result = PenBatchAddOut(**data)
+    skipped = len(result.skipped)
+    msg = f"成功添加 {result.created} 个圈舍"
+    if skipped:
+        msg += f"，跳过 {skipped} 个"
+    return Result.ok(data=result.model_dump(), msg=msg)
 
 
 @router.put("/update/{pen_id}", summary="修改圈舍")

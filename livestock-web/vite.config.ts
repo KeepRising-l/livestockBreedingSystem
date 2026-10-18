@@ -57,6 +57,13 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    watch: {
+      // Windows 上编辑器/工具「先写临时文件再改名」的保存方式，会在同目录留下
+      // .xxx.scss.<pid>.<uuid>.tmpdir/ 目录。chokidar 去 watch 这个临时文件时
+      // 可能拿到 EBUSY（文件仍被占用），整个 dev server 会直接崩掉。
+      // 这些临时产物与产物目录不需要被监听。
+      ignored: ['**/.*.tmpdir/**', '**/*.tmp', '**/dist/**'],
+    },
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8000',

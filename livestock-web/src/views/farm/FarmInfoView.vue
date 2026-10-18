@@ -13,7 +13,7 @@
           <el-descriptions-item label="状态">
             <el-tag :type="farm.status === 1 ? 'success' : 'danger'">{{ farm.status === 1 ? '正常' : '停用' }}</el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="创建时间">{{ farm.create_time || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="创建时间">{{ formatDateTime(farm.create_time) }}</el-descriptions-item>
         </el-descriptions>
         <el-button type="primary" class="mt-16" @click="showDialog = true" v-if="canManage">编辑信息</el-button>
       </template>
@@ -46,6 +46,7 @@ import { getFarmInfoApi, updateFarmApi, type FarmInfo } from '@/api/farm'
 import { useAuthStore } from '@/stores/auth'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage } from 'element-plus'
+import { formatDateTime } from '@/utils/format'
 
 const authStore = useAuthStore()
 const farm = ref<FarmInfo | null>(null)

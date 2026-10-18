@@ -8,7 +8,9 @@ export interface SaleCandidate {
   gender: string
   pen_id: number | null
   in_date: string | null
+  /** 按出生日期实时计算的生长阶段（与档案管理页一致） */
   growth_stage: string | null
+  age_days: number
   status: string
 }
 
@@ -78,6 +80,21 @@ export interface ProfitSummary {
   order_count: number
   animal_count: number
   total_amount: number
+  /** 进货支出总成本（关联进货记录） */
+  purchase_cost: number
+  /** 物资消耗总成本（关联领用记录） */
+  consume_cost: number
+  /** 人工薪资总成本（只含「已发放」的薪资记录，待发放不计入） */
+  labor_cost: number
+  /** 待发放薪资（尚未实际支出，不计入饲养总成本） */
+  labor_pending: number
+  /** 其他成本（自主录入的水电/其他支出） */
+  other_cost: number
+  /** 饲养总成本 = 进货支出 + 物资消耗 + 人工薪资 + 其他成本 */
+  breeding_cost: number
+  /** 盈利金额 = 销售金额 - 饲养总成本 */
+  profit: number
+  // 以下为兼容旧字段（total_cost = breeding_cost，total_profit/net_profit = profit）
   total_cost: number
   total_profit: number
   profit_rate: number

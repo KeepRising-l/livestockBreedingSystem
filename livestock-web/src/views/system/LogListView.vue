@@ -141,6 +141,7 @@ import {
   type OperLogInfo, type LoginLogInfo,
 } from '@/api/system'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { formatDateTime } from '@/utils/format'
 
 const activeTab = ref<'oper' | 'login'>('oper')
 
@@ -160,8 +161,7 @@ const loginQuery = reactive<Record<string, any>>({ username: '', status: undefin
 
 /** 把 ISO 时间字符串（如 2026-09-01T21:42:28.123456）格式化成可读形式（2026-09-01 21:42:28） */
 function formatTime(t: string | null | undefined) {
-  if (!t) return '-'
-  return t.replace('T', ' ').slice(0, 19)
+  return formatDateTime(t)
 }
 
 async function loadOperLogs() {

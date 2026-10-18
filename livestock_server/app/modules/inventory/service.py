@@ -17,6 +17,8 @@
 from datetime import date, datetime, timedelta
 from typing import Optional
 
+from sqlalchemy import update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import BizException
@@ -318,9 +320,11 @@ def delete_purchase(db: Session, farm_id: int, purchase_id: int):
 
 def audit_purchase(db: Session, farm_id: int, purchase_id: int, body: AuditActionIn) -> MaterialPurchase:
     """
-    场主审核进货记录
-    - 通过：自动关联/创建库存，并增加数量
+    场主审核进货记录（并发安全）
+    - 先用条件更新原子地把 待审核 → 通过/驳回：同一单据并发审核只有一个请求成功
+    - 通过：自动关联/创建库存并增加数量（_sync_purchase_to_stock 内部带行锁）
     - 驳回：不动库存
+    - 状态迁移与库存变更在同一事务中提交，任一环节失败整体回滚
     """
     if body.audit_status not in ("通过", "驳回"):
         raise BizException("审核状态只能填：通过 / 驳回", code=40063)
@@ -329,7 +333,21 @@ def audit_purchase(db: Session, farm_id: int, purchase_id: int, body: AuditActio
     if p.audit_status != "待审核":
         raise BizException("该记录已审核，不能重复审核", code=40064)
 
-    p.audit_status = body.audit_status
+    # 原子状态迁移：只允许 待审核 → 终态 一次，并发重复审核在此被拦截
+    moved = db.execute(
+        update(MaterialPurchase)
+        .where(
+            MaterialPurchase.id == purchase_id,
+            MaterialPurchase.farm_id == farm_id,
+            MaterialPurchase.deleted == False,
+            MaterialPurchase.audit_status == "待审核",
+        )
+        .values(audit_status=body.audit_status)
+        .execution_options(synchronize_session="evaluate")
+    )
+    if moved.rowcount == 0:
+        raise BizException("该记录已审核，不能重复审核", code=40064)
+
     if body.remark:
         p.remark = body.remark
 
@@ -340,40 +358,67 @@ def audit_purchase(db: Session, farm_id: int, purchase_id: int, body: AuditActio
     return p
 
 
+def _lock_stock(db: Session, farm_id: int, material_type: str, material_name: str,
+                include_deleted: bool = False) -> Optional[MaterialStock]:
+    """
+    按 (farm_id, 物资类型, 名称) 查库存行并加行锁（SELECT ... FOR UPDATE）。
+
+    - MySQL/InnoDB 下锁定该行直到事务提交，防止并发进货/入库丢失更新；
+      行锁读总是读取最新已提交版本，并发创建冲突后的重查也能看到对手已提交的行
+    - SQLite 方言会忽略 FOR UPDATE（单写者模型，测试场景退化为普通查询）
+    - include_deleted=True 时连软删除的行一并返回（唯一键 uk_farm_type_name
+      覆盖软删行，插入冲突后需要用它复活记录）
+    """
+    q = db.query(MaterialStock).filter(
+        MaterialStock.farm_id == farm_id,
+        MaterialStock.material_type == material_type,
+        MaterialStock.material_name == material_name,
+    )
+    if not include_deleted:
+        q = q.filter(MaterialStock.deleted == False)
+    return q.with_for_update().first()
+
+
 def _sync_purchase_to_stock(db: Session, farm_id: int, p: MaterialPurchase):
     """
-    进货记录同步库存（全系统唯一入口）：
-    1. 按 (farm_id, 类型, 名称) 找库存，没有则自动建档
+    进货记录同步库存（全系统唯一入口，并发安全）：
+    1. 行锁锁定 (farm_id, 类型, 名称) 对应库存，没有则自动建档；
+       并发创建撞唯一键 uk_farm_type_name 时回滚保存点后重查。
+       若冲突行是此前软删除的同名库存（删除前要求数量清零），复活并继续累加，
+       不再出现未处理的 500。
     2. 数量累加进货数量
     3. 有进货单价则移动加权更新均价，无单价则保持原价
     4. 生产日期/有效期更新为最新批次
     5. 回填 stock_id 并刷新过期/缺货状态
     """
-    stock = db.query(MaterialStock).filter(
-        MaterialStock.farm_id == farm_id,
-        MaterialStock.material_type == p.material_type,
-        MaterialStock.material_name == p.material_name,
-        MaterialStock.deleted == False,
-    ).first()
+    stock = _lock_stock(db, farm_id, p.material_type, p.material_name)
 
     if not stock:
-        # 库存里没有，自动创建一条
-        stock = MaterialStock(
-            farm_id=farm_id,
-            material_type=p.material_type,
-            material_name=p.material_name,
-            specification=None,
-            quantity=0,
-            unit=p.unit,
-            unit_price=float(p.cost_price) if p.cost_price else None,
-            warning_threshold=None,
-            production_date=p.production_date,
-            expiry_date=p.expiry_date,
-            status="正常",
-            is_shortage=0,
-        )
-        db.add(stock)
-        db.flush()
+        try:
+            with db.begin_nested():
+                stock = MaterialStock(
+                    farm_id=farm_id,
+                    material_type=p.material_type,
+                    material_name=p.material_name,
+                    specification=None,
+                    quantity=0,
+                    unit=p.unit,
+                    unit_price=float(p.cost_price) if p.cost_price else None,
+                    warning_threshold=None,
+                    production_date=p.production_date,
+                    expiry_date=p.expiry_date,
+                    status="正常",
+                    is_shortage=0,
+                )
+                db.add(stock)
+                db.flush()
+        except IntegrityError:
+            # 并发对手已提交同 (farm_id, 类型, 名称) 的库存行，或撞上软删除的同名行：
+            # 回滚保存点后带行锁重查（含软删行），命中则继续在既有行上累加/复活
+            stock = _lock_stock(db, farm_id, p.material_type, p.material_name, include_deleted=True)
+            if stock is None:
+                raise
+            stock.deleted = False
 
     # 增加库存数量
     old_qty = float(stock.quantity or 0)
@@ -515,8 +560,10 @@ def delete_consume(db: Session, farm_id: int, consume_id: int):
 
 def audit_consume(db: Session, farm_id: int, consume_id: int, body: AuditActionIn) -> MaterialConsume:
     """
-    场主审核领用记录
-    - 通过：再次校验库存（防并发），扣减库存
+    场主审核领用记录（并发安全）
+    - 先用条件更新原子地把 待审核 → 通过/驳回：同一单据并发审核只有一个请求成功
+    - 通过：行锁锁定库存行后再次校验并扣减，库存不足抛错时整个事务回滚
+      （单据状态不会单独落库，不会出现"审核通过但没扣库存"的中间态）
     - 驳回：不动库存
     """
     if body.audit_status not in ("通过", "驳回"):
@@ -526,15 +573,29 @@ def audit_consume(db: Session, farm_id: int, consume_id: int, body: AuditActionI
     if c.audit_status != "待审核":
         raise BizException("该记录已审核，不能重复审核", code=40076)
 
-    c.audit_status = body.audit_status
+    # 原子状态迁移：只允许 待审核 → 终态 一次，并发重复审核在此被拦截
+    moved = db.execute(
+        update(MaterialConsume)
+        .where(
+            MaterialConsume.id == consume_id,
+            MaterialConsume.farm_id == farm_id,
+            MaterialConsume.deleted == False,
+            MaterialConsume.audit_status == "待审核",
+        )
+        .values(audit_status=body.audit_status)
+        .execution_options(synchronize_session="evaluate")
+    )
+    if moved.rowcount == 0:
+        raise BizException("该记录已审核，不能重复审核", code=40076)
+
     if body.remark:
         c.remark = body.remark
 
     if body.audit_status == "通过":
-        # 再次校验库存（防并发）
+        # 行锁读库存（MySQL/InnoDB SELECT..FOR UPDATE，锁到事务提交；SQLite 方言忽略）
         stock = db.query(MaterialStock).filter(
             MaterialStock.id == c.stock_id, MaterialStock.farm_id == farm_id, MaterialStock.deleted == False
-        ).first()
+        ).with_for_update().first()
         if not stock:
             raise BizException("关联的库存物资已不存在", code=40077)
         if float(stock.quantity or 0) < float(c.quantity):
@@ -542,7 +603,7 @@ def audit_consume(db: Session, farm_id: int, consume_id: int, body: AuditActionI
                 f"库存不足，无法通过审核：当前 {stock.quantity}{stock.unit}，需领用 {c.quantity}{c.unit}",
                 code=40072,
             )
-        # 扣减库存
+        # 扣减库存（行锁保护下不会扣成负数）
         stock.quantity = float(stock.quantity) - float(c.quantity)
         # 刷新状态
         _refresh_stock_status(stock)

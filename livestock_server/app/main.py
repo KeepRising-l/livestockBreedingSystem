@@ -26,6 +26,7 @@ from app.database import Base, engine, SessionLocal
 from app.models import *  # noqa: F401,F403  引入所有模型，确保建表能发现
 from app.core.security import hash_password, decode_access_token
 from app.models.user import User
+from app.modules.system.model import SysRole
 from app.modules.system.service import init_dict_data, init_rbac_data, record_oper_log
 from app.scheduler import start_scheduler, shutdown_scheduler
 
@@ -194,6 +195,104 @@ def _ensure_pen_species(db):
         db.rollback()
 
 
+def _ensure_vet_role_perms(db):
+    """
+    存量库角色权限修复：兽医角色不应包含「物资库存（inventory）」模块。
+
+    背景：ROLE_PERMS["vet"] 早期误授了 inventory，而 init_rbac_data() 只在 sys_role
+    为空时首次初始化，已有环境不会随代码更新。这里用 ORM 做一次幂等修复：
+    仅当 vet.perms 中确实含 "inventory" 时才回写（兼容 MySQL 与测试用 SQLite 内存库），
+    不包含则静默跳过；异常回滚，不影响应用启动。
+    """
+    try:
+        role = db.query(SysRole).filter(SysRole.role_key == "vet").first()
+        if not role or not role.perms:
+            return
+        try:
+            perms = json.loads(role.perms)
+        except (ValueError, TypeError):
+            # perms 不是合法 JSON（老数据脏值），不做猜测性修改
+            return
+        if not isinstance(perms, list) or "inventory" not in perms:
+            return
+        role.perms = json.dumps([p for p in perms if p != "inventory"], ensure_ascii=False)
+        db.commit()
+        print("[init] 已移除兽医角色的「物资库存」权限（inventory）")
+    except Exception as e:
+        print(f"[init] 兽医角色权限修复跳过：{e}")
+        db.rollback()
+
+
+def _ensure_sale_order_no_index(db):
+    """
+    销售订单号唯一约束调整：order_no 由「全局唯一」改为「场内唯一」。
+
+    背景：订单编号规则是 SO + yyyyMMdd + 场内当日流水，流水号按 farm_id 统计，
+    因此不同养殖场在同一天必然生成相同编号（如两家场同时出第一单都是 SO20261018001）。
+    老库上 order_no 带着全局 UNIQUE 索引，B 场出栏时直接 IntegrityError 500。
+    这里把全局唯一索引降级为普通索引（保留检索能力），唯一性由业务层按 farm_id 保证。
+    幂等：索引已是非唯一则跳过；非 MySQL（测试库 SQLite）走异常忽略。
+    """
+    from sqlalchemy import text
+    try:
+        rows = db.execute(text(
+            "SELECT INDEX_NAME, NON_UNIQUE FROM INFORMATION_SCHEMA.STATISTICS "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME='sale_order' "
+            "  AND COLUMN_NAME='order_no'"
+        )).fetchall()
+        if not rows:
+            return
+        unique_idx = [r[0] for r in rows if int(r[1]) == 0 and r[0] != "PRIMARY"]
+        for name in unique_idx:
+            db.execute(text(f"ALTER TABLE sale_order DROP INDEX `{name}`"))
+            db.commit()
+            print(f"[init] 已移除 sale_order.order_no 的全局唯一索引（{name}），改为场内唯一")
+        if unique_idx and not any(int(r[1]) == 1 for r in rows):
+            db.execute(text("CREATE INDEX ix_sale_order_order_no ON sale_order (order_no)"))
+            db.commit()
+            print("[init] 已为 sale_order.order_no 建普通索引")
+    except Exception as e:
+        print(f"[init] sale_order.order_no 索引迁移跳过（非 MySQL 或已迁移）：{e}")
+        db.rollback()
+
+
+def _ensure_pen_count_sync(db):
+    """
+    圈舍存栏数校准：pen_info.current_count 与「圈内在栏档案数」不一致时按实际重算。
+
+    背景：在栏口径是 status ∈ 在栏/种用/隔离/待出栏 的未删除档案
+    （与 pen/animal/health/statistics/scheduler 各处列表口径一致）。
+    历史上有两条路径会让计数漂移：
+      1) 档案编辑里把状态改成「已出栏/死亡」，但当时没有联动扣减圈舍存栏；
+      2) 早期演示/导入数据直接写库。
+    计数漂移会连锁影响：圈舍显示存栏虚高 → 自动分配找不到空位、容量校验误报已满。
+    这里按实际档案数一次性校准（幂等），并打印被修正的圈舍，便于追查来源。
+    """
+    from sqlalchemy import text
+    try:
+        rows = db.execute(text(
+            "SELECT p.id, p.pen_code, p.current_count, "
+            "  (SELECT COUNT(*) FROM animal_archive a WHERE a.pen_id = p.id "
+            "     AND a.deleted = 0 AND a.status IN ('在栏','种用','隔离','待出栏')) "
+            "FROM pen_info p WHERE p.deleted = 0"
+        )).fetchall()
+        fixed = []
+        for pen_id, pen_code, current, actual in rows:
+            if int(current or 0) == int(actual or 0):
+                continue
+            db.execute(
+                text("UPDATE pen_info SET current_count = :n WHERE id = :id"),
+                {"n": int(actual or 0), "id": pen_id},
+            )
+            fixed.append(f"{pen_code}({current}->{actual})")
+        if fixed:
+            db.commit()
+            print(f"[init] 圈舍存栏数已按实际档案校准：{'、'.join(fixed)}")
+    except Exception as e:
+        print(f"[init] 圈舍存栏数校准跳过：{e}")
+        db.rollback()
+
+
 def init_db():
     """
     初始化数据库：
@@ -212,6 +311,8 @@ def init_db():
         _ensure_sys_notice_farm_id(db)
         _ensure_pen_species(db)
         _ensure_mating_audit_status(db)
+        _ensure_sale_order_no_index(db)
+        _ensure_pen_count_sync(db)
         admin = db.query(User).filter(User.username == settings.SUPER_ADMIN_USERNAME).first()
         if not admin:
             admin = User(
@@ -231,6 +332,8 @@ def init_db():
         init_dict_data(db)
         # 初始化 RBAC 角色 + 菜单（首次启动时）
         init_rbac_data(db)
+        # 存量库修复：兽医角色不应包含「物资库存」模块（幂等，首次初始化后也能生效）
+        _ensure_vet_role_perms(db)
     finally:
         db.close()
 

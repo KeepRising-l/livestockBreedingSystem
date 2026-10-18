@@ -19,6 +19,7 @@ from app.modules.health.schema import (
     VaccineRecordIn, VaccineBatchIn, VaccineRecordUpdateIn, VaccineRecordQuery,
     MedicalRecordIn, MedicalRecordUpdateIn, MedicalRecordQuery,
 )
+from app.modules.pen.model import Pen
 
 # 疫苗类型白名单（与字典 sys_vaccine_type 保持一致，宽松校验只挡非法值）
 VACCINE_TYPES = {"口蹄疫", "布病", "小反刍兽疫", "猪瘟", "蓝耳病", "伪狂犬", "牛结节性皮肤病"}
@@ -26,6 +27,8 @@ VACCINE_TYPES = {"口蹄疫", "布病", "小反刍兽疫", "猪瘟", "蓝耳病"
 TREATMENT_STATUSES = {"治疗中", "已康复", "死亡"}
 # 养殖种类白名单
 SPECIES = {"牛", "羊", "猪"}
+# 在栏状态（与圈舍模块 /pen/{pen_id}/animals 保持一致）
+IN_PEN_STATUSES = ("在栏", "种用", "隔离", "待出栏")
 
 
 # ============================================================
@@ -66,6 +69,64 @@ def get_vaccine(db: Session, farm_id: int, record_id: int) -> VaccineRecord:
     if not rec:
         raise BizException("防疫记录不存在", code=40080)
     return rec
+
+
+def list_vaccine_pen_animals(db: Session, farm_id: int, species: Optional[str] = None) -> List[dict]:
+    """
+    批量防疫-按圈舍选择：返回当前养殖场在栏畜禽，按圈舍分组。
+
+    - 一次 join 查询（pen_info + animal_archive）拿到全部数据，避免按圈舍逐间查询的 N+1；
+    - 只统计在栏状态（在栏/种用/隔离/待出栏），已出栏/死亡不出现；
+    - 排序稳定：圈舍编号升序 → 圈舍ID升序（跨畜种编号可能重复）→ 耳标升序；
+    - current_count 取本组实际在栏头数，与 animals 长度保持一致。
+    """
+    q = db.query(
+        Pen.id.label("pen_id"),
+        Pen.pen_code.label("pen_code"),
+        Pen.species.label("pen_species"),
+        Animal.ear_tag.label("ear_tag"),
+        Animal.species.label("animal_species"),
+        Animal.breed.label("breed"),
+        Animal.gender.label("gender"),
+        Animal.growth_stage.label("growth_stage"),
+        Animal.status.label("status"),
+    ).select_from(Pen).join(
+        Animal, Animal.pen_id == Pen.id
+    ).filter(
+        Pen.farm_id == farm_id,
+        Pen.deleted == False,
+        Animal.farm_id == farm_id,
+        Animal.deleted == False,
+        Animal.status.in_(IN_PEN_STATUSES),
+    )
+    if species:
+        # 以档案的实际畜种为准，避免圈舍 species 尚未归属（NULL）时漏掉在栏畜禽
+        q = q.filter(Animal.species == species)
+
+    rows = q.order_by(Pen.pen_code.asc(), Pen.id.asc(), Animal.ear_tag.asc()).all()
+
+    groups: dict[int, dict] = {}
+    for row in rows:
+        group = groups.get(row.pen_id)
+        if group is None:
+            group = {
+                "pen_id": row.pen_id,
+                "pen_code": row.pen_code,
+                "species": row.pen_species or row.animal_species,
+                "current_count": 0,
+                "animals": [],
+            }
+            groups[row.pen_id] = group
+        group["animals"].append({
+            "ear_tag": row.ear_tag,
+            "breed": row.breed,
+            "gender": row.gender,
+            "growth_stage": row.growth_stage,
+            "status": row.status,
+        })
+        group["current_count"] += 1
+
+    return list(groups.values())
 
 
 def _snapshot_animal(db: Session, farm_id: int, ear_tag: str) -> dict:

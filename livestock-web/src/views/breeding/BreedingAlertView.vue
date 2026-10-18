@@ -61,8 +61,10 @@
             <el-tag :type="statusColor(row.status)" size="small">{{ row.status }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="handle_time" label="处理时间" width="160">
-          <template #default="{ row }">{{ row.handle_time || '-' }}</template>
+        <el-table-column prop="handle_time" label="处理时间" width="180">
+          <template #default="{ row }">
+            <span :class="{ muted: !row.handle_time }">{{ formatDateTime(row.handle_time) }}</span>
+          </template>
         </el-table-column>
         <el-table-column prop="handle_remark" label="处理备注" min-width="120" show-overflow-tooltip>
           <template #default="{ row }">{{ row.handle_remark || '-' }}</template>
@@ -89,7 +91,7 @@
     <!-- 手动新增弹窗 -->
     <el-dialog v-model="addDialogVisible" title="手动新增预警" width="500px">
       <el-alert type="info" :closable="false" show-icon class="mb-16"
-        title="日常预警由系统定时任务自动生成，此处仅用于补录或测试" />
+        title="日常预警在打开页面时按需生成（每日定时任务兜底），此处仅用于补录或测试" />
       <el-form :model="addForm" :rules="addRules" ref="addFormRef" label-width="90px">
         <el-form-item label="预警类型" prop="alert_type">
           <el-select v-model="addForm.alert_type" placeholder="请选择" style="width: 100%">
@@ -138,6 +140,7 @@ import dayjs from 'dayjs'
 import { ref, reactive, onMounted, watch } from 'vue'
 import { getAlertListApi, addAlertApi, handleAlertApi, type BreedingAlert } from '@/api/breeding'
 import { ALERT_TYPE_MAP, ALERT_STATUS_MAP } from '@/utils/constants'
+import { formatDateTime } from '@/utils/format'
 import { useSpecies } from '@/composables/useSpecies'
 import { type TagProps, ElMessage, type FormInstance, type FormRules } from 'element-plus'
 
@@ -300,4 +303,5 @@ watch(species, () => {
 .mt-16 { margin-top: 16px; }
 .text-right { text-align: right; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
+.muted { color: #9db4c6; }
 </style>

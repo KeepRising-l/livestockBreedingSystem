@@ -18,13 +18,14 @@
         <span class="clock-text tech-metric">{{ clock }}</span>
       </div>
 
-      <!-- 超管农场选择器 -->
+      <!-- 超管农场选择器：只要有农场就展示，始终能看到当前操作的是哪个养殖场 -->
       <el-select
-        v-if="authStore.userType === 1 && authStore.farmList.length > 1"
+        v-if="authStore.userType === 1 && authStore.farmList.length >= 1"
         :model-value="authStore.selectedFarmId"
         @update:model-value="handleFarmSwitch"
         size="small"
         class="farm-selector"
+        placeholder="请选择养殖场"
       >
         <el-option
           v-for="f in authStore.farmList"

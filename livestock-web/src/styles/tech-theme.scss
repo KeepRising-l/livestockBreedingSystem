@@ -569,24 +569,62 @@ html.tech-light {
 
   /* ==============================================================
    * 七、表格：数据矩阵
-   * ============================================================ */
+   *
+   * 关于「固定列（操作列）底色和左侧列不一致」：
+   *   固定列是 position: sticky 的单元格，横向滚动时会浮在其它列之上，
+   *   所以它必须自绘一块**不透明**底色（否则下面的列会透上来，表现为文字叠字）；
+   *   但它一旦自绘成固定值（比如写死 #fff），就会和普通列的底色对不上 ——
+   *   普通列是透明的，透出的是容器底色：弹窗是白，卡片是 --tech-panel(#e9f1f7)。
+   *
+   *   所以这里把「行底色 / 斑马纹 / 悬停 / 当前行 / 表头渐变」全部令牌化，
+   *   只按容器给两组实色（白色弹窗 / 浅灰蓝卡片），普通列和固定列都只引用令牌，
+   *   两边就永远同色。实色值 = 原来的半透明色叠加到对应容器底色后的等效值，
+   *   因此视觉和改造前一致。
+   * ================================================================ */
   .el-table {
-    background-color: transparent;
-    --el-table-bg-color: transparent;
-    --el-table-tr-bg-color: transparent;
+    /* 默认容器：白色（弹窗/抽屉/独立白底区） */
+    --tech-table-row-bg: #ffffff;
+    --tech-table-row-bg-striped: #f7fcfd;
+    --tech-table-row-bg-hover: #e9f7fa;
+    --tech-table-row-bg-current: #ddf3f7;
+    --tech-table-head-from: #d9f1f6;
+    --tech-table-head-to: #f3fbfd;
+  }
+
+  /* 卡片容器：底色 --tech-panel，取同色以保证表格与卡片浑然一体 */
+  .el-card .el-table {
+    --tech-table-row-bg: var(--tech-panel);
+    --tech-table-row-bg-striped: #e2eef5;
+    --tech-table-row-bg-hover: #d5eaf3;
+    --tech-table-row-bg-current: #cbe7f1;
+    --tech-table-head-from: #c6e5f0;
+    --tech-table-head-to: #deedf5;
+  }
+
+  .el-table {
+    background-color: var(--tech-table-row-bg);
+    --el-table-bg-color: var(--tech-table-row-bg);
+    --el-table-tr-bg-color: var(--tech-table-row-bg);
     --el-table-header-bg-color: rgba(15, 168, 201, 0.12);
     --el-table-header-text-color: #0b7f9c;
     --el-table-text-color: #2b4b63;
     --el-table-border-color: rgba(15, 168, 201, 0.14);
-    --el-table-row-hover-bg-color: rgba(15, 168, 201, 0.09);
-    --el-table-current-row-bg-color: rgba(15, 168, 201, 0.14);
+    --el-table-row-hover-bg-color: var(--tech-table-row-bg-hover);
+    --el-table-current-row-bg-color: var(--tech-table-row-bg-current);
     --el-table-expanded-cell-bg-color: rgba(15, 168, 201, 0.04);
     --el-table-fixed-box-shadow: 0 0 12px rgba(16, 66, 100, 0.10);
     --el-table-fixed-left-column: inset 10px 0 10px -10px rgba(16, 66, 100, 0.10);
     --el-table-fixed-right-column: inset -10px 0 10px -10px rgba(16, 66, 100, 0.10);
 
-    th.el-table__cell {
-      background: linear-gradient(180deg, rgba(15, 168, 201, 0.16), rgba(15, 168, 201, 0.05)) !important;
+    /* 表头：普通列表头与固定列表头共用同一条不透明渐变，避免右侧表头偏色 */
+    th.el-table__cell,
+    th.el-table-fixed-column--left,
+    th.el-table-fixed-column--right {
+      background: linear-gradient(
+        180deg,
+        var(--tech-table-head-from),
+        var(--tech-table-head-to)
+      ) !important;
       color: #0b7f9c !important;
       font-weight: 600;
       letter-spacing: 0.5px;
@@ -595,26 +633,36 @@ html.tech-light {
     }
 
     tr {
-      background-color: transparent;
+      background-color: var(--tech-table-row-bg);
     }
 
+    /* 普通列不填色，统一由 tr 铺底；固定列用同一令牌自绘，两者颜色必然相同 */
     td.el-table__cell {
       border-bottom: 1px solid rgba(15, 168, 201, 0.1) !important;
       background-color: transparent;
       transition: background-color 0.2s ease;
     }
 
-    .el-table__row:hover > td.el-table__cell {
-      background-color: rgba(15, 168, 201, 0.09) !important;
+    td.el-table-fixed-column--left,
+    td.el-table-fixed-column--right {
+      background-color: var(--tech-table-row-bg) !important;
     }
 
-    /* 斑马纹改为极低透明度青色，避免破坏深色统一感 */
-    &.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
-      background-color: rgba(15, 168, 201, 0.035);
+    /* 斑马纹：改为一层极淡的青色实色，普通列与固定列同步 */
+    &.el-table--striped .el-table__body tr.el-table__row--striped {
+      > td.el-table__cell {
+        background-color: var(--tech-table-row-bg-striped) !important;
+      }
     }
 
-    &.el-table--striped .el-table__body tr.el-table__row--striped:hover > td.el-table__cell {
-      background-color: rgba(15, 168, 201, 0.1) !important;
+    /* 悬停 / 当前行：普通列与固定列同步 */
+    .el-table__row:hover > td.el-table__cell,
+    .el-table__row.hover-row > td.el-table__cell {
+      background-color: var(--tech-table-row-bg-hover) !important;
+    }
+
+    .el-table__body tr.current-row > td.el-table__cell {
+      background-color: var(--tech-table-row-bg-current) !important;
     }
 
     &::before,
@@ -626,13 +674,6 @@ html.tech-light {
     .el-table__empty-block {
       background: transparent;
     }
-  }
-
-  .el-table__fixed,
-  .el-table__fixed-right,
-  .el-table-fixed-column--left,
-  .el-table-fixed-column--right {
-    background: #ffffff !important;
   }
 
   /* ==============================================================

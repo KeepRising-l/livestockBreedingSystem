@@ -1,0 +1,4 @@
+# ===== 后端测试依赖（开发用，不进生产镜像） =====
+pytest==8.2.2
+# httpx 为 fastapi.testclient.TestClient 所需，主依赖未显式声明，这里固定
+httpx==0.28.1

@@ -295,3 +295,48 @@ def audit(db: Session, farm_id: int, body: ReviewAuditIn, user_id: int) -> dict:
         "business_id": body.business_id,
         "audit_status": body.audit_status,
     }
+
+
+def batch_audit(db: Session, farm_id: int, business_type: Optional[str],
+                audit_status: str, remark: Optional[str], user_id: int) -> dict:
+    """
+    一键批量审核：把当前所有待审核记录一次性审掉。
+
+    - business_type 为空或 "all" 时覆盖全部类型，否则只审指定类型
+    - 逐条复用 audit()，某条失败（比如已被别人审过）只记录不影响其它条
+    - 返回成功条数、失败条数、失败原因，供前端提示
+    """
+    if audit_status not in ("通过", "驳回"):
+        raise BizException("审核状态只能填：通过 / 驳回", code=40202)
+
+    types = list(BUSINESS_NAMES) if not business_type or business_type == "all" else [business_type]
+    for bt in types:
+        if bt not in BUSINESS_NAMES:
+            raise BizException("不支持的业务类型", code=40201)
+
+    ok_count = 0
+    failed: list[dict] = []
+    for bt in types:
+        items, _ = _query_pending(db, farm_id, bt, 1, 1000)
+        for item in items:
+            try:
+                audit(db, farm_id, ReviewAuditIn(
+                    business_type=bt, business_id=item.id,
+                    audit_status=audit_status, remark=remark,
+                ), user_id)
+                ok_count += 1
+            except BizException as e:  # 单条失败不影响整体
+                db.rollback()
+                failed.append({"business_type": bt, "business_id": item.id,
+                               "summary": item.summary, "reason": e.message})
+            except Exception as e:  # noqa: BLE001  兜底：数据库异常等
+                db.rollback()
+                failed.append({"business_type": bt, "business_id": item.id,
+                               "summary": item.summary, "reason": str(e)})
+
+    return {
+        "audit_status": audit_status,
+        "success": ok_count,
+        "failed": len(failed),
+        "failed_items": failed[:20],
+    }

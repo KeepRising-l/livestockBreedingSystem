@@ -2,6 +2,16 @@
   <div>
     <div class="flex-between mb-16">
       <h2 class="page-title">审核中心</h2>
+      <div class="flex-gap" v-if="canAudit">
+        <el-button
+          type="success"
+          :loading="batchSaving"
+          :disabled="!pendingCount"
+          @click="handleBatchAudit"
+        >
+          一键通过{{ pendingCount ? `（${pendingCount}）` : '' }}
+        </el-button>
+      </div>
       <el-alert v-if="!canAudit" type="info" :closable="false" show-icon
         title="员工只能查看待审核记录，审核需养殖场主权限" />
     </div>
@@ -86,10 +96,11 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import {
   getReviewCountsApi, getReviewListApi, getReviewPendingApi, auditReviewApi,
-  type ReviewItem, type ReviewCounts, type BusinessType,
+  batchAuditReviewApi, type ReviewItem, type ReviewCounts, type BusinessType,
 } from '@/api/review'
 import { useAuthStore } from '@/stores/auth'
-import { ElMessage } from 'element-plus'
+import { formatDateTime } from '@/utils/format'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { InfoFilled } from '@element-plus/icons-vue'
 
 const authStore = useAuthStore()
@@ -118,9 +129,14 @@ const auditSaving = ref(false)
 const auditTarget = ref<ReviewItem | null>(null)
 const auditForm = reactive({ remark: '' })
 
+const batchSaving = ref(false)
+/** 当前 tab 下的待审核数量（「全部」tab 显示合计），显示在一键通过按钮上 */
+const pendingCount = computed(() =>
+  activeTab.value === 'all' ? counts.total || 0 : tabCount(activeTab.value),
+)
+
 function formatTime(t: string | null) {
-  if (!t) return '-'
-  return t.replace('T', ' ').slice(0, 19)
+  return formatDateTime(t)
 }
 
 function tabCount(bt: string) {
@@ -195,6 +211,44 @@ async function confirmAudit() {
   }
 }
 
+/** 一键通过：把当前所有待审核记录一次性审掉（二次确认，防误点） */
+async function handleBatchAudit() {
+  const total = pendingCount.value
+  const scope = activeTab.value === 'all' ? '全部类型' : TABS[activeTab.value] || '当前类型'
+  try {
+    await ElMessageBox.confirm(
+      `将把${scope}的 ${total} 条待审核记录全部审核通过，审核后不可撤销。是否继续？`,
+      '一键通过确认',
+      { type: 'warning', confirmButtonText: '确认通过', cancelButtonText: '取消' },
+    )
+  } catch {
+    return  // 用户取消
+  }
+  batchSaving.value = true
+  try {
+    const res = await batchAuditReviewApi({
+      business_type: activeTab.value === 'all' ? 'all' : (activeTab.value as BusinessType),
+      audit_status: '通过',
+    })
+    const data = (res as any).data
+    if (data?.success) {
+      ElMessage.success(`已批量通过 ${data.success} 条`)
+    } else {
+      ElMessage.info('当前没有待审核记录')
+    }
+    if (data?.failed) {
+      ElMessage.warning(`${data.failed} 条审核失败：${data.failed_items?.[0]?.reason || '请稍后重试'}`)
+    }
+    pageNum.value = 1
+    loadCounts()
+    loadData()
+  } catch {
+    // handled by interceptor
+  } finally {
+    batchSaving.value = false
+  }
+}
+
 onMounted(() => {
   loadCounts()
   loadData()
@@ -207,6 +261,7 @@ onMounted(() => {
 .mt-16 { margin-top: 16px; }
 .text-right { text-align: right; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
+.flex-gap { display: flex; align-items: center; gap: 10px; }
 .tab-badge { margin-left: 4px; }
 .detail-icon { margin-left: 6px; cursor: help; color: #6b8ba4; vertical-align: -2px; }
 .c-gray { color: #5b7d95; }

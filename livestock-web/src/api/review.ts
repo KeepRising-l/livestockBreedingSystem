@@ -47,3 +47,19 @@ export function auditReviewApi(body: {
 }) {
   return http.post('/review/audit', body)
 }
+
+/** 一键批量审核：business_type 留空表示全部类型 */
+export function batchAuditReviewApi(body: {
+  business_type?: BusinessType | 'all'
+  audit_status: '通过' | '驳回'
+  remark?: string
+}) {
+  return http.post('/review/batch-audit', body)
+}
+
+export interface BatchAuditResult {
+  audit_status: string
+  success: number
+  failed: number
+  failed_items: { business_type: string; business_id: number; summary: string; reason: string }[]
+}
